@@ -13,6 +13,8 @@ VideoScriptWebUI is a local web user interface developed with **Dash**, it has t
 
 - Download the repo
 
+- Download and install Python
+
 - Requirements (Tested on Python 3.10)
 
     ```shell
@@ -25,14 +27,16 @@ VideoScriptWebUI is a local web user interface developed with **Dash**, it has t
 
 - Tools
 
-    FFmpeg full build is needed for hardware acceleration.  
-    Real-ESRGAN-ncnn-vulkan is needed for video upscaling.  
-    Ifrnet-ncnn-vulkan is needed for frame interpolation.  
-
-    Above 3 tools are in [./tools](tools), make sure to put 
-    *pathTo\ffmpeg-full_build\bin* 
-    *pathTo\Real-ESRGAN* and 
-    *pathTo\Ifrnet* in the environment variable *PATH*
+    [FFmpeg](https://www.ffmpeg.org/download.html) full build is needed for hardware acceleration.  
+    [Real-ESRGAN-ncnn-vulkan](https://github.com/xinntao/Real-ESRGAN-ncnn-vulkan/releases) is needed for video upscaling.  
+    [Ifrnet-ncnn-vulkan](https://github.com/nihui/ifrnet-ncnn-vulkan/releases) is needed for frame interpolation.  
+    
+    > [!IMPORTANT]  
+    > Make sure to put  
+    > *pathTo\ffmpeg-full_build\bin*  
+    > *pathTo\Real-ESRGAN* and  
+    > *pathTo\Ifrnet*  
+    > in the environment variable *PATH*
 
 
 
@@ -89,6 +93,7 @@ This project relies on the following software and projects.
 
 ## TODO list
 
+- [X] stdout to Dash
 - [ ] Stop upscale and interpolate process, at the same time stdout to Dash
 - [ ] Embed release
 - [ ] Gif to explain processes, tooltip on process dropdown
