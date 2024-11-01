@@ -31,7 +31,7 @@ VideoScriptWebUI is a local web user interface developed with **Dash**, it has t
     [Real-ESRGAN-ncnn-vulkan](https://github.com/xinntao/Real-ESRGAN-ncnn-vulkan/releases) is needed for video upscaling.  
     [Ifrnet-ncnn-vulkan](https://github.com/nihui/ifrnet-ncnn-vulkan/releases) is needed for frame interpolation.  
     
-    > [!TIP]  
+    > <span style="color:orange">**⚠ Important**</span>  
     > Make sure to put  
     > *pathTo\ffmpeg-full_build\bin*  
     > *pathTo\Real-ESRGAN* and  
