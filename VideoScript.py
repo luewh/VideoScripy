@@ -244,8 +244,8 @@ class VideoScript():
             while len(listdir(outDir)) < total:
                 sleep(3)
                 progressed = len(listdir(outDir)) - alreadyProgressed
-                if progressed - progressedPrev != 0:
-                    bar(progressed - progressedPrev)
+                # if progressed - progressedPrev != 0:
+                bar(progressed - progressedPrev)
                 progressedPrev = progressed
 
     ####################
