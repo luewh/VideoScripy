@@ -3,6 +3,7 @@ from ffmpeg import probe
 from alive_progress import alive_bar
 
 # built-in
+import subprocess
 from pathlib import Path
 from datetime import timedelta
 from shutil import rmtree
@@ -217,7 +218,14 @@ class VideoScript():
             +' "{}_tmp_frames/frame%08d.jpg" "'.format(name)
         )
         print(f'Getting Frames of "{name}"')
-        system(command)
+        p = subprocess.Popen(
+            command,
+            shell=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+        )
+        p.wait()
+        # system(command)
         print("Done")
 
     def frameWatch(self, outDir:str, total:int):
@@ -314,7 +322,14 @@ class VideoScript():
                 +' "optimized\\{}" "'.format(name)
             )
             print(f'Optimizing "{name}"')
-            system(command)
+            p = subprocess.Popen(
+                command,
+                shell=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+            )
+            p.wait()
+            # system(command)
             print("Done")
 
             optimizeTime = time()-optimizeTime
@@ -435,7 +450,14 @@ class VideoScript():
                 +' "resized\\{}" "'.format(name)
             )
             print(f'Resizing "{name}"')
-            system(command)
+            p = subprocess.Popen(
+                command,
+                shell=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+            )
+            p.wait()
+            # system(command)
             print("Done")
             
             resizeTime = time()-resizeTime
@@ -558,7 +580,13 @@ class VideoScript():
             # x2 and x3 upscaleFactor
             else:
                 command += ' -n realesr-animevideov3 -s {} -f jpg -g 1"'.format(upscaleFactor)
-            system(command)
+            p = subprocess.Popen(
+                command,
+                shell=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+            )
+            # system(command)
 
             # frames watch
             self.frameWatch(
@@ -596,7 +624,14 @@ class VideoScript():
                 +' "upscaled\\{}" "'.format(name)
             )
             print(f'Upscaling frame to video "{name}"')
-            system(command)
+            p = subprocess.Popen(
+                command,
+                shell=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+            )
+            p.wait()
+            # system(command)
             print("Done")
 
             # remove upscaled frames
@@ -716,7 +751,7 @@ class VideoScript():
             # new frames interpolate
             mkdir(interpolateOutputPath)
             command = (
-                'start /min /wait cmd /c " {}:'.format(self.path[0])
+                'start /min cmd /c " {}:'.format(self.path[0])
                 +' & cd {}'.format(self.path)
                 +' & ifrnet-ncnn-vulkan.exe'
                 +' -i "{}_tmp_frames" '.format(name)
@@ -725,11 +760,17 @@ class VideoScript():
                 +' -n {}"'.format(interpolateFrame)
             )
             print(f'Interpolating "{name}"')
-            system(command)
+            # system(command)
+            subprocess.Popen(
+                command,
+                shell=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+            )
 
             # frames watch
             self.frameWatch(
-                outDir=(interpolateOutputPath),
+                outDir=interpolateOutputPath,
                 total=interpolateFrame
             )
             # remove frames
@@ -763,7 +804,14 @@ class VideoScript():
                 +' "interpolated\\{}" "'.format(name)
             )
             print(f'Interpolating frame to video "{name}"')
-            system(command)
+            # system(command)
+            p = subprocess.Popen(
+                command,
+                shell=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+            )
+            p.wait()
             print("Done")
 
             # remove upscaled frames
@@ -861,7 +909,14 @@ class VideoScript():
             +' -y "merged\\{}" "'.format(name)
         )
         print(f'Merging {len(self.vList)} videos')
-        system(command)
+        p = subprocess.Popen(
+            command,
+            shell=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+        )
+        p.wait()
+        # system(command)
         print("Done")
                 
         spendTime = time()-spendTime
