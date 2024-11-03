@@ -4,6 +4,7 @@ from alive_progress import alive_bar
 
 # built-in
 import subprocess
+import psutil
 from pathlib import Path
 from datetime import timedelta
 from shutil import rmtree
@@ -49,10 +50,11 @@ class VideoScript():
             file (str): need to be set as __file__ if class is imported
         """
 
-        if file == None:
-            self.path = str(Path(__file__).parent.resolve())
+        if file != None:
+            self.file = file
         else:
-            self.path = str(Path(file).parent.resolve())
+            self.file = __file__
+        self.path = str(Path(self.file).parent.resolve())
         
         self.vList = []
         self.vType = ["mp4","mkv"]
@@ -65,6 +67,7 @@ class VideoScript():
             +' -rc vbr -rc-lookahead 1024'
         )
 
+        self.proc = None
 
     def noticeProcessEnd(self):
         Beep(440, 1500)
@@ -76,13 +79,13 @@ class VideoScript():
 
         Parameters:
             path (str):
-                set to "" will use __file__ as default path
+                set to "" will use self.file as default path
         
         Used attributes:
             path
         """
         if path == "":
-            self.path = str(Path(__file__).parent.resolve())
+            self.path = str(Path(self.file).parent.resolve())
             print(f'Path set to default "{self.path}"')
             return True
         else:
@@ -128,7 +131,7 @@ class VideoScript():
                     skip = True
                     break
             if skip:
-                print("Skiped")
+                print("Self generated folder skiped")
                 continue
 
             # get videos
@@ -218,13 +221,14 @@ class VideoScript():
             +' "{}_tmp_frames/frame%08d.jpg" "'.format(name)
         )
         print(f'Getting Frames of "{name}"')
-        p = subprocess.Popen(
+        self.proc = subprocess.Popen(
             command,
             shell=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
         )
-        p.wait()
+        self.proc.wait()
+        self.proc = None
         # system(command)
         print("Done")
 
@@ -243,7 +247,7 @@ class VideoScript():
         alreadyProgressed = len(listdir(outDir))
         restToProgress = total - alreadyProgressed
         print("Already progressed : {}/{}".format(alreadyProgressed, total))
-        print("Rest to progress : {}/{}".format(restToProgress, total))
+        print("Remain to progress : {}/{}".format(restToProgress, total))
 
         progressedPrev = 0
         with alive_bar(total) as bar:
@@ -322,13 +326,14 @@ class VideoScript():
                 +' "optimized\\{}" "'.format(name)
             )
             print(f'Optimizing "{name}"')
-            p = subprocess.Popen(
+            self.proc = subprocess.Popen(
                 command,
                 shell=True,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
             )
-            p.wait()
+            self.proc.wait()
+            self.proc = None
             # system(command)
             print("Done")
 
@@ -450,13 +455,14 @@ class VideoScript():
                 +' "resized\\{}" "'.format(name)
             )
             print(f'Resizing "{name}"')
-            p = subprocess.Popen(
+            self.proc = subprocess.Popen(
                 command,
                 shell=True,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
             )
-            p.wait()
+            self.proc.wait()
+            self.proc = None
             # system(command)
             print("Done")
             
@@ -580,7 +586,7 @@ class VideoScript():
             # x2 and x3 upscaleFactor
             else:
                 command += ' -n realesr-animevideov3 -s {} -f jpg -g 1"'.format(upscaleFactor)
-            p = subprocess.Popen(
+            self.proc = subprocess.Popen(
                 command,
                 shell=True,
                 stdout=subprocess.PIPE,
@@ -593,6 +599,9 @@ class VideoScript():
                 outDir=(upscaleOutputPath),
                 total=totalFrames
             )
+
+            self.proc = None
+
             # remove frames
             rmtree(self.path+'\\{}_tmp_frames'.format(name))
 
@@ -624,13 +633,14 @@ class VideoScript():
                 +' "upscaled\\{}" "'.format(name)
             )
             print(f'Upscaling frame to video "{name}"')
-            p = subprocess.Popen(
+            self.proc = subprocess.Popen(
                 command,
                 shell=True,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
             )
-            p.wait()
+            self.proc.wait()
+            self.proc = None
             # system(command)
             print("Done")
 
@@ -761,7 +771,7 @@ class VideoScript():
             )
             print(f'Interpolating "{name}"')
             # system(command)
-            subprocess.Popen(
+            self.proc = subprocess.Popen(
                 command,
                 shell=True,
                 stdout=subprocess.PIPE,
@@ -773,6 +783,9 @@ class VideoScript():
                 outDir=interpolateOutputPath,
                 total=interpolateFrame
             )
+
+            self.proc = None
+
             # remove frames
             rmtree(self.path+'\\{}_tmp_frames'.format(name))
 
@@ -804,14 +817,15 @@ class VideoScript():
                 +' "interpolated\\{}" "'.format(name)
             )
             print(f'Interpolating frame to video "{name}"')
-            # system(command)
-            p = subprocess.Popen(
+            self.proc = subprocess.Popen(
                 command,
                 shell=True,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
             )
-            p.wait()
+            self.proc.wait()
+            self.proc = None
+            # system(command)
             print("Done")
 
             # remove upscaled frames
@@ -909,13 +923,14 @@ class VideoScript():
             +' -y "merged\\{}" "'.format(name)
         )
         print(f'Merging {len(self.vList)} videos')
-        p = subprocess.Popen(
+        self.proc = subprocess.Popen(
             command,
             shell=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
         )
-        p.wait()
+        self.proc.wait()
+        self.proc = None
         # system(command)
         print("Done")
                 

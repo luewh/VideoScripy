@@ -96,7 +96,7 @@ This project relies on the following software and projects.
 - [X] alive-progress ANSI Escape Code "?25l" render problem
 - [X] License
 - [X] Favicon
-- [ ] Embed release
+- [X] Embed release
 - [ ] Stop upscale and interpolate process
 - [ ] Gif to explain processes, tooltip on process dropdown
 - [ ] Remain vh for div_processRunning

@@ -15,6 +15,7 @@ from time import sleep
 from webbrowser import open_new
 from threading import Timer
 from multiprocessing import Process
+from threading import Thread
 import subprocess
 
 # own classes
@@ -133,10 +134,6 @@ app.layout = html.Div(
                         style={
                             "marginBottom":20,
                         },
-                    ),
-                    dbc.Tooltip(
-                        "Currently not supported",
-                        target="button_stopProcess",
                     ),
                     html.Div(
                         id="div_processRunning",
@@ -681,7 +678,7 @@ def switchVideoColor(_, color, colorAll):
     State({'type':'input','id': ALL}, 'value'),
     State({'type':'input','id': ALL}, 'on'),
     running=[
-        # (Output('button_stopProcess', 'disabled'), False, True),
+        (Output('button_stopProcess', 'disabled'), False, True),
         (Output('button_scanFiles', 'disabled'), True, False),
         (Output('button_editPath', 'disabled'), True, False),
         (Output('button_selectDir', 'disabled'), True, False),
@@ -737,9 +734,9 @@ def stopProcess(_):
     # pid = os.getpid()
     # proc = psutil.Process(pid)
     # children = proc.children(recursive=True)
-    # # print(pid)
-    # # print(proc)
-    # # print(children)
+    # print("pid :", pid)
+    # print("proc :", proc)
+    # print("children :", children)
     # for child in children:
     #     try:
     #         child.kill()
@@ -747,9 +744,10 @@ def stopProcess(_):
     #     except:
     #         print(f"Can not kill {child}")
     #         pass
-    # proc.kill()
+    # # proc.kill()
 
-    print("Stopped")
+    # print("Stopped")
+    print("Currently not supported")
 
 
 
