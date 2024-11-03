@@ -15,6 +15,7 @@ from time import sleep
 from webbrowser import open_new
 from threading import Timer
 from multiprocessing import Process
+import subprocess
 
 # own classes
 from VideoScript import VideoScript
@@ -51,7 +52,10 @@ app = Dash(
     title="VS WebUI",
     update_title=None,
     # rescale layout for mobile device
-    meta_tags=[{'name':'viewport','content':'width=device-width, initial-scale=1.0'}],
+    meta_tags=[{
+        'name':'viewport',
+        'content':'width=device-width, initial-scale=1.0',
+    }],
     # not warn component Inputs, States, and Output not present in the layout
     suppress_callback_exceptions=True,
 )
@@ -259,7 +263,7 @@ app.layout = html.Div(
 
 
 @callback(
-    Output('interval_log', 'n_intervals'),
+    Output('interval_log', 'n_intervals', allow_duplicate=True),
     Input("notifyClose", "n_clicks"),
     prevent_initial_call=True,
 )
@@ -676,18 +680,18 @@ def switchVideoColor(_, color, colorAll):
     State({'type':'input','id': ALL}, 'value'),
     State({'type':'input','id': ALL}, 'on'),
     running=[
+        # (Output('button_stopProcess', 'disabled'), False, True),
         (Output('button_scanFiles', 'disabled'), True, False),
         (Output('button_editPath', 'disabled'), True, False),
         (Output('button_selectDir', 'disabled'), True, False),
         (Output('input_path', 'disabled'), True, True),
-        # (Output('button_stopProcess', 'disabled'), False, True),
         (Output('interval_log', 'disabled'), False, True),
+        (Output('interval_log', 'n_intervals'), 0, 0),
     ],
     prevent_initial_call=True,
 )
 def runProcess(_, selectedProcess, inputValues, inputOns):
     global vs, runningProcess
-
 
     if selectedProcess == "optimize":
         vs.optimize(*inputValues)
@@ -712,7 +716,6 @@ def runProcess(_, selectedProcess, inputValues, inputOns):
     # runningProcess.start()
     # runningProcess.join()
     print(f"Process {selectedProcess} END")
-    sleep(1)
     raise PreventUpdate
 
 @callback(
@@ -728,19 +731,22 @@ def stopProcess(_):
     #     child.kill()
     # parent.kill()
 
-    pid = os.getpid()
-    proc = psutil.Process(pid)
-    children = proc.children(recursive=True)
-    # print(pid)
-    # print(proc)
-    # print(children)
-    for child in children:
-        try:
-            child.kill()
-            print(f"Killed {child}")
-        except:
-            print(f"Can not kill {child}")
-            pass
+    # vs.stopProcess()
+
+    # pid = os.getpid()
+    # proc = psutil.Process(pid)
+    # children = proc.children(recursive=True)
+    # # print(pid)
+    # # print(proc)
+    # # print(children)
+    # for child in children:
+    #     try:
+    #         child.kill()
+    #         print(f"Killed {child}")
+    #     except:
+    #         print(f"Can not kill {child}")
+    #         pass
+    # proc.kill()
 
     print("Stopped")
 
@@ -765,7 +771,11 @@ class StdoutIntercept(object):
         if msg == "\r":
             # init carriage line
             if not self.carriage:
-                self.queue.append("")
+                # alive-progress remove ANSI Escape Code (hide the cursor on terminal)
+                if "?25l" in self.queue[-1]:
+                    self.queue[-1] = ""
+                else:
+                    self.queue.append("")
             # rewrite carriage line
             else:
                 self.queue[-1] = ""

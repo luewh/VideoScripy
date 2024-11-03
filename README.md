@@ -94,8 +94,11 @@ This project relies on the following software and projects.
 ## TODO list
 
 - [X] stdout to Dash
+- [X] alive-progress ANSI Escape Code "?25l" render problem
 - [ ] Stop upscale and interpolate process, at the same time stdout to Dash
+- [ ] Favicon
 - [ ] Embed release
+- [ ] License
 - [ ] Gif to explain processes, tooltip on process dropdown
 - [ ] Remain vh for div_processRunning
 - [ ] Log ?
