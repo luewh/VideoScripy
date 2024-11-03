@@ -623,6 +623,7 @@ def getVideoItem(video:dict, index:int):
     Output('button_runProcess', 'disabled', allow_duplicate=True),
     Output('button_scanFiles', 'children', allow_duplicate=True),
     Output('tooltip_run', 'children', allow_duplicate=True),
+    Output('interval_log', 'n_intervals', allow_duplicate=True),
     Output('list_videos', 'children'),
     Input('button_scanFiles', 'n_clicks'),
     prevent_initial_call=True,
@@ -642,7 +643,7 @@ def scanFiles(_):
     for index, video in enumerate(vs.vList):
         videoItems.append(getVideoItem(video,index))
 
-    return False, no_update, "Ready to RUN", videoItems
+    return False, no_update, "Ready to RUN", 0, videoItems
 
 @callback(
     Output({'type':'video', 'index': MATCH}, 'color'),
@@ -772,8 +773,8 @@ class StdoutIntercept(object):
             # init carriage line
             if not self.carriage:
                 # alive-progress remove ANSI Escape Code (hide the cursor on terminal)
-                if "?25l" in self.queue[-1]:
-                    self.queue[-1] = ""
+                if "\x1b" in self.queue[-1]:
+                    self.queue[-1] = self.queue[-1].replace("\x1b", "")
                 else:
                     self.queue.append("")
             # rewrite carriage line
@@ -786,6 +787,9 @@ class StdoutIntercept(object):
         # stop carriage
         if msg == "\n":
             self.carriage = False
+            # alive-progress remove ANSI clears line from cursor
+            if "\x1b[K" in self.queue[-1]:
+                self.queue[-1] = self.queue[-1].replace("\x1b[K", "")
 
         # append carriage line
         if self.carriage:
