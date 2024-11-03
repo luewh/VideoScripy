@@ -5,7 +5,7 @@
 VideoScript is a collection of video processes including video **Upscale** and video frame **Interpolation**, it uses Python to generate **FFmpeg**, **Real-ESRGAN** and **IFRNet** command line script and performes serial processing on scanned **mp4**/**mkv** videos.
 
 VideoScriptWebUI is a local web user interface developed with **Dash**, it has the goal of enhancing user experience.
-![demo.gif](./doc/demo.gif)
+![demo.gif](./doc/demo_upscale.gif)
 
 
 
@@ -95,10 +95,10 @@ This project relies on the following software and projects.
 
 - [X] stdout to Dash
 - [X] alive-progress ANSI Escape Code "?25l" render problem
+- [X] License
 - [ ] Stop upscale and interpolate process, at the same time stdout to Dash
 - [ ] Favicon
 - [ ] Embed release
-- [ ] License
 - [ ] Gif to explain processes, tooltip on process dropdown
 - [ ] Remain vh for div_processRunning
 - [ ] Log ?
