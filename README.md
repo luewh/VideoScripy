@@ -6,40 +6,81 @@ VideoScript is a collection of video processes including video **Upscale** and v
 VideoScriptWebUI is a local web user interface developed with **Dash**, it has the goal of enhancing user experience.
 ![demo.gif](./doc/demo_upscale.gif)
 
+> <span style="color:red">**⚠ Currently only compatible with Windows users who have Nvidia cards.**</span> 
 
 
-## Installation
 
-- Download the repo
+## Table of contents
 
-- Download and install Python
+- [Embedded version](#embedded-version)
+    * [Installation](#installation)
+    * [Usage](#usage)
 
-- Requirements (Tested on Python 3.10)
+- [Self setup version](#self-setup-version)
+    * [Installation](#installation-1)
+    * [Usage](#usage-1)
+
+- [Processes Description](#processes-description)
+
+- [Credits](#credits)
+
+- [TODO list](#todo-list)
+
+
+
+## Embedded version
+
+Simplest. Python, Tools are already setup.  
+Advantage : **Beginner-friendly**
+
+### Installation
+
+1. Download and extract the [embedded release](https://github.com/luewh/Video-Script/releases/latest)
+
+### Usage
+
+- Run the `RUN.bat` to launch WebUI
+
+
+
+## Self setup version
+
+Need to install Python dependencies, add tools to PATH manually.  
+Advantage : **Freedom**
+
+### Installation
+
+1. Download and extract the [SelfSetup release](https://github.com/luewh/Video-Script/releases/latest)
+
+2. Download and install Python 3.10 if you dont have.
+
+3. Install dependencies
 
     ```shell
     pip install -r requirements.txt
     ```
+ 
+4. Add tools to PATH
 
-- Hardware
+    Below tools are included in self setup release :
 
-    NVIDIA card and [CUDA Toolkit](https://developer.nvidia.com/cuda-toolkit) are needed for FFmpeg hardware acceleration.
-
-- Tools
-
-    [FFmpeg](https://www.ffmpeg.org/download.html) full build is needed for hardware acceleration.  
-    [Real-ESRGAN-ncnn-vulkan](https://github.com/xinntao/Real-ESRGAN-ncnn-vulkan/releases) is needed for video upscaling.  
-    [Ifrnet-ncnn-vulkan](https://github.com/nihui/ifrnet-ncnn-vulkan/releases) is needed for frame interpolation.  
+    [FFmpeg](https://www.ffmpeg.org/download.html) full build for hardware acceleration.  
+    [Real-ESRGAN-ncnn-vulkan](https://github.com/xinntao/Real-ESRGAN-ncnn-vulkan/releases) for video upscaling.  
+    [Ifrnet-ncnn-vulkan](https://github.com/nihui/ifrnet-ncnn-vulkan/releases) for video frame interpolation.  
     
-    > <span style="color:orange">**⚠ Important**</span>  
-    > Make sure to put  
-    > *pathTo\ffmpeg-full_build\bin*  
-    > *pathTo\Real-ESRGAN* and  
-    > *pathTo\Ifrnet*  
-    > in the environment variable *PATH*
+    <span style="color:orange">**Important**</span>  
+
+    Make sure to put  
+
+    - `<pathTo>\ffmpeg-full_build\bin`
+    - `<pathTo>\Real-ESRGAN`
+    - `<pathTo>\Ifrnet`
+
+    in the environment variable *PATH*
 
 
 
-## Usage
+### Usage
 
 - VideoScript.py
 
@@ -51,7 +92,7 @@ VideoScriptWebUI is a local web user interface developed with **Dash**, it has t
 
 
 
-## Processes
+## Processes Description
 
 - optimize
 
@@ -100,6 +141,7 @@ This project relies on the following software and projects.
 - [ ] Stop upscale and interpolate process
 - [ ] Gif to explain processes, tooltip on process dropdown
 - [ ] Remain vh for div_processRunning
+- [ ] Get video walk optimize
 - [ ] Log ?
 
 
