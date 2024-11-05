@@ -142,8 +142,8 @@ This project relies on the following software and projects.
 - [X] Embed release
 - [X] Stop upscale and interpolate process
 - [X] Get video walk optimize
+- [X] Arrange process select UI
 - [ ] Gif to explain processes, tooltip on process dropdown
-- [ ] Remain vh for div_processRunning
 - [ ] Log ?
 
 

@@ -106,36 +106,46 @@ app.layout = html.Div(
                     html.Div(
                         id="div_processParamUI",
                         disable_n_clicks=True,
+                        style={
+                            "height":"31vh",
+                            "overflow-x": "hidden",
+                            "overflow-y": "auto",
+                        }
                     ),
-                    dcc.Loading(
-                        html.Button(
-                            "RUN",
-                            id="button_runProcess",
-                            n_clicks=0,
-                            disabled=True,
-                            className="uni_width_height uni_text",
-                            style={
-                                "marginTop":20,
-                                "marginBottom":20,
-                            },
-                        ),
-                        color="white",
+                    dbc.Row(
+                        [
+                            dbc.Col(
+                                dcc.Loading(
+                                    html.Button(
+                                        "RUN",
+                                        id="button_runProcess",
+                                        n_clicks=0,
+                                        disabled=True,
+                                        className="uni_width_height uni_text",
+                                    ),
+                                    color="white",
+                                ),
+                            ),
+                            dbc.Col(
+                                html.Button(
+                                    "STOP",
+                                    id="button_stopProcess",
+                                    n_clicks=0,
+                                    disabled=True,
+                                    className="uni_width_height uni_text",
+                                ),
+                            ),
+                        ],
+                        style={
+                            "marginTop":10,
+                            "marginBottom":10,
+                        },
                     ),
                     dbc.Tooltip(
                         "SCAN atleast once to RUN",
                         id="tooltip_run",
                         target="button_runProcess",
                         delay={"show": 500, "hide": 0},
-                    ),
-                    html.Button(
-                        "STOP",
-                        id="button_stopProcess",
-                        n_clicks=0,
-                        disabled=True,
-                        className="uni_width_height uni_text",
-                        style={
-                            "marginBottom":20,
-                        },
                     ),
                     html.Div(
                         id="div_processRunning",
@@ -151,6 +161,7 @@ app.layout = html.Div(
                             "padding":"5px",
                             "font-size":"10px",
                             "font-family":"monospace",
+                            # "border-radius": "3px",
                         },
                     ),
                 ],
