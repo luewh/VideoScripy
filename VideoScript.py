@@ -5,15 +5,59 @@ from alive_progress import alive_bar
 # built-in
 import subprocess
 import psutil
+from threading import Thread
 from pathlib import Path
 from datetime import timedelta
 from shutil import rmtree
-from os import walk, mkdir, system, rmdir, remove, listdir
+from os import walk, mkdir, remove, listdir
 from os.path import isdir
-from copy import deepcopy
 from time import time, sleep
 from winsound import Beep
 from math import ceil
+
+
+
+def noticeProcessEnd():
+    Beep(440, 1500)
+    # input('Press enter to exit')
+
+def frameWatch(outDir:str, total:int):
+    """
+    Track video frame process with progress bar,
+    Set global variable stop_threads to True to stop.
+
+    Parameters:
+        outDir (str):
+            process output directory, where progress increase
+        
+        total (int):
+            when to stop
+    """
+    
+    global stop_threads
+    stop_threads = False
+    
+    alreadyProgressed = len(listdir(outDir))
+    restToProgress = total - alreadyProgressed
+    print("Already progressed : {}/{}".format(alreadyProgressed, total))
+    print("Remain to progress : {}/{}".format(restToProgress, total))
+
+    progressedPrev = 0
+    with alive_bar(total) as bar:
+        if alreadyProgressed != 0:
+            bar(alreadyProgressed, skipped=True)
+        while len(listdir(outDir)) < total:
+            sleep(1)
+            progressed = len(listdir(outDir)) - alreadyProgressed
+            bar(progressed - progressedPrev)
+            progressedPrev = progressed
+
+            if stop_threads:
+                break
+        else:
+            progressed = len(listdir(outDir)) - alreadyProgressed
+            bar(progressed - progressedPrev)
+            progressedPrev = progressed
 
 
 
@@ -38,7 +82,13 @@ class VideoScript():
             do not optimize if optimizedBitRate * optimizationTolerence < bitRate
 
         highQualityParam (str):
-            _
+            hevc_nvenc high quality parameters
+        
+        proc (subprocess.Popen):
+            running video process : ffmpeg, Real-ESRGAN, or Ifrnet
+        
+        killed (bool):
+            indicate that kill video process is asked
         
     """
 
@@ -68,10 +118,9 @@ class VideoScript():
         )
 
         self.proc = None
+        self.killed = False
 
-    def noticeProcessEnd(self):
-        Beep(440, 1500)
-        # input('Press enter to exit')
+
 
     def setPath(self, path:str="") -> bool:
         """
@@ -97,10 +146,27 @@ class VideoScript():
                 print("Path do not exist")
                 return False
     
+    def killProc(self) -> None:
+        """
+        Kill and stop running video process,
+        Only set killed to True if no running video process.
+        
+        Used attributes:
+            killed
+            proc
+        """
+        self.killed = True
+        if self.proc != None:
+            parent = psutil.Process(self.proc.pid)
+            for child in parent.children(recursive=True):
+                child.kill()
+
+
+
     ##################
     # region Get Video
 
-    def getVideo(self, folderDepthLimit:int=0):
+    def getVideo(self, folderDepthLimit:int=0) -> None:
         """
         Set attributes vList's path and name by file scan
 
@@ -128,10 +194,10 @@ class VideoScript():
             skip = False
             for folderSkip in self.folderSkip:
                 if root[-len(folderSkip):] == folderSkip:
+                    print(f'Self generated folder {folderSkip} skiped')
                     skip = True
                     break
             if skip:
-                print("Self generated folder skiped")
                 continue
 
             # get videos
@@ -143,8 +209,12 @@ class VideoScript():
                         "path" : root+"\\"+file,
                         "name" : (root+"\\"+file).replace(self.path+'\\','').replace('\\','__')
                     })
+            
+            # stop scan for perfomance
+            if folderDepthLimit == 0:
+                break
     
-    def getVideoInfo(self):
+    def getVideoInfo(self) -> None:
         """
         Set attributes vList's video properties with ffmpeg probe
         
@@ -178,10 +248,11 @@ class VideoScript():
     #####################
 
 
+
     ##################
     # region Processes
 
-    def getFrames(self, video:dict):
+    def getFrames(self, video:dict) -> None:
         """
         Transforme video to frames
 
@@ -191,6 +262,7 @@ class VideoScript():
         
         Used attributes:
             path
+            proc
         """
 
         name = video['name']
@@ -229,40 +301,11 @@ class VideoScript():
         )
         self.proc.wait()
         self.proc = None
-        # system(command)
         print("Done")
 
-    def frameWatch(self, outDir:str, total:int):
-        """
-        Track video frame process with progress bar
 
-        Parameters:
-            outDir (str):
-                process output directory, where progress increase
-            
-            total (int):
-                when to stop
-        """
-        
-        alreadyProgressed = len(listdir(outDir))
-        restToProgress = total - alreadyProgressed
-        print("Already progressed : {}/{}".format(alreadyProgressed, total))
-        print("Remain to progress : {}/{}".format(restToProgress, total))
 
-        progressedPrev = 0
-        with alive_bar(total) as bar:
-            if alreadyProgressed != 0:
-                bar(alreadyProgressed, skipped=True)
-            while len(listdir(outDir)) < total:
-                sleep(3)
-                progressed = len(listdir(outDir)) - alreadyProgressed
-                # if progressed - progressedPrev != 0:
-                bar(progressed - progressedPrev)
-                progressedPrev = progressed
-
-    ####################
-    # region - -optimize
-    def optimize(self, quality:float=3.0):
+    def optimize(self, quality:float=3.0) -> None:
         """
         Reduce video bit rate
 
@@ -275,7 +318,12 @@ class VideoScript():
             vList
             optimizationTolerence
             highQualityParam
+            killed
+            proc
         """
+        
+        self.killed = False
+
         # create output folder
         if not isdir(self.path+'\\optimized'):
             mkdir(self.path+'\\optimized')
@@ -334,7 +382,10 @@ class VideoScript():
             )
             self.proc.wait()
             self.proc = None
-            # system(command)
+
+            if self.killed:
+                return
+            
             print("Done")
 
             optimizeTime = time()-optimizeTime
@@ -344,13 +395,9 @@ class VideoScript():
             print("Took :", str(optimizeTime))
         
         # notice optimization end
-        self.noticeProcessEnd()
-    # endregion optimize
-    ####################
-
-    ##################
-    # region - -resize
-    def resize(self, rWidth:int, rHeight:int, quality:float=3.0):
+        noticeProcessEnd()
+    
+    def resize(self, rWidth:int, rHeight:int, quality:float=3.0) -> None:
         """
         Resize video
 
@@ -369,6 +416,9 @@ class VideoScript():
             vList
             highQualityParam
         """
+        
+        self.killed = False
+
         # create output folder
         if not isdir(self.path+'\\resized'):
             mkdir(self.path+'\\resized')
@@ -463,7 +513,10 @@ class VideoScript():
             )
             self.proc.wait()
             self.proc = None
-            # system(command)
+
+            if self.killed:
+                return
+            
             print("Done")
             
             resizeTime = time()-resizeTime
@@ -473,13 +526,9 @@ class VideoScript():
             print("Took :", str(resizeTime))
         
         # notice resize end
-        self.noticeProcessEnd()
-    # endregion resize
-    ##################
+        noticeProcessEnd()
 
-    ###################
-    # region - -upscale
-    def upscale(self, upscaleFactor:int=2|3|4, quality:float=3):
+    def upscale(self, upscaleFactor:int=2|3|4, quality:float=3) -> None:
         """
         Upscale video
 
@@ -500,6 +549,8 @@ class VideoScript():
             frameWatch()
         
         """
+
+        self.killed = False
 
         # create output folder
         if not isdir(self.path+'\\upscaled'):
@@ -541,7 +592,12 @@ class VideoScript():
             # region - --get frame
             frameTime = time()
 
-            self.getFrames(video)   # wait till end
+            # wait till end
+            self.getFrames(video)
+            
+            if self.killed:
+                return
+            
             frameTime = time()-frameTime
             frameTime = timedelta(seconds=round(frameTime,0))
             totalFrames = len(listdir(self.path+'\\{}_tmp_frames'.format(name)))
@@ -574,7 +630,7 @@ class VideoScript():
                 print(f'Continue upscaling "{name}"')
             
             command = (
-                'start /min cmd /c " {}:'.format(self.path[0])
+                'start /min /wait /realtime cmd /c " {}:'.format(self.path[0])
                 +' & cd {}'.format(self.path)
                 +' & realesrgan-ncnn-vulkan.exe'
                 +' -i "{}_tmp_frames" '.format(name)
@@ -592,15 +648,25 @@ class VideoScript():
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
             )
-            # system(command)
 
             # frames watch
-            self.frameWatch(
-                outDir=(upscaleOutputPath),
-                total=totalFrames
+            watch = Thread(
+                target=frameWatch,
+                args=(upscaleOutputPath,totalFrames)
             )
+            watch.start()
 
+            self.proc.wait()
             self.proc = None
+
+            if self.killed:
+                global stop_threads
+                stop_threads = True
+                while watch.is_alive():
+                    pass
+                return
+            else:
+                watch.join()
 
             # remove frames
             rmtree(self.path+'\\{}_tmp_frames'.format(name))
@@ -641,9 +707,12 @@ class VideoScript():
             )
             self.proc.wait()
             self.proc = None
-            # system(command)
-            print("Done")
 
+            if self.killed:
+                return
+            
+            print("Done")
+            
             # remove upscaled frames
             rmtree(upscaleOutputPath)
 
@@ -661,13 +730,9 @@ class VideoScript():
             self.vList[index]['upscaleFactor'] = upscaleFactor
 
         # notice upscale end
-        self.noticeProcessEnd()
-    # endregion upscale
-    ###################
+        noticeProcessEnd()
 
-    #######################
-    # region - -interpolate
-    def interpolate(self, fps:float=30.0, quality:float=3):
+    def interpolate(self, fps:float=30.0, quality:float=3) -> None:
         """
         Interpolate video to increase fps
 
@@ -688,6 +753,8 @@ class VideoScript():
             frameWatch()
         
         """
+        
+        self.killed = False
 
         # create output folder
         if not isdir(self.path+'\\interpolated'):
@@ -738,17 +805,21 @@ class VideoScript():
             # region - --get frame
             frameTime = time()
 
-            self.getFrames(video)   # wait till end
+            # wait till end
+            self.getFrames(video)
+
+            if self.killed:
+                return
+            
             frameTime = time()-frameTime
             frameTime = timedelta(seconds=round(frameTime,0))
-            totalFrames = len(listdir(self.path+'\\{}_tmp_frames'.format(name)))
             # recored frame time
             self.vList[index]['frameTime'] = str(frameTime)
 
             print("Took :", str(frameTime))
             # endregion frame
             #################
-
+            
             ####################
             # region - --interpolate
             interpolateTime = time()
@@ -761,7 +832,7 @@ class VideoScript():
             # new frames interpolate
             mkdir(interpolateOutputPath)
             command = (
-                'start /min cmd /c " {}:'.format(self.path[0])
+                'start "VideoScript" /min /wait /realtime cmd /c " {}:'.format(self.path[0])
                 +' & cd {}'.format(self.path)
                 +' & ifrnet-ncnn-vulkan.exe'
                 +' -i "{}_tmp_frames" '.format(name)
@@ -770,7 +841,7 @@ class VideoScript():
                 +' -n {}"'.format(interpolateFrame)
             )
             print(f'Interpolating "{name}"')
-            # system(command)
+
             self.proc = subprocess.Popen(
                 command,
                 shell=True,
@@ -779,12 +850,23 @@ class VideoScript():
             )
 
             # frames watch
-            self.frameWatch(
-                outDir=interpolateOutputPath,
-                total=interpolateFrame
+            watch = Thread(
+                target=frameWatch,
+                args=(interpolateOutputPath,interpolateFrame)
             )
+            watch.start()
 
+            self.proc.wait()
             self.proc = None
+            
+            if self.killed:
+                global stop_threads
+                stop_threads = True
+                while watch.is_alive():
+                    pass
+                return
+            else:
+                watch.join()
 
             # remove frames
             rmtree(self.path+'\\{}_tmp_frames'.format(name))
@@ -825,7 +907,10 @@ class VideoScript():
             )
             self.proc.wait()
             self.proc = None
-            # system(command)
+
+            if self.killed:
+                return
+
             print("Done")
 
             # remove upscaled frames
@@ -845,14 +930,9 @@ class VideoScript():
             self.vList[index]['interpolateFrame'] = fps
 
         # notice interpolate end
-        self.noticeProcessEnd()
-    # endregion interpolate
-    #######################
+        noticeProcessEnd()
 
-
-    ####################
-    # region - -merge
-    def merge(self, allVideo:bool=True, allAudio:bool=False, allSubtitle:bool=False):
+    def merge(self, allVideo:bool=True, allAudio:bool=False, allSubtitle:bool=False) -> None:
         """
         Merge video0.mp4 video1.mp4 ... to video.mkv
 
@@ -870,6 +950,9 @@ class VideoScript():
             path
             vList
         """
+        
+        self.killed = False
+
         # create output folder
         if not isdir(self.path+'\\merged'):
             mkdir(self.path+'\\merged')
@@ -931,7 +1014,10 @@ class VideoScript():
         )
         self.proc.wait()
         self.proc = None
-        # system(command)
+
+        if self.killed:
+            return
+
         print("Done")
                 
         spendTime = time()-spendTime
@@ -939,14 +1025,10 @@ class VideoScript():
         print("Took :", str(spendTime))
         
         # notice merging end
-        self.noticeProcessEnd()
-    # endregion merge
-    ####################
-
+        noticeProcessEnd()
 
     # endregion processes
     #####################
-
 
 
 
@@ -966,8 +1048,6 @@ def inputInt(selections:list=[]) -> int:
             return entered
         else:
             print(f'{entered} is not in {selections}')
-
-
 
 if __name__ == '__main__':
 

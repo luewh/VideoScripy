@@ -10,13 +10,9 @@ from tkinter import Tk, filedialog
 # built-in
 import os
 import sys
-import psutil
 from time import sleep
 from webbrowser import open_new
 from threading import Timer
-from multiprocessing import Process
-from threading import Thread
-import subprocess
 
 # own classes
 from VideoScript import VideoScript
@@ -64,13 +60,19 @@ app = Dash(
 app.layout = html.Div(
     dbc.Row(
         children=[
-            html.Button(id="notifyClose",hidden=True),
+            
+            html.Button(
+                id="notifyClose",
+                hidden=True,
+                n_clicks=0,
+            ),
             dcc.Interval(
                 id="interval_log",
-                interval=1 * 1000,
+                interval=0.5 * 1000,
                 n_intervals=0,
                 disabled=True,
             ),
+            
             # region process select UI
             dbc.Col(
                 children=[
@@ -137,6 +139,7 @@ app.layout = html.Div(
                     ),
                     html.Div(
                         id="div_processRunning",
+                        disable_n_clicks=True,
                         style={
                             "width":"100%",
                             "height":"43vh",
@@ -260,7 +263,6 @@ app.layout = html.Div(
 
 
 @callback(
-    Output('interval_log', 'n_intervals', allow_duplicate=True),
     Input("notifyClose", "n_clicks"),
     prevent_initial_call=True,
 )
@@ -270,22 +272,16 @@ def showURL(_):
     print("-"*(len(text)+4))
     print("| "+text+" |")
     print("-"*(len(text)+4))
-    return 0
 
 
-
-def setTooltip(children:list, target:str):
-    return None
-    # return dbc.Tooltip(
-    #         children,
-    #         target=target,
-    #         delay={"show": 0, "hide": 0},
-    #         fade=False,
-    #     )
 
 def qualityInputUI():
     return [
-        html.Div("video quality",className="uni_text"),
+        html.Div(
+            "video quality",
+            className="uni_text",
+            disable_n_clicks=True,
+        ),
         dcc.Input(
             id={"type": "input", "id": "videoQuality"},
             type="number",
@@ -296,19 +292,16 @@ def qualityInputUI():
             persistence=True,
             className="uni_width_height",
         ),
-        setTooltip(
-            [
-                html.Div("w * h * quality = bit rate"),
-                html.Div("default=3.0"),
-            ],
-            target="input_videoQuality"
-        )
     ]
 
 def sizeInputUI():
     global videoSizesDict
     return [
-        html.Div("width x height",className="uni_text"),
+        html.Div(
+            "width x height",
+            className="uni_text",
+            disable_n_clicks=True,
+        ),
         dbc.Row(
             [
                 dbc.Col(
@@ -362,20 +355,16 @@ def sizeInputUI():
             ],
             className="g-0",
         ),
-        setTooltip(
-            html.Div("switch the width and height"),
-            target="button_sizeSwitch"
-        ),
-        setTooltip(
-            html.Div("select predifined video size"),
-            target="dropdown_videoSize"
-        )
     ]
 
 def upscaleInputUI():
     global upscaleFactor
     return [
-        html.Div("upscale factor",className="uni_text"),
+        html.Div(
+            "upscale factor",
+            className="uni_text",
+            disable_n_clicks=True,
+        ),
         dcc.Dropdown(
             upscaleFactor,
             upscaleFactor[0],
@@ -388,15 +377,15 @@ def upscaleInputUI():
                 "color": "black"
             },
         ),
-        setTooltip(
-            html.Div("new video size = w*factor x h*factor"),
-            target="input_upscaleFactor"
-        )
     ]
 
 def interpolateInputUI():
     return [
-        html.Div("video FPS",className="uni_text"),
+        html.Div(
+            "video FPS",
+            className="uni_text",
+            disable_n_clicks=True,
+        ),
         dcc.Input(
             id={"type": "input", "id": "videoFPS"},
             type="number",
@@ -455,6 +444,7 @@ def update_div_processParamUI(selectedProcess):
             html.H6(
                 "Optimize parameters :",
                 className="uni_text",
+                disable_n_clicks=True,
             ),
             *qualityInputUI(),
         ]
@@ -463,6 +453,7 @@ def update_div_processParamUI(selectedProcess):
             html.H6(
                 "Resize parameters :",
                 className="uni_text",
+                disable_n_clicks=True,
             ),
             *sizeInputUI(),
             *qualityInputUI(),
@@ -472,6 +463,7 @@ def update_div_processParamUI(selectedProcess):
             html.H6(
                 "Upscale parameters :",
                 className="uni_text",
+                disable_n_clicks=True,
             ),
             *upscaleInputUI(),
             *qualityInputUI(),
@@ -481,6 +473,7 @@ def update_div_processParamUI(selectedProcess):
             html.H6(
                 "Interpolate parameters :",
                 className="uni_text",
+                disable_n_clicks=True,
             ),
             *interpolateInputUI(),
             *qualityInputUI(),
@@ -490,10 +483,12 @@ def update_div_processParamUI(selectedProcess):
             html.H6(
                 "Merge parameters :",
                 className="uni_text",
+                disable_n_clicks=True,
             ),
             *mergeInputUI(),
         ]
     else:
+        print('Not configured process : "{}"')
         raise PreventUpdate
 
 
@@ -563,7 +558,7 @@ def selectDir(_):
     prevent_initial_call=True,
 )
 def setPath(_, enteredPath):
-    global vs, dashLoggerHandler
+    global vs
     if vs.setPath(enteredPath):
         return True, vs.path, True, "SCAN atleast once to RUN", 0, 0
     else:
@@ -571,7 +566,13 @@ def setPath(_, enteredPath):
 
 
 
+videoItemColor = {
+    "select":"info",
+    "unselect":"dark",
+}
+
 def getVideoItem(video:dict, index:int):
+    global videoItemColor
 
     width = str(video["width"]).rjust(7)
     height = str(video["height"]).ljust(7)
@@ -605,7 +606,7 @@ def getVideoItem(video:dict, index:int):
             ],
             id={"type":"video", "index":index},
             action=True,
-            color="info",
+            color=f"{videoItemColor['select']}",
             style={
                 "border":"1px solid black",
                 "border-radius":8,
@@ -623,17 +624,19 @@ def getVideoItem(video:dict, index:int):
     Output('interval_log', 'n_intervals', allow_duplicate=True),
     Output('list_videos', 'children'),
     Input('button_scanFiles', 'n_clicks'),
+    running=[(Output('list_videos', 'children'), "", "")],
     prevent_initial_call=True,
 )
 def scanFiles(_):
 
-    global vs, allVideoList
+    global vs, allVideoList, videoItemColor
     
     vs.getVideo()
     vs.getVideoInfo()
 
     # record scanned video, for video selection purpose
     allVideoList = vs.vList
+    print(f"Number of video : {len(allVideoList)}")
 
     # generate list of video items
     videoItems = []
@@ -656,17 +659,20 @@ def switchVideoColor(_, color, colorAll):
 
     vs.vList = []
     for index, video in enumerate(allVideoList):
+        # clicked
         if index == id:
-            if colorAll[index] == "dark":
+            if colorAll[index] == f"{videoItemColor['unselect']}":
                 vs.vList.append(video)
+        # others
         else:
-            if colorAll[index] == "info":
+            if colorAll[index] == f"{videoItemColor['select']}":
                 vs.vList.append(video)
 
-    if color == "info":
-        return "dark"
+    # invert color
+    if color == f"{videoItemColor['select']}":
+        return f"{videoItemColor['unselect']}"
     else:
-        return "info"
+        return f"{videoItemColor['select']}"
 
 
 
@@ -684,36 +690,29 @@ def switchVideoColor(_, color, colorAll):
         (Output('button_selectDir', 'disabled'), True, False),
         (Output('input_path', 'disabled'), True, True),
         (Output('interval_log', 'disabled'), False, True),
+        # ensure last print of callbaack
         (Output('interval_log', 'n_intervals'), 0, 0),
     ],
     prevent_initial_call=True,
 )
 def runProcess(_, selectedProcess, inputValues, inputOns):
-    global vs, runningProcess
+    global vs
 
     if selectedProcess == "optimize":
         vs.optimize(*inputValues)
-        # runningProcess = Process(target=vs.optimize, args=(inputValues))
-        
     elif selectedProcess == "resize":
         vs.resize(*inputValues)
-        # runningProcess = Process(target=vs.resize, args=(inputValues))
-
     elif selectedProcess == "upscale":
         vs.upscale(*inputValues)
-        # runningProcess = Process(target=vs.upscale, args=(inputValues))
-
     elif selectedProcess == "interpolate":
         vs.interpolate(*inputValues)
-        # runningProcess = Process(target=vs.interpolate, args=(inputValues))
-
     elif selectedProcess == "merge":
         vs.merge(*inputOns)
-        # runningProcess = Process(target=vs.merge, args=(inputOns))
     
-    # runningProcess.start()
-    # runningProcess.join()
-    print(f"Process {selectedProcess} END")
+    if vs.killed:
+        print(f"Process {selectedProcess} STOP")
+    else:
+        print(f"Process {selectedProcess} END")
     raise PreventUpdate
 
 @callback(
@@ -722,33 +721,8 @@ def runProcess(_, selectedProcess, inputValues, inputOns):
     prevent_initial_call=True,
 )
 def stopProcess(_):
-    # global runningProcess
-    # parent = psutil.Process(runningProcess.pid)
-    # for child in parent.children(recursive=True):
-    #     print(child)
-    #     child.kill()
-    # parent.kill()
-
-    # vs.stopProcess()
-
-    # pid = os.getpid()
-    # proc = psutil.Process(pid)
-    # children = proc.children(recursive=True)
-    # print("pid :", pid)
-    # print("proc :", proc)
-    # print("children :", children)
-    # for child in children:
-    #     try:
-    #         child.kill()
-    #         print(f"Killed {child}")
-    #     except:
-    #         print(f"Can not kill {child}")
-    #         pass
-    # # proc.kill()
-
-    # print("Stopped")
-    print("Currently not supported")
-
+    global vs
+    vs.killProc()
 
 
 class StdoutIntercept(object):
@@ -771,8 +745,8 @@ class StdoutIntercept(object):
             # init carriage line
             if not self.carriage:
                 # alive-progress remove ANSI Escape Code (hide the cursor on terminal)
-                if "\x1b" in self.queue[-1]:
-                    self.queue[-1] = self.queue[-1].replace("\x1b", "")
+                if "\x1b[?25l" in self.queue[-1]:
+                    self.queue[-1] = self.queue[-1].replace("\x1b[?25l", "")
                 else:
                     self.queue.append("")
             # rewrite carriage line
@@ -811,6 +785,16 @@ def logConsole(_):
 
 if __name__ == '__main__':
 
+    # addPath = []
+    # addPath.append("./releases/tools/ffmpeg-full_build/bin")
+    # addPath.append("./releases/tools/Real-ESRGAN")
+    # addPath.append("./releases/tools/Ifrnet")
+
+    # for index, path in enumerate(addPath):
+    #     addPath[index] = os.path.abspath(path)
+
+    # os.environ["PATH"] += os.pathsep.join(addPath)
+
     def open_browser():
         if not os.environ.get("WERKZEUG_RUN_MAIN"):
             open_new(f'http://{ip}:{port}/')
@@ -820,7 +804,7 @@ if __name__ == '__main__':
     app.run(
         host=ip,
         port=port,
-        debug=False,
+        debug=True,
         dev_tools_silence_routes_logging=True,
     )
     

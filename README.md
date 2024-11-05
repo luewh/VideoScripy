@@ -35,7 +35,7 @@ Advantage : **Beginner-friendly**
 
 ### Installation
 
-1. Download and extract the [embedded release](https://github.com/luewh/Video-Script/releases/latest)
+1. Download and extract the [Embedded release](https://github.com/luewh/Video-Script/releases/latest)
 
 ### Usage
 
@@ -64,13 +64,15 @@ Advantage : **Freedom**
 
     Below tools are included in self setup release :
 
-    [FFmpeg](https://www.ffmpeg.org/download.html) full build for hardware acceleration.  
-    [Real-ESRGAN-ncnn-vulkan](https://github.com/xinntao/Real-ESRGAN-ncnn-vulkan/releases) for video upscaling.  
+    [FFmpeg](https://www.gyan.dev/ffmpeg/builds/) full build for hardware acceleration.
+
+    [Real-ESRGAN-ncnn-vulkan](https://github.com/xinntao/Real-ESRGAN-ncnn-vulkan/releases) for video upscaling.
+    
     [Ifrnet-ncnn-vulkan](https://github.com/nihui/ifrnet-ncnn-vulkan/releases) for video frame interpolation.  
     
     <span style="color:orange">**Important**</span>  
 
-    Make sure to put  
+    Make sure to add  
 
     - `<pathTo>\ffmpeg-full_build\bin`
     - `<pathTo>\Real-ESRGAN`
@@ -138,10 +140,10 @@ This project relies on the following software and projects.
 - [X] License
 - [X] Favicon
 - [X] Embed release
-- [ ] Stop upscale and interpolate process
+- [X] Stop upscale and interpolate process
+- [X] Get video walk optimize
 - [ ] Gif to explain processes, tooltip on process dropdown
 - [ ] Remain vh for div_processRunning
-- [ ] Get video walk optimize
 - [ ] Log ?
 
 
