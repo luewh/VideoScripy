@@ -135,14 +135,15 @@ This project relies on the following software and projects.
 
 ## TODO list
 
-- [X] stdout to Dash
-- [X] alive-progress ANSI Escape Code "?25l" render problem
-- [X] License
-- [X] Favicon
-- [X] Embed release
-- [X] Stop upscale and interpolate process
-- [X] Get video walk optimize
-- [X] Arrange process select UI
+- ✅ stdout to Dash
+- ✅ alive-progress ANSI Escape Code "?25l" render problem
+- ✅ License
+- ✅ Favicon
+- ✅ Embed release
+- ✅ Stop upscale and interpolate process
+- ✅ Get video walk optimize
+- ✅ Arrange process select UI
+- [ ] Better hevc_nvenc parameters
 - [ ] Gif to explain processes, tooltip on process dropdown
 - [ ] Log ?
 

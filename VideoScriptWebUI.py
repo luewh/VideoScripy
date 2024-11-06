@@ -256,6 +256,7 @@ app.layout = html.Div(
                 style={"padding":"10px 25px 0px 15px"},
             )
             # endregion get files UI
+        
         ],
         style={
             "height":"100vh",
@@ -701,29 +702,53 @@ def switchVideoColor(_, color, colorAll):
         (Output('button_selectDir', 'disabled'), True, False),
         (Output('input_path', 'disabled'), True, True),
         (Output('interval_log', 'disabled'), False, True),
-        # ensure last print of callbaack
+        # ensure last print of callback
         (Output('interval_log', 'n_intervals'), 0, 0),
     ],
     prevent_initial_call=True,
 )
 def runProcess(_, selectedProcess, inputValues, inputOns):
     global vs
+    
+    values = ctx.states_list[1]
+    ons = ctx.states_list[2]
+
+    for value in values:
+        if value["id"]["id"] == "videoQuality":
+            videoQuality = value["value"]
+        if value["id"]["id"] == "videoWidth":
+            videoWidth = value["value"]
+        if value["id"]["id"] == "videoHeight":
+            videoHeight = value["value"]
+        if value["id"]["id"] == "upscaleFactor":
+            upscaleFactor = value["value"]
+        if value["id"]["id"] == "videoFPS":
+            videoFPS = value["value"]
+
+    for on in ons:
+        if on["id"]["id"] == "allVideo":
+            allVideo = on["value"]
+        if on["id"]["id"] == "allAudio":
+            allAudio = on["value"]
+        if on["id"]["id"] == "allSubtitle":
+            allSubtitle = on["value"]
 
     if selectedProcess == "optimize":
-        vs.optimize(*inputValues)
+        vs.optimize(videoQuality)
     elif selectedProcess == "resize":
-        vs.resize(*inputValues)
+        vs.resize(videoWidth, videoHeight, videoQuality)
     elif selectedProcess == "upscale":
-        vs.upscale(*inputValues)
+        vs.upscale(upscaleFactor, videoQuality)
     elif selectedProcess == "interpolate":
-        vs.interpolate(*inputValues)
+        vs.interpolate(videoFPS, videoQuality)
     elif selectedProcess == "merge":
-        vs.merge(*inputOns)
+        vs.merge(allVideo, allAudio, allSubtitle)
     
     if vs.killed:
         print(f"Process {selectedProcess} STOP")
     else:
         print(f"Process {selectedProcess} END")
+
     raise PreventUpdate
 
 @callback(
