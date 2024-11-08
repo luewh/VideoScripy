@@ -72,47 +72,73 @@ app.layout = html.Div(
                 n_intervals=0,
                 disabled=True,
             ),
-            
+            dbc.Tooltip(
+                "SCAN atleast once to RUN",
+                id="tooltip_run",
+                target="button_runProcess",
+                delay={"show": 500, "hide": 0},
+            ),
+            dbc.Tooltip(
+                "let it empty will return to default path",
+                target="input_path",
+                delay={"show": 500, "hide": 0},
+            ),
+
             # region process select UI
             dbc.Col(
                 children=[
-                    html.H6(
-                        "Process :",
-                        disable_n_clicks=True,
-                        className="uni_text",
+
+                    html.Div(
+                        [
+
+                            html.H6(
+                                "Process :",
+                                disable_n_clicks=True,
+                                className="uni_text",
+                                style={
+                                    "height":"3vh",
+                                    "marginBottom":"0vh",
+                                }
+                            ),
+                            
+                            dcc.Dropdown(
+                                processes,
+                                value=processes[0],
+                                placeholder="Select a process ...",
+                                id="dropdown_processes",
+                                searchable=False,
+                                clearable=False,
+                                style={
+                                    "color": "black",
+                                    "height":"5vh",
+                                },
+                            ),
+
+                            html.Hr(
+                                disable_n_clicks=True,
+                                style={
+                                    "marginTop":"2vh",
+                                    "marginBottom":"2vh",
+                                },
+                            ),
+
+                        ],
                         style={
-                            "marginBottom":"5px",
-                        }
-                    ),
-                    dcc.Dropdown(
-                        processes,
-                        value=processes[0],
-                        placeholder="Select a process ...",
-                        id="dropdown_processes",
-                        searchable=False,
-                        clearable=False,
-                        className="uni_width_height",
-                        style={
-                            "color": "black"
+                            "height":"12vh"
                         },
                     ),
-                    html.Hr(
-                        disable_n_clicks=True,
-                        style={
-                            "marginTop":"20px",
-                            "marginBottom":"20px",
-                        }
-                    ),
+                    
                     html.Div(
                         id="div_processParamUI",
                         disable_n_clicks=True,
                         style={
-                            "height":"31vh",
+                            "width":"100%",
+                            "height":"23vh",
                             "overflow-x": "hidden",
-                            "overflow-y": "auto",
-                        }
+                        },
                     ),
-                    dbc.Row(
+                    
+                    dbc.Stack(
                         [
                             dbc.Col(
                                 dcc.Loading(
@@ -136,23 +162,21 @@ app.layout = html.Div(
                                 ),
                             ),
                         ],
+                        direction="horizontal",
+                        gap=1,
                         style={
-                            "marginTop":10,
-                            "marginBottom":10,
+                            "height":"7vh",
+                            "paddingTop":"1vh",
+                            "paddingBottom":"1vh",
                         },
                     ),
-                    dbc.Tooltip(
-                        "SCAN atleast once to RUN",
-                        id="tooltip_run",
-                        target="button_runProcess",
-                        delay={"show": 500, "hide": 0},
-                    ),
+                    
                     html.Div(
                         id="div_processRunning",
                         disable_n_clicks=True,
                         style={
                             "width":"100%",
-                            "height":"43vh",
+                            "height":"54vh",
                             "white-space":"pre-wrap",
                             "overflow":"auto",
                             "display":"flex",
@@ -161,12 +185,18 @@ app.layout = html.Div(
                             "padding":"5px",
                             "font-size":"10px",
                             "font-family":"monospace",
-                            # "border-radius": "3px",
+                            "border-radius": "3px",
                         },
                     ),
+                    
                 ],
-                width=5,
-                style={"padding":"10px 15px 0px 25px"},
+                md=5,
+                style={
+                    "paddingTop":"2vh",
+                    "paddingRight":"1vw",
+                    "paddingBottom":"2vh",
+                    "paddingLeft":"2vw",
+                },
                 className="column_left",
             ),
             # endregion process select UI
@@ -174,102 +204,106 @@ app.layout = html.Div(
             # region get files UI
             dbc.Col(
                 children=[
-                    html.H6(
-                        "Path :",
-                        disable_n_clicks=True,
-                        className="uni_text",
-                        style={
-                            "marginBottom":"5px",
-                        }
-                    ),
-                    dbc.Row(
+                    
+                    html.Div(
                         [
-                            dbc.Col(
-                                dcc.Loading(
-                                    html.Button(
-                                        "SCAN",
-                                        id="button_scanFiles",
-                                        className="uni_width_height",
-                                        style={"overflow": "clip"},
+
+                            html.H6(
+                                "Path :",
+                                disable_n_clicks=True,
+                                className="uni_text",
+                                style={
+                                    "height":"3vh",
+                                    "marginBottom":"0vh",
+                                }
+                            ),
+
+                            dbc.Stack(
+                                [
+                                    dbc.Col(
+                                        dcc.Loading(
+                                            html.Button(
+                                                "SCAN",
+                                                id="button_scanFiles",
+                                                className="uni_width_height",
+                                                style={"overflow": "clip"},
+                                            ),
+                                            color="white",
+                                        ),
+                                        width=1,
                                     ),
-                                    color="white",
-                                ),
-                                width=1,
+                                    dbc.Col(
+                                        dcc.Input(
+                                            id="input_path",
+                                            type="text",
+                                            value=vs.path,
+                                            persistence=True,
+                                            disabled=True,
+                                            n_submit=0,
+                                            className="uni_width_height",
+                                        ),
+                                        width=8,
+                                    ),
+                                    dbc.Col(
+                                        html.Button(
+                                            "EDIT",
+                                            id="button_editPath",
+                                            className="uni_width_height",
+                                        ),
+                                        width=1,
+                                    ),
+                                    dbc.Col(
+                                        html.Button(
+                                            "SELCT DIRECTORY",
+                                            id="button_selectDir",
+                                            className="uni_width_height uni_text",
+                                        ),
+                                        width=2,
+                                    ),
+                                ],
+                                direction="horizontal",
                             ),
-                            dbc.Col(
-                                dcc.Input(
-                                    id="input_path",
-                                    type="text",
-                                    value=vs.path,
-                                    persistence=True,
-                                    disabled=True,
-                                    n_submit=0,
-                                    className="uni_width_height",
-                                ),
-                                width=8,
+                            
+                            html.Hr(
+                                disable_n_clicks=True,
+                                style={
+                                    "marginTop":"2vh",
+                                    "marginBottom":"2vh",
+                                },
                             ),
-                            dbc.Col(
-                                html.Button(
-                                    "EDIT",
-                                    id="button_editPath",
-                                    className="uni_width_height",
-                                ),
-                                width=1,
-                            ),
-                            dbc.Col(
-                                html.Button(
-                                    "SELCT DIRECTORY",
-                                    id="button_selectDir",
-                                    className="uni_width_height uni_text",
-                                ),
-                                width=2,
-                            ),
+
                         ],
-                        className="g-0",
-                    ),
-                    dbc.Tooltip(
-                        "let it empty will return to default path",
-                        target="input_path",
-                        delay={"show": 500, "hide": 0},
-                    ),
-                    html.Hr(
-                        disable_n_clicks=True,
                         style={
-                            "marginTop":"20px",
-                            "marginBottom":"20px",
+                            "height":"12vh",
                         },
                     ),
-                    html.Div(
-                        dbc.ListGroup(
-                            id="list_videos",
-                            style={
-                                "background":"rgba(0,0,0,0)",
-                                "height":"82vh",
-                                "overflow-x": "hidden",
-                                "overflow-y": "auto",
-                            },
-                        ),
-                        disable_n_clicks=True,
+
+                    dbc.ListGroup(
+                        id="list_videos",
+                        style={
+                            "background":"rgba(0,0,0,0)",
+                            "overflow-x": "hidden",
+                            "overflow-y": "auto",
+                            "height":"84vh",
+                        },
                     ),
+
                 ],
-                width=7,
-                style={"padding":"10px 25px 0px 15px"},
+                md=7,
+                style={
+                    "paddingTop":"2vh",
+                    "paddingRight":"2vw",
+                    "paddingBottom":"2vh",
+                    "paddingLeft":"1vw",
+                },
             )
             # endregion get files UI
         
         ],
-        style={
-            "height":"100vh",
-            "overflow-x": "hidden",
-            "overflow-y": "hidden",
-        },
     ),
     style={
-        "height":"100vh",
         "overflow-x": "hidden",
-        "overflow-y": "hidden",
     },
-    disable_n_clicks=True,
 )
 
 
@@ -360,6 +394,7 @@ def sizeInputUI():
                         className="uni_width_height",
                         style={
                             "color": "black",
+                            "height":"5vh",
                         },
                     ),
                     width=5,
@@ -821,15 +856,15 @@ def logConsole(_):
 
 if __name__ == '__main__':
 
-    # addPath = []
-    # addPath.append("./releases/tools/ffmpeg-full_build/bin")
-    # addPath.append("./releases/tools/Real-ESRGAN")
-    # addPath.append("./releases/tools/Ifrnet")
+    addPath = []
+    addPath.append("./releases/tools/ffmpeg-full_build/bin")
+    addPath.append("./releases/tools/Real-ESRGAN")
+    addPath.append("./releases/tools/Ifrnet")
 
-    # for index, path in enumerate(addPath):
-    #     addPath[index] = os.path.abspath(path)
+    for index, path in enumerate(addPath):
+        addPath[index] = os.path.abspath(path)
 
-    # os.environ["PATH"] += os.pathsep.join(addPath)
+    os.environ["PATH"] += os.pathsep.join(addPath)
 
     def open_browser():
         if not os.environ.get("WERKZEUG_RUN_MAIN"):

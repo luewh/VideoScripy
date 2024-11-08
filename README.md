@@ -143,6 +143,9 @@ This project relies on the following software and projects.
 - ✅ Stop upscale and interpolate process
 - ✅ Get video walk optimize
 - ✅ Arrange process select UI
+- ✅ Better row height
+- [ ] Select / Unselect all videos
+- [ ] Sort video by properties
 - [ ] Better hevc_nvenc parameters
 - [ ] Gif to explain processes, tooltip on process dropdown
 - [ ] Log ?
