@@ -42,6 +42,12 @@ videoSizesDict = [
 upscaleFactor = [2, 3, 4]
 
 
+videoItemColor = {
+    "select":"info",
+    "unselect":"dark",
+}
+videoSortBy = ["width", "height", "w x h", "fps", "length", "bit rate"]
+
 
 app = Dash(
     __name__,
@@ -190,6 +196,7 @@ app.layout = html.Div(
                     ),
                     
                 ],
+                # width=5,
                 md=5,
                 style={
                     "paddingTop":"2vh",
@@ -278,17 +285,70 @@ app.layout = html.Div(
                         },
                     ),
 
+                    dbc.Stack(
+                        [
+                            dbc.Col(
+                                html.Button(
+                                    "ALL",
+                                    id="button_lvideo_all",
+                                    className="uni_width_height",
+                                    style={"overflow": "clip"},
+                                ),
+                                width=1
+                            ),
+                            dbc.Col(
+                                html.Button(
+                                    "NONE",
+                                    id="button_lvideo_none",
+                                    className="uni_width_height",
+                                    style={"overflow": "clip"},
+                                ),
+                                width=1,
+                            ),
+                            dbc.Col(
+                                html.Button(
+                                    "↑↓",
+                                    id="button_lvideo_revert",
+                                    className="uni_width_height",
+                                    style={"overflow": "clip"},
+                                ),
+                                width={"size": 1, "offset": 7},
+                            ),
+                            dbc.Col(
+                                dcc.Dropdown(
+                                    videoSortBy,
+                                    placeholder="SORT",
+                                    id="dropdown_lvideo_sort",
+                                    searchable=False,
+                                    clearable=False,
+                                    style={
+                                        "color": "black",
+                                        "height":"5vh",
+                                    },
+                                ),
+                                width=2,
+                            ),
+                        ],
+                        direction="horizontal",
+                        style={
+                            "marginTop":"1vh",
+                            "height":"5vh",
+                        },
+
+                    ),
+
                     dbc.ListGroup(
                         id="list_videos",
                         style={
                             "background":"rgba(0,0,0,0)",
                             "overflow-x": "hidden",
                             "overflow-y": "auto",
-                            "height":"84vh",
+                            "height":"78vh",
                         },
                     ),
 
                 ],
+                # width=7,
                 md=7,
                 style={
                     "paddingTop":"2vh",
@@ -613,13 +673,7 @@ def setPath(_, enteredPath):
 
 
 
-videoItemColor = {
-    "select":"info",
-    "unselect":"dark",
-}
-
-def getVideoItem(video:dict, index:int):
-    global videoItemColor
+def getVideoItem(video:dict, index:int, color:str, prefix:str=""):
 
     width = str(video["width"]).rjust(7)
     height = str(video["height"]).ljust(7)
@@ -637,7 +691,7 @@ def getVideoItem(video:dict, index:int):
         dbc.ListGroupItem(
             children=[
                 html.H6(
-                    f'{index+1}. {video["name"]}',
+                    f'{prefix}{video["name"]}',
                     className="uni_text",
                 ),
                 html.Hr(style={"marginTop":-15, "marginBottom":-0}),
@@ -653,7 +707,7 @@ def getVideoItem(video:dict, index:int):
             ],
             id={"type":"video", "index":index},
             action=True,
-            color=f"{videoItemColor['select']}",
+            color=color,
             style={
                 "border":"1px solid black",
                 "border-radius":8,
@@ -664,14 +718,17 @@ def getVideoItem(video:dict, index:int):
         overlay_style={"visibility":"visible","opacity":0.5},
     )
 
+
 @callback(
     Output('button_runProcess', 'disabled', allow_duplicate=True),
     Output('button_scanFiles', 'children', allow_duplicate=True),
     Output('tooltip_run', 'children', allow_duplicate=True),
-    Output('interval_log', 'n_intervals', allow_duplicate=True),
     Output('list_videos', 'children'),
     Input('button_scanFiles', 'n_clicks'),
-    running=[(Output('list_videos', 'children'), "", "")],
+    running=[
+        (Output('list_videos', 'children'), "", ""),
+        (Output('interval_log', 'n_intervals'), 0, 0)
+    ],
     prevent_initial_call=True,
 )
 def scanFiles(_):
@@ -683,24 +740,25 @@ def scanFiles(_):
 
     # record scanned video, for video selection purpose
     allVideoList = vs.vList
-    print(f"Number of video : {len(allVideoList)}")
+    print(f"Scan {len(allVideoList)} video")
 
     # generate list of video items
     videoItems = []
     for index, video in enumerate(vs.vList):
-        videoItems.append(getVideoItem(video,index))
+        videoItems.append(getVideoItem(video,index,videoItemColor["select"]))
 
-    return False, no_update, "Ready to RUN", 0, videoItems
+    return False, no_update, "Ready to RUN", videoItems
 
 @callback(
     Output({'type':'video', 'index': MATCH}, 'color'),
     Input({'type':'video', 'index': MATCH}, 'n_clicks'),
     State({'type':'video', 'index': MATCH}, 'color'),
     State({'type':'video', 'index': ALL}, 'color'),
+    running=[(Output('interval_log', 'n_intervals'), 0, 0)],
     prevent_initial_call=True,
 )
-def switchVideoColor(_, color, colorAll):
-    global vs, allVideoList
+def switchVideoSelection(_, color, colorAll):
+    global vs, allVideoList, videoItemColor
 
     id = ctx.triggered_id['index']
 
@@ -710,6 +768,9 @@ def switchVideoColor(_, color, colorAll):
         if index == id:
             if colorAll[index] == f"{videoItemColor['unselect']}":
                 vs.vList.append(video)
+                print(f'Select "{video["name"]}"')
+            else:
+                print(f'Unselect "{video["name"]}"')
         # others
         else:
             if colorAll[index] == f"{videoItemColor['select']}":
@@ -720,6 +781,173 @@ def switchVideoColor(_, color, colorAll):
         return f"{videoItemColor['unselect']}"
     else:
         return f"{videoItemColor['select']}"
+
+@callback(
+    Output({'type':'video', 'index': ALL}, 'color', allow_duplicate=True),
+    Input('button_lvideo_all', 'n_clicks'),
+    running=[
+        (Output('interval_log', 'n_intervals'), 0, 0),
+        (Input('button_lvideo_all', 'disabled'), True, False),
+    ],
+    prevent_initial_call=True,
+)
+def videoSelectionALL(_):
+    global vs, allVideoList, videoItemColor
+
+    vs.vList = []
+    for video in allVideoList:
+        vs.vList.append(video)
+
+    print(f'Select all video')
+
+    return [videoItemColor['select']]*len(allVideoList)
+
+@callback(
+    Output({'type':'video', 'index': ALL}, 'color', allow_duplicate=True),
+    Input('button_lvideo_none', 'n_clicks'),
+    running=[
+        (Output('interval_log', 'n_intervals'), 0, 0),
+        (Input('button_lvideo_none', 'disabled'), True, False),
+    ],
+    prevent_initial_call=True,
+)
+def videoSelectionNONE(_):
+    global vs, allVideoList, videoItemColor
+
+    vs.vList = []
+    
+    print(f'Unselect all video')
+
+    return [videoItemColor['unselect']]*len(allVideoList)
+
+@callback(
+    Output('list_videos', 'children', allow_duplicate=True),
+    Input('button_lvideo_revert', 'n_clicks'),
+    State('list_videos', 'children'),
+    running=[
+        (Output('interval_log', 'n_intervals'), 0, 0),
+        (Output('button_lvideo_revert', 'disabled'), True, False)
+    ],
+    prevent_initial_call=True,
+)
+def reverseVideoList(_, children):
+
+    global vs, allVideoList
+
+    if children is not None:
+        vs.vList = vs.vList[::-1]
+        allVideoList = allVideoList[::-1]
+        children.reverse()
+        print("Reverse video list")
+        return children
+    
+    else:
+        raise PreventUpdate
+
+@callback(
+    Output('list_videos', 'children', allow_duplicate=True),
+    Output('dropdown_lvideo_sort', 'value'),
+    Input('dropdown_lvideo_sort', 'value'),
+    State({'type':'video', 'index': ALL}, 'color'),
+    running=[
+        (Output('interval_log', 'n_intervals'), 0, 0),
+        (Output('dropdown_lvideo_sort', 'disabled'), True, False)
+    ],
+    prevent_initial_call=True,
+)
+def sortVideoList(sortBy, allColor):
+
+    global vs, allVideoList, videoItemColor
+
+    # add color to allVideoList
+    for index in range(len(allVideoList)):
+        allVideoList[index]["color"] = allColor[index]
+    
+
+    if sortBy == "width":
+        allVideoList = sorted(
+            allVideoList,
+            key= lambda video: video['width'],
+        )
+    elif sortBy == "height":
+        allVideoList = sorted(
+            allVideoList,
+            key= lambda video: video['height'],
+        )
+    elif sortBy == "w x h":
+        for index in range(len(allVideoList)):
+            allVideoList[index]["w x h"] = allVideoList[index]["width"] * allVideoList[index]["height"]
+        allVideoList = sorted(
+            allVideoList,
+            key= lambda video: video['w x h'],
+        )
+    elif sortBy == "fps":
+        allVideoList = sorted(
+            allVideoList,
+            key= lambda video: video['r_frame_rate'],
+        )
+    elif sortBy == "length":
+        allVideoList = sorted(
+            allVideoList,
+            key= lambda video: video['duration'],
+        )
+    elif sortBy == "bit rate":
+        allVideoList = sorted(
+            allVideoList,
+            key= lambda video: video['bitRate'],
+        )
+    else:
+        print("Unknow sort selection")
+        raise PreventUpdate
+    
+    # re generate list of video items
+    videoItems = []
+    vs.vList = []
+    for index, video in enumerate(allVideoList):
+
+        if allVideoList[index]["color"] == f"{videoItemColor['select']}":
+            vs.vList.append(video)
+        
+        videoItems.append(
+            getVideoItem(
+                video,
+                index,
+                allVideoList[index]["color"]
+            )
+        )
+    
+    print(f'Sort by {sortBy}')
+
+    return videoItems, None
+
+@callback(
+    Output('list_videos', 'children', allow_duplicate=True),
+    Input('button_runProcess', 'n_clicks'),
+    State({'type':'video', 'index': ALL}, 'color'),
+    prevent_initial_call=True,
+)
+def runSetVideoListPrefix(_, allColor):
+    global allVideoList, videoItemColor
+    
+    videoItems = []
+    count = 0
+    for index, video in enumerate(allVideoList):
+        if allColor[index] == videoItemColor["select"]:
+            count += 1
+            prefix = f'{count}. '
+        else:
+            prefix = ""
+
+        videoItems.append(
+            getVideoItem(
+                video,
+                index,
+                allColor[index],
+                prefix=prefix
+            )
+        )
+    
+    return videoItems
 
 
 
@@ -794,6 +1022,7 @@ def runProcess(_, selectedProcess, inputValues, inputOns):
 def stopProcess(_):
     global vs
     vs.killProc()
+
 
 
 class StdoutIntercept(object):
