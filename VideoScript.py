@@ -18,7 +18,8 @@ from math import ceil
 
 
 def noticeProcessEnd():
-    Beep(440, 1500)
+    pass
+    # Beep(440, 1500)
     # input('Press enter to exit')
 
 def frameWatch(outDir:str, total:int):
@@ -94,7 +95,7 @@ class VideoScript():
 
     def __init__(self, file:str=None) -> None:
         """
-        Initialises attributes
+        Initialise attributes
 
         Parameters:
             file (str): need to be set as __file__ if class is imported
@@ -112,9 +113,22 @@ class VideoScript():
 
         self.optimizationTolerence = 1.15
 
-        self.highQualityParam = (
-            ' -cq 1 -preset fast -tune hq'
-            +' -rc vbr -rc-lookahead 1024'
+        self.encoder = (
+            ' hevc_nvenc'+
+            ' -cq 1 -preset fast -tune hq'+
+            ' -rc vbr -rc-lookahead 1024'
+        )
+
+        self.encoder = (
+            ' hevc_nvenc'+
+            ' -preset p5'+
+            ' -tune hq'+
+            ' -rc vbr'+
+            # ' -cq 1'+
+            ' -gpu 0'+
+            ' -rgb_mode yuv420'+
+            ' -multipass qres'+
+            ' -rc-lookahead 32'
         )
 
         self.proc = None
@@ -243,6 +257,9 @@ class VideoScript():
                 print(f'Can not get video info of "{self.vList[videoIndex]["name"]}"')
                 # delete errored video
                 self.vList.pop(videoIndex)
+        
+        # order by name
+        self.vList.sort(key= lambda video: video['name'])
 
     # endregion get video
     #####################
@@ -367,8 +384,8 @@ class VideoScript():
                 +' & cd {}'.format(self.path)
                 +' & ffmpeg -hwaccel cuda'
                 +' -i "{}"'.format(path)
-                +' -map 0:a? -map 0:s? -map 0:v'
-                +' -c:a copy -c:s copy -c:v hevc_nvenc {}'.format(self.highQualityParam)
+                +' -map 0:v -map 0:a? -map 0:s?'
+                +' -c:v {} -c:a copy -c:s copy'.format(self.encoder)
                 +' -b:v {}'.format(bitRateParam)
                 +' -r {} -y'.format(frameRate)
                 +' "optimized\\{}" "'.format(name)
@@ -499,7 +516,7 @@ class VideoScript():
                 +' -i "{}"'.format(path)
                 +' -map 0:a? -map 0:s? -map 0:v'
                 +' -vf scale_cuda={}:{}'.format(rWidth,rHeight)
-                +' -c:a copy -c:v hevc_nvenc {}'.format(self.highQualityParam)
+                +' -c:a copy -c:s copy -c:v {}'.format(self.encoder)
                 +' -b:v {}'.format(bitRateParam)
                 +' -r {} -y'.format(frameRate)
                 +' "resized\\{}" "'.format(name)
@@ -692,10 +709,10 @@ class VideoScript():
                 +' -i "{}_upscaled_frames/frame%08d.jpg" '.format(name)
                 +' -hwaccel cuda'
                 +' -i "{}"'.format(path)
-                +' -map 0:v:0 -map 1:a? -map 1:s? -c:a copy -c:s copy -c:v hevc_nvenc'
+                +' -map 0:v:0 -map 1:a? -map 1:s? -c:a copy -c:s copy'
+                +' -c:v {}'.format(self.encoder)
                 +' -b:v {}'.format(bitRateParam)
-                +' -r {}'.format(frameRate)
-                +' -y {}'.format(self.highQualityParam)
+                +' -r {} -y'.format(frameRate)
                 +' "upscaled\\{}" "'.format(name)
             )
             print(f'Upscaling frame to video "{name}"')
@@ -887,15 +904,15 @@ class VideoScript():
             command = (
                 'start /min /wait cmd /c " {}:'.format(self.path[0])
                 +' & cd {}'.format(self.path)
-                +' & ffmpeg -threads 16 -hwaccel cuda -hwaccel_output_format cuda'
+                +' & ffmpeg -hwaccel cuda -hwaccel_output_format cuda'
                 +' -c:v mjpeg_cuvid -r {}'.format(fps)
                 +' -i "{}_interpolated_frames/frame%08d.jpg" '.format(name)
                 +' -hwaccel cuda'
                 +' -i "{}"'.format(path)
-                +' -map 0:v:0 -map 1:a? -map 1:s? -c:a copy -c:s copy -c:v hevc_nvenc'
+                +' -map 0:v:0 -map 1:a? -map 1:s? -c:a copy -c:s copy'
+                +' -c:v {}'.format(self.encoder)
                 +' -b:v {}'.format(bitRateParam)
-                +' -r {}'.format(fps)
-                +' -y {}'.format(self.highQualityParam)
+                +' -r {} -y'.format(fps)
                 +' "interpolated\\{}" "'.format(name)
             )
             print(f'Interpolating frame to video "{name}"')
