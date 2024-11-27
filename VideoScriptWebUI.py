@@ -46,7 +46,13 @@ videoItemColor = {
     "select":"info",
     "unselect":"dark",
 }
-videoSortBy = ["width", "height", "w x h", "fps", "length", "bit rate"]
+videoSortBy = [
+    "name",
+    "width", "height", "w x h",
+    "r_frame_rate",
+    "duration",
+    "bitRate"
+]
 
 
 app = Dash(
@@ -857,49 +863,27 @@ def reverseVideoList(_, children):
 )
 def sortVideoList(sortBy, allColor):
 
-    global vs, allVideoList, videoItemColor
+    global vs, allVideoList, videoItemColor, videoSortBy
 
-    # add color to allVideoList
-    for index in range(len(allVideoList)):
-        allVideoList[index]["color"] = allColor[index]
-    
-
-    if sortBy == "width":
-        allVideoList = sorted(
-            allVideoList,
-            key= lambda video: video['width'],
-        )
-    elif sortBy == "height":
-        allVideoList = sorted(
-            allVideoList,
-            key= lambda video: video['height'],
-        )
-    elif sortBy == "w x h":
-        for index in range(len(allVideoList)):
-            allVideoList[index]["w x h"] = allVideoList[index]["width"] * allVideoList[index]["height"]
-        allVideoList = sorted(
-            allVideoList,
-            key= lambda video: video['w x h'],
-        )
-    elif sortBy == "fps":
-        allVideoList = sorted(
-            allVideoList,
-            key= lambda video: video['r_frame_rate'],
-        )
-    elif sortBy == "length":
-        allVideoList = sorted(
-            allVideoList,
-            key= lambda video: video['duration'],
-        )
-    elif sortBy == "bit rate":
-        allVideoList = sorted(
-            allVideoList,
-            key= lambda video: video['bitRate'],
-        )
-    else:
+    # check dropdown validity
+    if sortBy not in videoSortBy:
         print("Unknow sort selection")
         raise PreventUpdate
     
+    # special sort
+    if sortBy == "w x h":
+        for index in range(len(allVideoList)):
+            allVideoList[index]["w x h"] = allVideoList[index]["width"] * allVideoList[index]["height"]
+        allVideoList.sort(key= lambda video: video['w x h'],)
+    # normal sort
+    else:
+        allVideoList.sort(key= lambda video: video[sortBy],)
+        
+    
+    # add color to allVideoList
+    for index in range(len(allVideoList)):
+        allVideoList[index]["color"] = allColor[index]
+        
     # re generate list of video items
     videoItems = []
     vs.vList = []

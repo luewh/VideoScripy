@@ -965,12 +965,14 @@ class VideoScript():
             if index == 0:
                 commandInputs += f'-i "{path}" '
                 commandMap += f'-map {index} '
+                # remove time codec for mp4
                 commandMap += f'-map -{index}:d '
                 commandMetadata += f'-metadata:s:v:{index} title="{name}" '
                 commandMetadata += f'-metadata:s:a:{index} title="{name}" '
                 commandMetadata += f'-metadata:s:s:{index} title="{name}" '
             else:
                 commandInputs += f'-i "{path}" '
+                # remove time codec for mp4
                 commandMap += f'-map -{index}:d '
                 if allVideo:
                     commandMap += f'-map {index}:v? '
