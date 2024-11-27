@@ -14,10 +14,22 @@ from os.path import isdir
 from time import time, sleep
 from winsound import Beep
 from math import ceil
+from typing import TypedDict, List
 
 
 # from VideoScript import *
 __all__ = ['VideoScript', 'run']
+
+
+class VideoInfo(TypedDict):
+    type: str
+    path: str
+    name: str
+    duration: timedelta
+    bitRate: int
+    width: int
+    height: int
+    r_frame_rate: float
 
 
 def noticeProcessEnd():
@@ -73,8 +85,9 @@ class VideoScript():
         path (str):
             absolute folder path of running script
 
-        vList ([{"name":"v1",...},{"name":"v2",...},...]): 
+        vList ([VideoInfo]): 
             list of dictionnary contanning info of scanned videos
+            such as path, duration, bit rate etc.
 
         vType ([str]):
             supported video type are .mp4 and .mkv
@@ -92,7 +105,7 @@ class VideoScript():
             running video process : ffmpeg, Real-ESRGAN, or Ifrnet
         
         killed (bool):
-            indicate that kill video process is asked
+            indicate that kill video process is done
         
     """
 
@@ -103,12 +116,12 @@ class VideoScript():
 
         self.path = getcwd()
         
-        self.vList = []
+        self.vList:List[VideoInfo] = [VideoInfo]
         self.vType = ["mp4","mkv"]
         self.folderSkip = ["optimized", "resized", "upscaled", "interpolated", "merged"]
 
         self.optimizationTolerence = 1.15
-
+        
         self.encoder = (
             ' hevc_nvenc'+
             ' -cq 1 -preset fast -tune hq'+
@@ -130,6 +143,9 @@ class VideoScript():
         self.proc = None
         self.killed = False
 
+
+    ##################
+    # region Get Video
 
 
     def setPath(self, path:str="") -> bool:
@@ -156,10 +172,6 @@ class VideoScript():
                 print("Path do not exist")
                 return False
     
-
-    ##################
-    # region Get Video
-
     def getVideo(self, folderDepthLimit:int=0) -> None:
         """
         Set attributes vList's path and name by file scan
@@ -237,6 +249,7 @@ class VideoScript():
                 self.vList[videoIndex]['r_frame_rate'] = round(float(frameRateTemp[0])/float(frameRateTemp[1]),2)
             except Exception as e:
                 print(e)
+                print(videoProbeTemp)
                 print(f'Can not get video info of "{self.vList[videoIndex]["name"]}"')
                 # delete errored video
                 self.vList.pop(videoIndex)
@@ -1025,6 +1038,7 @@ def run():
     process = inputInt(selections=[1,2,3,4,5])
     if process == 1:
         vs.optimize(3)
+        print(vs.vList)
     elif process == 2:
         vs.resize(1920, -1, 3)
     elif process == 3:
