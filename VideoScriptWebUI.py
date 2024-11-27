@@ -22,7 +22,7 @@ from VideoScript import VideoScript
 ip = "localhost"
 port = "8848"
 
-vs = VideoScript(__file__)
+vs = VideoScript()
 allVideoList = []
 
 processes = ["optimize", "resize", "upscale", "interpolate", "merge"]
@@ -196,13 +196,13 @@ app.layout = html.Div(
                     ),
                     
                 ],
-                # width=5,
-                md=5,
+                width=5,
+                # md=5,
                 style={
                     "paddingTop":"2vh",
-                    "paddingRight":"1vw",
+                    "paddingRight":"10px",
                     "paddingBottom":"2vh",
-                    "paddingLeft":"2vw",
+                    "paddingLeft":"25px",
                 },
                 className="column_left",
             ),
@@ -348,13 +348,13 @@ app.layout = html.Div(
                     ),
 
                 ],
-                # width=7,
-                md=7,
+                width=7,
+                # md=7,
                 style={
                     "paddingTop":"2vh",
-                    "paddingRight":"2vw",
+                    "paddingRight":"25px",
                     "paddingBottom":"2vh",
-                    "paddingLeft":"1vw",
+                    "paddingLeft":"10px",
                 },
             )
             # endregion get files UI
@@ -425,7 +425,7 @@ def sizeInputUI():
                 dbc.Col(
                     html.Button(
                         "X",
-                        id="button_sizeSwitch",
+                        id={"type": "spec", "id": "button_sizeSwitch"},
                         n_clicks=0,
                         className="uni_width_height",
                     ),
@@ -447,7 +447,7 @@ def sizeInputUI():
                     dcc.Dropdown(
                         [videoSizes["label"] for videoSizes in videoSizesDict],
                         value=[videoSizes["label"] for videoSizes in videoSizesDict][2],
-                        id="dropdown_videoSize",
+                        id={"type": "spec", "id": "dropdown_videoSize"},
                         persistence=True,
                         searchable=False,
                         clearable=False,
@@ -603,7 +603,7 @@ def update_div_processParamUI(selectedProcess):
 @callback(
     Output({"type": "input", "id": "videoWidth"}, 'value'),
     Output({"type": "input", "id": "videoHeight"}, 'value'),
-    Input('dropdown_videoSize', 'value'),
+    Input({"type": "spec", "id": "dropdown_videoSize"}, 'value'),
     prevent_initial_call=True,
 )
 def setVideoSize(selectedVideoSize):
@@ -616,7 +616,7 @@ def setVideoSize(selectedVideoSize):
 @callback(
     Output({"type": "input", "id": "videoWidth"}, 'value', allow_duplicate=True),
     Output({"type": "input", "id": "videoHeight"}, 'value', allow_duplicate=True),
-    Input('button_sizeSwitch', 'n_clicks'),
+    Input({"type": "spec", "id": "button_sizeSwitch"}, 'n_clicks'),
     State({"type": "input", "id": "videoWidth"}, 'value'),
     State({"type": "input", "id": "videoHeight"}, 'value'),
     prevent_initial_call=True,
@@ -960,10 +960,22 @@ def runSetVideoListPrefix(_, allColor):
     State({'type':'input','id': ALL}, 'on'),
     running=[
         (Output('button_stopProcess', 'disabled'), False, True),
+
+        (Output('dropdown_processes', 'disabled'), True, False),
+
+        (Output({'type':'input','id': ALL}, 'disabled'), True, False),
+        (Output({'type':'spec','id': ALL}, 'disabled'), True, False),
+
         (Output('button_scanFiles', 'disabled'), True, False),
         (Output('button_editPath', 'disabled'), True, False),
         (Output('button_selectDir', 'disabled'), True, False),
         (Output('input_path', 'disabled'), True, True),
+
+        (Output('button_lvideo_all', 'disabled'), True, False),
+        (Output('button_lvideo_none', 'disabled'), True, False),
+        (Output('button_lvideo_revert', 'disabled'), True, False),
+        (Output('dropdown_lvideo_sort', 'disabled'), True, False),
+
         (Output('interval_log', 'disabled'), False, True),
         # ensure last print of callback
         (Output('interval_log', 'n_intervals'), 0, 0),

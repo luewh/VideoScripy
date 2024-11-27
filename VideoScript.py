@@ -9,12 +9,15 @@ from threading import Thread
 from pathlib import Path
 from datetime import timedelta
 from shutil import rmtree
-from os import walk, mkdir, remove, listdir
+from os import walk, mkdir, remove, listdir, getcwd
 from os.path import isdir
 from time import time, sleep
 from winsound import Beep
 from math import ceil
 
+
+# from VideoScript import *
+__all__ = ['VideoScript', 'run']
 
 
 def noticeProcessEnd():
@@ -93,19 +96,12 @@ class VideoScript():
         
     """
 
-    def __init__(self, file:str=None) -> None:
+    def __init__(self) -> None:
         """
         Initialise attributes
-
-        Parameters:
-            file (str): need to be set as __file__ if class is imported
         """
 
-        if file != None:
-            self.file = file
-        else:
-            self.file = __file__
-        self.path = str(Path(self.file).parent.resolve())
+        self.path = getcwd()
         
         self.vList = []
         self.vType = ["mp4","mkv"]
@@ -121,10 +117,10 @@ class VideoScript():
 
         self.encoder = (
             ' hevc_nvenc'+
-            ' -preset p5'+
+            ' -preset p6'+
             ' -tune hq'+
             ' -rc vbr'+
-            # ' -cq 1'+
+            ' -cq 1'+
             ' -gpu 0'+
             ' -rgb_mode yuv420'+
             ' -multipass qres'+
@@ -142,13 +138,13 @@ class VideoScript():
 
         Parameters:
             path (str):
-                set to "" will use self.file as default path
+                set to "" will use getcwd() as default path
         
         Used attributes:
             path
         """
         if path == "":
-            self.path = str(Path(self.file).parent.resolve())
+            self.path = getcwd()
             print(f'Path set to default "{self.path}"')
             return True
         else:
@@ -269,7 +265,7 @@ class VideoScript():
     ##################
     # region Processes
 
-    def getFrames(self, video:dict) -> None:
+    def _getFrames(self, video:dict) -> None:
         """
         Transforme video to frames
 
@@ -562,7 +558,7 @@ class VideoScript():
             highQualityParam
         
         Used functions/methodes:
-            getFrames()
+            _getFrames()
             frameWatch()
         
         """
@@ -610,7 +606,7 @@ class VideoScript():
             frameTime = time()
 
             # wait till end
-            self.getFrames(video)
+            self._getFrames(video)
             
             if self.killed:
                 return
@@ -766,7 +762,7 @@ class VideoScript():
             highQualityParam
         
         Used functions/methodes:
-            getFrames()
+            _getFrames()
             frameWatch()
         
         """
@@ -823,7 +819,7 @@ class VideoScript():
             frameTime = time()
 
             # wait till end
-            self.getFrames(video)
+            self._getFrames(video)
 
             if self.killed:
                 return
