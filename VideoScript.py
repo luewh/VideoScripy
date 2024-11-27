@@ -14,7 +14,7 @@ from os.path import isdir
 from time import time, sleep
 from winsound import Beep
 from math import ceil
-from typing import TypedDict, List
+from typing import TypedDict
 
 
 # from VideoScript import *
@@ -22,6 +22,9 @@ __all__ = ['VideoScript', 'run']
 
 
 class VideoInfo(TypedDict):
+    """
+    VideoScript.vList typing
+    """
     type: str
     path: str
     name: str
@@ -116,7 +119,7 @@ class VideoScript():
 
         self.path = getcwd()
         
-        self.vList:List[VideoInfo] = [VideoInfo]
+        self.vList:list[VideoInfo] = []
         self.vType = ["mp4","mkv"]
         self.folderSkip = ["optimized", "resized", "upscaled", "interpolated", "merged"]
 
@@ -962,11 +965,13 @@ class VideoScript():
             if index == 0:
                 commandInputs += f'-i "{path}" '
                 commandMap += f'-map {index} '
+                commandMap += f'-map -{index}:d '
                 commandMetadata += f'-metadata:s:v:{index} title="{name}" '
                 commandMetadata += f'-metadata:s:a:{index} title="{name}" '
                 commandMetadata += f'-metadata:s:s:{index} title="{name}" '
             else:
                 commandInputs += f'-i "{path}" '
+                commandMap += f'-map -{index}:d '
                 if allVideo:
                     commandMap += f'-map {index}:v? '
                     commandMetadata += f'-metadata:s:v:{index} title="{name}" '
@@ -1007,46 +1012,131 @@ class VideoScript():
     #####################
 
 def run():
-    def inputInt(selections:list=[]) -> int:
+    def getInputInt(
+            message:str="",
+            default:int=None,
+            selections:list=[],
+            absolute=True,
+        ) -> int:
+
         while True:
-            # get int
-            entered = input()
+            # get input
+            entered = input(f"{message} [{default}]:")
+
+            # check if default
+            if default != None and entered == "":
+                print(default)
+                return default
+
             try:
                 entered = int(entered)
+                if absolute:
+                    entered = abs(entered)
             except:
                 print(f'{entered} is not an integer')
+
             # no selection constrain
             if selections == []:
+                print(entered)
                 return entered
+            
             # check if in selections
             elif entered in selections:
+                print(entered)
                 return entered
             else:
                 print(f'{entered} is not in {selections}')
 
+    def getInputFloat(
+            message:str="",
+            default:float=None,
+            absolute=True,
+        ) -> float:
+
+        while True:
+            # get input
+            entered = input(f"{message} [{default}]:")
+
+            # check if default
+            if default != None and entered == "":
+                print(default)
+                return default
+
+            try:
+                entered = int(entered)
+                if absolute:
+                    entered = abs(entered)
+                print(entered)
+                return entered
+            except:
+                print(f'{entered} is not a float')
+
+    def getInputBool(
+            message:str="",
+            default:bool=None,
+        ) -> bool:
+
+        while True:
+            # get input
+            entered = input(f"{message} [{default}]:")
+
+            # check if default
+            if default != None and entered == "":
+                print(default)
+                return default
+
+            try:
+                if entered.lower() in ["1", "y", "yes", "o", "oui"]:
+                    print(True)
+                    return True
+                else:
+                    print(False)
+                    return False
+            except:
+                print(f'{entered} is not a boolean')
+    
     vs = VideoScript()
 
     vs.getVideo(folderDepthLimit=0)
     vs.getVideoInfo()
 
-    print('Select a process :')
     print('1 - optimize')
     print('2 - resize')
     print('3 - upscale')
     print('4 - interpolate')
     print('5 - merge')
-    process = inputInt(selections=[1,2,3,4,5])
+    process = getInputInt(
+        message='Select a process',
+        default=1,
+        selections=[1,2,3,4,5]
+    )
+
     if process == 1:
-        vs.optimize(3)
-        print(vs.vList)
+        quality = getInputFloat("Quality",3.0)
+        vs.optimize(quality)
+
     elif process == 2:
-        vs.resize(1920, -1, 3)
+        width = getInputInt("Width",1920)
+        height = getInputInt("Height",-1)
+        quality = getInputFloat("Quality",3.0)
+        vs.resize(width, height, quality)
+
     elif process == 3:
-        vs.upscale(2, 3)
+        upFactor = getInputInt('Upscale factor',2,[2,3,4])
+        quality = getInputFloat("Quality",3.0)
+        vs.upscale(upFactor, quality)
+
     elif process == 4:
-        vs.interpolate(60.0, 3)
+        fps = getInputFloat("FPS",60.0)
+        quality = getInputFloat("Quality",3.0)
+        vs.interpolate(fps, quality)
+
     elif process == 5:
-        vs.merge(True, False, False)
+        allVideo = getInputBool("All video",True)
+        allAudio = getInputBool("All audio",False)
+        allSubtitle = getInputBool("All subtitle",False)
+        vs.merge(allVideo, allAudio, allSubtitle)
+    
     input("Press enter to exit")
 
   
