@@ -156,22 +156,6 @@ class VideoScript():
                 print("Path do not exist")
                 return False
     
-    def killProc(self) -> None:
-        """
-        Kill and stop running video process,
-        Only set killed to True if no running video process.
-        
-        Used attributes:
-            killed
-            proc
-        """
-        self.killed = True
-        if self.proc != None:
-            parent = psutil.Process(self.proc.pid)
-            for child in parent.children(recursive=True):
-                child.kill()
-
-
 
     ##################
     # region Get Video
@@ -223,6 +207,9 @@ class VideoScript():
             # stop scan for perfomance
             if folderDepthLimit == 0:
                 break
+        
+        # order by name
+        self.vList.sort(key= lambda video: video['name'])
     
     def getVideoInfo(self) -> None:
         """
@@ -254,8 +241,6 @@ class VideoScript():
                 # delete errored video
                 self.vList.pop(videoIndex)
         
-        # order by name
-        self.vList.sort(key= lambda video: video['name'])
 
     # endregion get video
     #####################
@@ -265,9 +250,42 @@ class VideoScript():
     ##################
     # region Processes
 
+    def killProc(self) -> None:
+        """
+        Kill and stop running video process,
+        Only set killed to True if no running video process.
+        
+        Used attributes:
+            killed
+            proc
+        """
+        if self.proc != None:
+            parent = psutil.Process(self.proc.pid)
+            for child in parent.children(recursive=True):
+                child.kill()
+            self.killed = True
+
+    def _runProc(self, command:str) -> None:
+        """
+        Run shell script and wait till its end
+        
+        Used attributes:
+            killed
+            proc
+        """
+        self.killed = False
+        self.proc = subprocess.Popen(
+            command,
+            shell=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+        )
+        self.proc.wait()
+        self.proc = None
+
     def _getFrames(self, video:dict) -> None:
         """
-        Transforme video to frames
+        Transform video to frames
 
         Parameters:
             video (dict):
@@ -306,16 +324,8 @@ class VideoScript():
             +' "{}_tmp_frames/frame%08d.jpg" "'.format(name)
         )
         print(f'Getting Frames of "{name}"')
-        self.proc = subprocess.Popen(
-            command,
-            shell=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-        )
-        self.proc.wait()
-        self.proc = None
+        self._runProc(command)
         print("Done")
-
 
 
     def optimize(self, quality:float=3.0) -> None:
@@ -335,8 +345,6 @@ class VideoScript():
             proc
         """
         
-        self.killed = False
-
         # create output folder
         if not isdir(self.path+'\\optimized'):
             mkdir(self.path+'\\optimized')
@@ -387,14 +395,7 @@ class VideoScript():
                 +' "optimized\\{}" "'.format(name)
             )
             print(f'Optimizing "{name}"')
-            self.proc = subprocess.Popen(
-                command,
-                shell=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-            )
-            self.proc.wait()
-            self.proc = None
+            self._runProc(command)
 
             if self.killed:
                 return
@@ -430,8 +431,6 @@ class VideoScript():
             highQualityParam
         """
         
-        self.killed = False
-
         # create output folder
         if not isdir(self.path+'\\resized'):
             mkdir(self.path+'\\resized')
@@ -518,14 +517,7 @@ class VideoScript():
                 +' "resized\\{}" "'.format(name)
             )
             print(f'Resizing "{name}"')
-            self.proc = subprocess.Popen(
-                command,
-                shell=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-            )
-            self.proc.wait()
-            self.proc = None
+            self._runProc(command)
 
             if self.killed:
                 return
@@ -562,8 +554,6 @@ class VideoScript():
             frameWatch()
         
         """
-
-        self.killed = False
 
         # create output folder
         if not isdir(self.path+'\\upscaled'):
@@ -655,22 +645,15 @@ class VideoScript():
             # x2 and x3 upscaleFactor
             else:
                 command += ' -n realesr-animevideov3 -s {} -f jpg -g 1"'.format(upscaleFactor)
-            self.proc = subprocess.Popen(
-                command,
-                shell=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-            )
-
+            
             # frames watch
             watch = Thread(
                 target=frameWatch,
                 args=(upscaleOutputPath,totalFrames)
             )
             watch.start()
-
-            self.proc.wait()
-            self.proc = None
+            
+            self._runProc(command)
 
             if self.killed:
                 global stop_threads
@@ -712,14 +695,7 @@ class VideoScript():
                 +' "upscaled\\{}" "'.format(name)
             )
             print(f'Upscaling frame to video "{name}"')
-            self.proc = subprocess.Popen(
-                command,
-                shell=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-            )
-            self.proc.wait()
-            self.proc = None
+            self._runProc(command)
 
             if self.killed:
                 return
@@ -767,8 +743,6 @@ class VideoScript():
         
         """
         
-        self.killed = False
-
         # create output folder
         if not isdir(self.path+'\\interpolated'):
             mkdir(self.path+'\\interpolated')
@@ -855,13 +829,6 @@ class VideoScript():
             )
             print(f'Interpolating "{name}"')
 
-            self.proc = subprocess.Popen(
-                command,
-                shell=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-            )
-
             # frames watch
             watch = Thread(
                 target=frameWatch,
@@ -869,8 +836,7 @@ class VideoScript():
             )
             watch.start()
 
-            self.proc.wait()
-            self.proc = None
+            self._runProc(command)
             
             if self.killed:
                 global stop_threads
@@ -912,14 +878,7 @@ class VideoScript():
                 +' "interpolated\\{}" "'.format(name)
             )
             print(f'Interpolating frame to video "{name}"')
-            self.proc = subprocess.Popen(
-                command,
-                shell=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-            )
-            self.proc.wait()
-            self.proc = None
+            self._runProc(command)
 
             if self.killed:
                 return
@@ -964,8 +923,6 @@ class VideoScript():
             vList
         """
         
-        self.killed = False
-
         # create output folder
         if not isdir(self.path+'\\merged'):
             mkdir(self.path+'\\merged')
@@ -1019,14 +976,7 @@ class VideoScript():
             +' -y "merged\\{}" "'.format(name)
         )
         print(f'Merging {len(self.vList)} videos')
-        self.proc = subprocess.Popen(
-            command,
-            shell=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-        )
-        self.proc.wait()
-        self.proc = None
+        self._runProc(command)
 
         if self.killed:
             return
