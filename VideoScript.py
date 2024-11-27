@@ -1047,35 +1047,28 @@ class VideoScript():
     # endregion processes
     #####################
 
-
-
-def inputInt(selections:list=[]) -> int:
-    while True:
-        # get int
-        entered = input()
-        try:
-            entered = int(entered)
-        except:
-            print(f'{entered} is not an integer')
-        # no selection constrain
-        if selections == []:
-            return entered
-        # check if in selections
-        elif entered in selections:
-            return entered
-        else:
-            print(f'{entered} is not in {selections}')
-
-if __name__ == '__main__':
+def run():
+    def inputInt(selections:list=[]) -> int:
+        while True:
+            # get int
+            entered = input()
+            try:
+                entered = int(entered)
+            except:
+                print(f'{entered} is not an integer')
+            # no selection constrain
+            if selections == []:
+                return entered
+            # check if in selections
+            elif entered in selections:
+                return entered
+            else:
+                print(f'{entered} is not in {selections}')
 
     vs = VideoScript()
 
     vs.getVideo(folderDepthLimit=0)
     vs.getVideoInfo()
-
-    # # get frame test
-    # for video in vs.vList:
-    #     vs.getFrames(video)
 
     print('Select a process :')
     print('1 - optimize')
@@ -1083,29 +1076,19 @@ if __name__ == '__main__':
     print('3 - upscale')
     print('4 - interpolate')
     print('5 - merge')
-
     process = inputInt(selections=[1,2,3,4,5])
-
     if process == 1:
         vs.optimize(3)
-        print(vs.vList)
-
     elif process == 2:
         vs.resize(1920, -1, 3)
-        print(vs.vList)
-
     elif process == 3:
         vs.upscale(2, 3)
-        print(vs.vList)
-
     elif process == 4:
         vs.interpolate(60.0, 3)
-        print(vs.vList)
-
     elif process == 5:
         vs.merge(True, False, False)
-        print(vs.vList)
-
     input("Press enter to exit")
 
-        
+  
+if __name__ == '__main__':
+    run()
