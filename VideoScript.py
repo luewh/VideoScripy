@@ -17,8 +17,10 @@ from math import ceil
 from typing import TypedDict
 
 
+
 # from VideoScript import *
 __all__ = ['VideoScript', 'run']
+
 
 
 class VideoInfo(TypedDict):
@@ -33,6 +35,7 @@ class VideoInfo(TypedDict):
     width: int
     height: int
     r_frame_rate: float
+
 
 
 def noticeProcessEnd():
@@ -213,6 +216,11 @@ class VideoScript():
             for file in files:
                 fileFormat = file.split(".")[-1].lower()
                 if fileFormat in self.vType:
+                    # check &
+                    if "&" in root+"\\"+file:
+                        print(f'"&" must not used in path or file name')
+                        print(f'Skipped "{file}"')
+                        continue
                     self.vList.append({
                         "type" : fileFormat,
                         "path" : root+"\\"+file,
@@ -299,7 +307,7 @@ class VideoScript():
         self.proc.wait()
         self.proc = None
 
-    def _getFrames(self, video:dict) -> None:
+    def _getFrames(self, video:VideoInfo) -> None:
         """
         Transform video to frames
 
@@ -311,7 +319,6 @@ class VideoScript():
             path
             proc
         """
-
         name = video['name']
         path = video['path']
         frameRate = video['r_frame_rate']
@@ -1141,6 +1148,6 @@ def run():
     
     input("Press enter to exit")
 
-  
+
 if __name__ == '__main__':
     run()
