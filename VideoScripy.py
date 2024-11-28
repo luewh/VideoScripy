@@ -128,26 +128,66 @@ class VideoScripy():
 
         self.optimizationTolerence = 1.15
         
-        self.encoder = (
-            ' hevc_nvenc'+
-            ' -cq 1 -preset fast -tune hq'+
-            ' -rc vbr -rc-lookahead 1024'
-        )
-
-        self.encoder = (
-            ' hevc_nvenc'+
-            ' -preset p6'+
-            ' -tune hq'+
-            ' -rc vbr'+
-            ' -cq 1'+
-            ' -gpu 0'+
-            ' -rgb_mode yuv420'+
-            ' -multipass qres'+
-            ' -rc-lookahead 32'
-        )
+        # self.encoder = (
+        #     ' hevc_nvenc'+
+        #     ' -preset p5'+
+        #     ' -tune hq'+
+        #     ' -rc vbr'+
+        #     ' -rc-lookahead 32'+
+        #     ' -cq 1'+
+        #     ' -multipass qres'
+        # )
+        self.setEncoder(h265=True, gpu=True)
 
         self.proc = None
         self.killed = False
+
+    def setEncoder(self, h265=True, gpu=True):
+        """
+        Set encoder parameters according h265 and GPU usage
+
+        Parameters:
+            h265 (bool):
+                _
+
+            gpu (bool):
+                _
+        
+        Used attributes:
+            path
+            proc
+        """
+        
+        if not gpu:
+            if not h265:
+                self.encoder = ' libx264'
+            else:
+                self.encoder = ' libx265'
+            
+            self.encoder += (
+                ' -preset ultrafast'+
+                ' -crf 0'
+            )
+
+        else:
+            if not h265:
+                self.encoder = ' h264_nvenc'
+            else:
+                self.encoder = ' hevc_nvenc'
+
+            self.encoder += (
+                ' -preset p1'+
+                ' -tune hq'+
+                ' -rc vbr'+
+                ' -rc-lookahead 32'+
+                ' -multipass qres'+
+                ' -spatial_aq 1'+
+                ' -weighted_pred 1'+
+                ' -bufsize:v 800M'+
+                ' -maxrate:v 800M'+
+                ' -cq 1'
+            )
+
 
 
     ##################
@@ -292,6 +332,10 @@ class VideoScripy():
     def _runProc(self, command:str) -> None:
         """
         Run shell script and wait till its end
+
+        Parameters:
+            command (str):
+                command line script
         
         Used attributes:
             killed
@@ -340,7 +384,8 @@ class VideoScripy():
         command = (
             'start "VideoScripy-getFrames" /min /wait cmd /c " {}:'.format(self.path[0])
             +' & cd {}'.format(self.path)
-            +' & ffmpeg -hwaccel cuda'
+            +' & ffmpeg'
+            +' -hwaccel cuda -hwaccel_output_format cuda'
             +' -i "{}"'.format(path)
             +' -qscale:v 1 -qmin 1 -qmax 1 -y'
             +' -r {}'.format(frameRate)
@@ -395,7 +440,7 @@ class VideoScripy():
             )
             self.vList[index]['optimizedBitRate'] = optimizedBitRateText
             print(optimizedBitRateText)
-            bitRateParam = f'{optimizedBitRate} -maxrate {optimizedBitRate} -bufsize 800M '
+            bitRateParam = f'{optimizedBitRate} -maxrate:v {optimizedBitRate} -bufsize:v 800M '
             
             # check if optimization needed
             if optimizedBitRate * self.optimizationTolerence > bitRate:
@@ -409,7 +454,8 @@ class VideoScripy():
             command = (
                 'start "VideoScripy-optimize" /min /wait cmd /c " {}:'.format(self.path[0])
                 +' & cd {}'.format(self.path)
-                +' & ffmpeg -hwaccel cuda'
+                +' & ffmpeg'
+                +' -hwaccel cuda -hwaccel_output_format cuda'
                 +' -i "{}"'.format(path)
                 +' -map 0:v -map 0:a? -map 0:s?'
                 +' -c:v {} -c:a copy -c:s copy'.format(self.encoder)
@@ -523,18 +569,19 @@ class VideoScripy():
             )
             self.vList[index]['resizedBitRate'] = resizedBitRateText
             print(resizedBitRateText)
-            bitRateParam = f'{resizedBitRate} -maxrate {resizedBitRate} -bufsize 800M '
+            bitRateParam = f'{resizedBitRate} -maxrate:v {resizedBitRate} -bufsize:v 800M '
 
             resizeTime = time()
             # rezize commands
             command = (
                 'start "VideoScripy-resize" /min /wait cmd /c " {}:'.format(self.path[0])
                 +' & cd {}'.format(self.path)
-                +' & ffmpeg -hwaccel cuda -hwaccel_output_format cuda'
+                +' & ffmpeg'
+                +' -hwaccel cuda -hwaccel_output_format cuda'
                 +' -i "{}"'.format(path)
-                +' -map 0:a? -map 0:s? -map 0:v'
-                +' -vf scale_cuda={}:{}'.format(rWidth,rHeight)
-                +' -c:a copy -c:s copy -c:v {}'.format(self.encoder)
+                +' -map 0:v -map 0:a? -map 0:s?'
+                +' -vf scale_npp={}:{}'.format(rWidth,rHeight)
+                +' -c:v {} -c:a copy -c:s copy'.format(self.encoder)
                 +' -b:v {}'.format(bitRateParam)
                 +' -r {} -y'.format(frameRate)
                 +' "resized\\{}" "'.format(name)
@@ -706,13 +753,14 @@ class VideoScripy():
             command = (
                 'start "VideoScripy-framesToVideos" /min /wait cmd /c " {}:'.format(self.path[0])
                 +' & cd {}'.format(self.path)
-                +' & ffmpeg -hwaccel cuda -hwaccel_output_format cuda'
+                +' & ffmpeg'
+                +' -hwaccel cuda -hwaccel_output_format cuda'
                 +' -c:v mjpeg_cuvid -r {}'.format(frameRate)
                 +' -i "{}_upscaled_frames/frame%08d.jpg" '.format(name)
-                +' -hwaccel cuda'
+                +' -hwaccel cuda -hwaccel_output_format cuda'
                 +' -i "{}"'.format(path)
-                +' -map 0:v:0 -map 1:a? -map 1:s? -c:a copy -c:s copy'
-                +' -c:v {}'.format(self.encoder)
+                +' -map 0:v:0 -map 1:a? -map 1:s?'
+                +' -c:v {} -c:a copy -c:s copy'.format(self.encoder)
                 +' -b:v {}'.format(bitRateParam)
                 +' -r {} -y'.format(frameRate)
                 +' "upscaled\\{}" "'.format(name)
@@ -809,7 +857,7 @@ class VideoScripy():
             )
             self.vList[index]['interpolateBitRate'] = interpolateBitRateText
             print(interpolateBitRateText)
-            bitRateParam = f'{interpolateBitRate} -maxrate {interpolateBitRate} -bufsize 800M '
+            bitRateParam = f'{interpolateBitRate} -maxrate:v {interpolateBitRate} -bufsize:v 800M '
 
             ######################
             # region - --get frame
@@ -889,13 +937,14 @@ class VideoScripy():
             command = (
                 'start "VideoScripy-framesToVideo" /min /wait cmd /c " {}:'.format(self.path[0])
                 +' & cd {}'.format(self.path)
-                +' & ffmpeg -hwaccel cuda -hwaccel_output_format cuda'
+                +' & ffmpeg'
+                +' -hwaccel cuda -hwaccel_output_format cuda'
                 +' -c:v mjpeg_cuvid -r {}'.format(fps)
                 +' -i "{}_interpolated_frames/frame%08d.jpg" '.format(name)
-                +' -hwaccel cuda'
+                +' -hwaccel cuda -hwaccel_output_format cuda'
                 +' -i "{}"'.format(path)
-                +' -map 0:v:0 -map 1:a? -map 1:s? -c:a copy -c:s copy'
-                +' -c:v {}'.format(self.encoder)
+                +' -map 0:v:0 -map 1:a? -map 1:s?'
+                +' -c:v {} -c:a copy -c:s copy'.format(self.encoder)
                 +' -b:v {}'.format(bitRateParam)
                 +' -r {} -y'.format(fps)
                 +' "interpolated\\{}" "'.format(name)
@@ -995,7 +1044,8 @@ class VideoScripy():
         command = (
             'start "VideoScripy-merge" /min /wait cmd /c " {}:'.format(self.path[0])
             +' & cd {}'.format(self.path)
-            +' & ffmpeg -hwaccel cuda'
+            +' & ffmpeg'
+            +' -hwaccel cuda -hwaccel_output_format cuda'
             +' {}'.format(commandInputs)
             +' {}'.format(commandMap)
             +' -c copy'

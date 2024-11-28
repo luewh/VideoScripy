@@ -1,0 +1,38 @@
+https://slhck.info/video/2017/03/01/rate-control.html
+https://docs.nvidia.com/video-technologies/video-codec-sdk/12.1/nvenc-video-encoder-api-prog-guide/index.html
+https://www.nvidia.com/en-us/geforce/guides/broadcasting-guide/
+
+# Constant bitrate
+self.encoder = ' -rc cbr -b:v avBR'
+# Variable bitrate
+self.encoder = ' -rc vbr -b:v avBR -maxrate:v mxBR'
+# Constant QP
+self.encoder = ' -rc constqp -qp 0-51'
+# Target quality
+self.encoder = ' -rc vbr -cq 0-51(float) -maxrate:v mxBR'
+
+# Multi pass frame encoding, fullres for statistics, qres for motion
+self.encoder = ' -multipass disabled|qres|fullres'
+
+# B-Frames As Reference, improve quality with no performance impact
+# not supported
+self.encoder = ' -b_ref_mode middle'
+
+# Adaptive Quantization, mproves visual quality by adjusts the QP
+# Spatial AQ, should turn off in PSNR-based evaluation
+# 1 (least aggressive) to 15 (most aggressive)
+self.encoder = ' -spatial_aq 1 -aq-strength 1-15[8]'
+
+# Temporal AQ, need CUDA, minor performance impact
+# not supported
+self.encoder = ' -temporal_aq 1'
+
+# Weighted Prediction, quality gain for contents having illumination changes
+# supported from GTX 1070
+# not supported if the encode session is configured with B frames
+# not supported if DirectX 12 device is used
+# need CUDA, minor performance impact
+self.encoder = ' -weighted_pred 1'
+
+# Very large VBV buffer size (4 seconds)
+self.encoder = ' -bufsize:v 5*avBR'
