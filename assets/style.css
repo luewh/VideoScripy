@@ -35,7 +35,7 @@
         background: #cdf2ff;
         border-radius: 5px;
     }
-    &::-webkit-scrollbar-button {
+    /* &::-webkit-scrollbar-button {
         background: #ff5a99b4;
         border-radius: 5px;
         height: 15px;
@@ -43,7 +43,7 @@
     &::-webkit-scrollbar-button:hover {
         background: #cdf2ff;
         border-radius: 5px;
-    }
+    } */
 }
 
 
