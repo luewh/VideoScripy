@@ -1,9 +1,9 @@
 
-# <img src="./assets/favicon.ico" alt="drawing" width="20px"/> VideoScript & WebUI 
+# <img src="./assets/favicon.ico" alt="drawing" width="20px"/> VideoScripy & WebUI 
 
-VideoScript is a collection of video processes including video **Upscale** and video frame **Interpolation**, it uses Python to generate **FFmpeg**, **Real-ESRGAN** and **IFRNet** command line script and performes serial processing on scanned **mp4**/**mkv** videos.
+VideoScripy is a collection of video processes including video **Upscale** and video frame **Interpolation**, it uses Python to generate **FFmpeg**, **Real-ESRGAN** and **IFRNet** command line script and performes serial processing on scanned **mp4**/**mkv** videos.
 
-VideoScriptWebUI is a local web user interface developed with **Dash**, it has the goal of enhancing user experience.
+VideoScripyWebUI is a local web user interface developed with **Dash**, it has the goal of enhancing user experience.
 ![demo.gif](./doc/demo_upscale.gif)
 
 > <span style="color:red">**⚠ Currently only compatible with Windows users who have Nvidia cards.**</span> 
@@ -84,11 +84,11 @@ Advantage : **Freedom**
 
 ### Usage
 
-- VideoScript.py
+- VideoScripy.py
 
     Run the script on where videos are located and follow the command line indication
 
-- VideoScriptWebUI.py
+- VideoScripyWebUI.py
 
     Run the script, a web page should be opened automatically, select a process, select a path where videos are located, **SCAN** then **RUN**. The processed videos are under a folder of selected path example ./upscaled.
 
@@ -146,7 +146,17 @@ This project relies on the following software and projects.
 - ✅ Better row height
 - ✅ Select / Unselect all videos
 - ✅ Sort video by properties
-- [ ] Better hevc_nvenc parameters
+- ✅ Sort by name in WebUI and VS
+- ✅ Skip video if "&" present in video path and name
+- [N] Add FFmpeg visual quality metrics (PSNR, SSIM, VMAF)
+- ✅ Better encoders parameters
+- [N] Remove empty folders
+- [ ] Catch process error, and stop frame watch thread appropriately
+- [ ] Check tools
+- [ ] framesToVideo()
+- [ ] Running disable all new button
+- [ ] Separate repository for WebUI
+- [ ] Better upscale recovery
 - [ ] Gif to explain processes, tooltip on process dropdown
 - [ ] Log ?
 
