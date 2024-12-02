@@ -49,7 +49,7 @@ videoItemColor = {
 videoSortBy = [
     "name",
     "width", "height", "w x h",
-    "r_frame_rate",
+    "fps",
     "duration",
     "bitRate"
 ]
@@ -683,7 +683,7 @@ def getVideoItem(video:dict, index:int, color:str, prefix:str=""):
 
     width = str(video["width"]).rjust(7)
     height = str(video["height"]).ljust(7)
-    frameRate = (str(video["r_frame_rate"])+" fps").rjust(10)
+    frameRate = (str(video["fps"])+" fps").rjust(10)
     duration = str(video["duration"]).split(".")[0].rjust(10)
     bitRate = (f'{video["bitRate"]/1_000:_.0f}'+" Kbits/s").rjust(16)
     videoInfoText = (

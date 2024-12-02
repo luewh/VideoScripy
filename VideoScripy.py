@@ -15,6 +15,7 @@ from time import time, sleep
 from winsound import Beep
 from math import ceil
 from typing import TypedDict
+from enum import Enum
 
 
 
@@ -34,7 +35,15 @@ class VideoInfo(TypedDict):
     bitRate: int
     width: int
     height: int
-    r_frame_rate: float
+    fps: float
+
+class VideoProcess(Enum):
+    optimize = "optimize"
+    resize = "resize"
+    upscale = "upscale"
+    interpolate = "interpolate"
+    merge = "merge"
+
 
 
 
@@ -124,19 +133,11 @@ class VideoScripy():
         
         self.vList:list[VideoInfo] = []
         self.vType = ["mp4","mkv"]
-        self.folderSkip = ["optimized", "resized", "upscaled", "interpolated", "merged"]
-
+        self.folderSkip = [p.value for p in VideoProcess]
         self.optimizationTolerence = 1.15
         
-        # self.encoder = (
-        #     ' hevc_nvenc'+
-        #     ' -preset p5'+
-        #     ' -tune hq'+
-        #     ' -rc vbr'+
-        #     ' -rc-lookahead 32'+
-        #     ' -cq 1'+
-        #     ' -multipass qres'
-        # )
+        self.h265 = True
+        self.gpu = True
         self.setEncoder(h265=True, gpu=True)
 
         self.proc = None
@@ -154,9 +155,12 @@ class VideoScripy():
                 _
         
         Used attributes:
-            path
-            proc
+            h265
+            gpu
+            encoder
         """
+        self.h265 = h265
+        self.gpu = gpu
         
         if not gpu:
             if not h265:
@@ -165,7 +169,7 @@ class VideoScripy():
                 self.encoder = ' libx265'
             
             self.encoder += (
-                ' -preset ultrafast'+
+                ' -preset medium'+
                 ' -crf 0'
             )
 
@@ -176,7 +180,7 @@ class VideoScripy():
                 self.encoder = ' hevc_nvenc'
 
             self.encoder += (
-                ' -preset p1'+
+                ' -preset p4'+
                 ' -tune hq'+
                 ' -rc vbr'+
                 ' -rc-lookahead 32'+
@@ -245,8 +249,8 @@ class VideoScripy():
             # skip folder
             skip = False
             for folderSkip in self.folderSkip:
-                if root[-len(folderSkip):] == folderSkip:
-                    print(f'Self generated folder {folderSkip} skiped')
+                if Path(root).name == folderSkip:
+                    print(f'Self generated folder "{folderSkip}" skiped')
                     skip = True
                     break
             if skip:
@@ -297,10 +301,9 @@ class VideoScripy():
                 self.vList[videoIndex]['width'] = int(videoStreamTemp['width'])
                 self.vList[videoIndex]['height'] = int(videoStreamTemp['height'])
                 frameRateTemp = videoStreamTemp['r_frame_rate'].split('/')
-                self.vList[videoIndex]['r_frame_rate'] = round(float(frameRateTemp[0])/float(frameRateTemp[1]),2)
+                self.vList[videoIndex]['fps'] = round(float(frameRateTemp[0])/float(frameRateTemp[1]),2)
             except Exception as e:
                 print(e)
-                print(videoProbeTemp)
                 print(f'Can not get video info of "{self.vList[videoIndex]["name"]}"')
                 # delete errored video
                 self.vList.pop(videoIndex)
@@ -357,7 +360,7 @@ class VideoScripy():
 
         Parameters:
             video (dict):
-                info of one video. path, name, r_frame_rate are used
+                info of one video. path, name, fps are used
         
         Used attributes:
             path
@@ -365,7 +368,7 @@ class VideoScripy():
         """
         name = video['name']
         path = video['path']
-        frameRate = video['r_frame_rate']
+        frameRate = video['fps']
         duration = video['duration']
 
         frameOutputPath = self.path+'\\{}_tmp_frames'.format(name)
@@ -385,7 +388,6 @@ class VideoScripy():
             'start "VideoScripy-getFrames" /min /wait cmd /c " {}:'.format(self.path[0])
             +' & cd {}'.format(self.path)
             +' & ffmpeg'
-            +' -hwaccel cuda -hwaccel_output_format cuda'
             +' -i "{}"'.format(path)
             +' -qscale:v 1 -qmin 1 -qmax 1 -y'
             +' -r {}'.format(frameRate)
@@ -394,6 +396,90 @@ class VideoScripy():
         print(f'Getting Frames of "{name}"')
         self._runProc(command)
         print("Done")
+
+    def _getCommand(
+            self, video:VideoInfo, process:str,
+            bitRateParam:str=None,
+            rWidth:int=None, rHeight:int=None,
+            upscaleFactor:int=None,
+            interpolateFrame:int=None,
+            commandInputs:str=None, commandMap:str=None, commandMetadata:str=None,
+        ) -> str:
+        
+        command = (
+            f'start "VideoScripy-{process}" /min /wait /realtime'
+            +f' cmd /c " {self.path[0]}:'
+            +f' & cd {self.path}'
+        )
+
+        if process == VideoProcess.optimize.value:
+            command += (
+                ' & ffmpeg'
+                +' -hwaccel cuda -hwaccel_output_format cuda'
+                +f' -i "{video["path"]}"'
+                +' -map 0:v -map 0:a? -map 0:s?'
+                +f' -c:v {self.encoder} -c:a copy -c:s copy'
+                +f' -b:v {bitRateParam}'
+                +f' -r {video["fps"]}'
+                +f' -y "{process}\\{video["name"]}" "'
+            )
+
+        elif process == VideoProcess.resize.value:
+            command += (
+                ' & ffmpeg'
+                +' -hwaccel cuda -hwaccel_output_format cuda'
+                +f' -i "{video["path"]}"'
+                +' -map 0:v -map 0:a? -map 0:s?'
+                +f' -vf scale_cuda={rWidth}:{rHeight}'
+                +f' -c:v {self.encoder} -c:a copy -c:s copy'
+                +f' -b:v {bitRateParam}'
+                +f' -r {video["fps"]}'
+                +f' -y "{process}\\{video["name"]}" "'
+            )
+
+        elif process == VideoProcess.upscale.value:
+
+            command += (
+                ' & realesrgan-ncnn-vulkan.exe'
+                +f' -i "{video["name"]}_tmp_frames" '
+                +f' -o "{video["name"]}_{process}x{upscaleFactor}_frames" '
+            )
+            # TODO
+            # if upscaleFactor == "4p":
+            #     command += ' -n realesrgan-x4plus'
+            # elif upscaleFactor == "4pa":
+            #     command += ' -n realesrgan-x4plus-anime'
+            if upscaleFactor in [2,3,4]:
+                command += f' -n realesr-animevideov3 -s {upscaleFactor}'
+            else:
+                print(f'Unknown video process "{upscaleFactor}"')
+                exit()
+            command += ' -f jpg -g 1"'
+
+        elif process == VideoProcess.interpolate.value:
+            command += (
+                ' & ifrnet-ncnn-vulkan.exe'
+                +f' -i "{video["name"]}_tmp_frames" '
+                +f' -o "{video["name"]}_{process}_frames" '
+                +' -m IFRNet_GoPro -g 1 -f frame%08d.jpg'
+                +f' -n {interpolateFrame}"'
+            )
+
+        elif process == VideoProcess.merge.value:
+            command += (
+                ' & ffmpeg'
+                +' -hwaccel cuda -hwaccel_output_format cuda'
+                +f' {commandInputs}'.format()
+                +f' {commandMap}'.format()
+                +' -c copy'
+                +f' {commandMetadata}'.format()
+                +f' -y "{process}\\{video["name"]}" "'
+            )
+        else:
+            print(f'Unknown video process "{process}"')
+            exit()
+        
+        return command
 
 
     def optimize(self, quality:float=3.0) -> None:
@@ -413,18 +499,19 @@ class VideoScripy():
             proc
         """
         
+        process = VideoProcess.optimize.value
         # create output folder
-        if not isdir(self.path+'\\optimized'):
-            mkdir(self.path+'\\optimized')
+        outputFolder = self.path+f'\\{process}'
+        if not isdir(outputFolder):
+            mkdir(outputFolder)
         
         for index, video in enumerate(self.vList):
-            
             path = video['path']
             name = video['name']
             width = video['width']
             height = video['height']
             bitRate = video['bitRate']
-            frameRate = video['r_frame_rate']
+            frameRate = video['fps']
 
             # show current optimizing video
             print('--- {}/{} ---'.format(index+1,len(self.vList)))
@@ -450,18 +537,9 @@ class VideoScripy():
                 continue
 
             optimizeTime = time()
-
-            command = (
-                'start "VideoScripy-optimize" /min /wait cmd /c " {}:'.format(self.path[0])
-                +' & cd {}'.format(self.path)
-                +' & ffmpeg'
-                +' -hwaccel cuda -hwaccel_output_format cuda'
-                +' -i "{}"'.format(path)
-                +' -map 0:v -map 0:a? -map 0:s?'
-                +' -c:v {} -c:a copy -c:s copy'.format(self.encoder)
-                +' -b:v {}'.format(bitRateParam)
-                +' -r {} -y'.format(frameRate)
-                +' "optimized\\{}" "'.format(name)
+            command = self._getCommand(
+                video, process,
+                bitRateParam=bitRateParam
             )
             print(f'Optimizing "{name}"')
             self._runProc(command)
@@ -500,9 +578,11 @@ class VideoScripy():
             highQualityParam
         """
         
+        process = VideoProcess.resize.value
         # create output folder
-        if not isdir(self.path+'\\resized'):
-            mkdir(self.path+'\\resized')
+        outputFolder = self.path+f'\\{process}'
+        if not isdir(outputFolder):
+            mkdir(outputFolder)
         
         for index, video in enumerate(self.vList):
                 
@@ -511,7 +591,7 @@ class VideoScripy():
             width = video['width']
             height = video['height']
             bitRate = video['bitRate']
-            frameRate = video['r_frame_rate']
+            frameRate = video['fps']
 
             # show current resizing video
             print('--- {}/{} ---'.format(index+1,len(self.vList)))
@@ -572,19 +652,10 @@ class VideoScripy():
             bitRateParam = f'{resizedBitRate} -maxrate:v {resizedBitRate} -bufsize:v 800M '
 
             resizeTime = time()
-            # rezize commands
-            command = (
-                'start "VideoScripy-resize" /min /wait cmd /c " {}:'.format(self.path[0])
-                +' & cd {}'.format(self.path)
-                +' & ffmpeg'
-                +' -hwaccel cuda -hwaccel_output_format cuda'
-                +' -i "{}"'.format(path)
-                +' -map 0:v -map 0:a? -map 0:s?'
-                +' -vf scale_npp={}:{}'.format(rWidth,rHeight)
-                +' -c:v {} -c:a copy -c:s copy'.format(self.encoder)
-                +' -b:v {}'.format(bitRateParam)
-                +' -r {} -y'.format(frameRate)
-                +' "resized\\{}" "'.format(name)
+            command = self._getCommand(
+                video, process,
+                bitRateParam=bitRateParam,
+                rWidth=widthTemp, rHeight=heightTemp
             )
             print(f'Resizing "{name}"')
             self._runProc(command)
@@ -603,7 +674,7 @@ class VideoScripy():
         # notice resize end
         noticeProcessEnd()
 
-    def upscale(self, upscaleFactor:int=2|3|4, quality:float=3) -> None:
+    def upscale(self, upscaleFactor:int=2, quality:float=3) -> None:
         """
         Upscale video
 
@@ -625,9 +696,11 @@ class VideoScripy():
         
         """
 
+        process = VideoProcess.upscale.value
         # create output folder
-        if not isdir(self.path+'\\upscaled'):
-            mkdir(self.path+'\\upscaled')
+        outputFolder = self.path+f'\\{process}'
+        if not isdir(outputFolder):
+            mkdir(outputFolder)
 
         for index, video in enumerate(self.vList):
                 
@@ -636,7 +709,7 @@ class VideoScripy():
             width = video['width']
             height = video['height']
             bitRate = video['bitRate']
-            frameRate = video['r_frame_rate']
+            frameRate = video['fps']
 
             # show current upscaling video
             print('--- {}/{} ---'.format(index+1,len(self.vList)))
@@ -685,7 +758,7 @@ class VideoScripy():
             # region - --upscale
             upscaleTime = time()
 
-            upscaleOutputPath = self.path+'\\{}_upscaled_frames'.format(name)
+            upscaleOutputPath = self.path+f'\\{name}_{process}x{upscaleFactor}_frames'
             # create upscaled frames folder if not existing
             if not isdir(upscaleOutputPath):
                 mkdir(upscaleOutputPath)
@@ -696,26 +769,17 @@ class VideoScripy():
                 for root, _, files in walk(upscaleOutputPath):
                     # remove upscaled frame's origin frames except last two
                     for upscaled in files[:-2]:
-                        remove(root.replace('_upscaled_frames','_tmp_frames')+'\\'+upscaled)
+                        remove(root.replace(f'_{process}x{upscaleFactor}_frames','_tmp_frames')+'\\'+upscaled)
                     # remove last two upscaled frames
                     for lastTwoUpscaled in files[-2:]:
                         remove(root+'\\'+lastTwoUpscaled)
                 print(f'Continue upscaling "{name}"')
             
-            command = (
-                'start "VideoScripy-upscale" /min /wait /realtime cmd /c " {}:'.format(self.path[0])
-                +' & cd {}'.format(self.path)
-                +' & realesrgan-ncnn-vulkan.exe'
-                +' -i "{}_tmp_frames" '.format(name)
-                +' -o "{}_upscaled_frames" '.format(name)
+            command = self._getCommand(
+                video, process,
+                upscaleFactor=upscaleFactor
             )
-            # x4 upscaleFactor
-            if upscaleFactor == 4:
-                command += ' -n realesrgan-x4plus-anime -f jpg -g 1"'
-            # x2 and x3 upscaleFactor
-            else:
-                command += ' -n realesr-animevideov3 -s {} -f jpg -g 1"'.format(upscaleFactor)
-            
+
             # frames watch
             watch = Thread(
                 target=frameWatch,
@@ -756,14 +820,14 @@ class VideoScripy():
                 +' & ffmpeg'
                 +' -hwaccel cuda -hwaccel_output_format cuda'
                 +' -c:v mjpeg_cuvid -r {}'.format(frameRate)
-                +' -i "{}_upscaled_frames/frame%08d.jpg" '.format(name)
+                +' -i "{}_{}x{}_frames/frame%08d.jpg" '.format(name, process, upscaleFactor)
                 +' -hwaccel cuda -hwaccel_output_format cuda'
                 +' -i "{}"'.format(path)
                 +' -map 0:v:0 -map 1:a? -map 1:s?'
                 +' -c:v {} -c:a copy -c:s copy'.format(self.encoder)
                 +' -b:v {}'.format(bitRateParam)
                 +' -r {} -y'.format(frameRate)
-                +' "upscaled\\{}" "'.format(name)
+                +' "upscale\\{}" "'.format(name)
             )
             print(f'Upscaling frame to video "{name}"')
             self._runProc(command)
@@ -814,9 +878,11 @@ class VideoScripy():
         
         """
         
+        process = VideoProcess.interpolate.value
         # create output folder
-        if not isdir(self.path+'\\interpolated'):
-            mkdir(self.path+'\\interpolated')
+        outputFolder = self.path+f'\\{process}'
+        if not isdir(outputFolder):
+            mkdir(outputFolder)
 
 
         for index, video in enumerate(self.vList):
@@ -826,7 +892,7 @@ class VideoScripy():
             width = video['width']
             height = video['height']
             bitRate = video['bitRate']
-            frameRate = video['r_frame_rate']
+            frameRate = video['fps']
             duration = video['duration']
 
             # show current resizing video
@@ -882,21 +948,16 @@ class VideoScripy():
             # region - --interpolate
             interpolateTime = time()
 
-            interpolateOutputPath = self.path+'\\{}_interpolated_frames'.format(name)
-            # remove empty interpolated frames folder
+            interpolateOutputPath = self.path+f'\\{name}_{process}_frames'
+            # empty interpolate frames folder
             if isdir(interpolateOutputPath):
                 rmtree(interpolateOutputPath)
 
             # new frames interpolate
             mkdir(interpolateOutputPath)
-            command = (
-                'start "VideoScripy-interpolate" /min /wait /realtime cmd /c " {}:'.format(self.path[0])
-                +' & cd {}'.format(self.path)
-                +' & ifrnet-ncnn-vulkan.exe'
-                +' -i "{}_tmp_frames" '.format(name)
-                +' -o "{}_interpolated_frames" '.format(name)
-                +' -m IFRNet_GoPro -g 1 -f frame%08d.jpg'
-                +' -n {}"'.format(interpolateFrame)
+            command = self._getCommand(
+                video, process,
+                interpolateFrame=interpolateFrame
             )
             print(f'Interpolating "{name}"')
 
@@ -940,14 +1001,14 @@ class VideoScripy():
                 +' & ffmpeg'
                 +' -hwaccel cuda -hwaccel_output_format cuda'
                 +' -c:v mjpeg_cuvid -r {}'.format(fps)
-                +' -i "{}_interpolated_frames/frame%08d.jpg" '.format(name)
+                +' -i "{}_{}_frames/frame%08d.jpg" '.format(name, process)
                 +' -hwaccel cuda -hwaccel_output_format cuda'
                 +' -i "{}"'.format(path)
                 +' -map 0:v:0 -map 1:a? -map 1:s?'
                 +' -c:v {} -c:a copy -c:s copy'.format(self.encoder)
                 +' -b:v {}'.format(bitRateParam)
                 +' -r {} -y'.format(fps)
-                +' "interpolated\\{}" "'.format(name)
+                +' "interpolate\\{}" "'.format(name)
             )
             print(f'Interpolating frame to video "{name}"')
             self._runProc(command)
@@ -995,9 +1056,11 @@ class VideoScripy():
             vList
         """
         
+        process = VideoProcess.merge.value
         # create output folder
-        if not isdir(self.path+'\\merged'):
-            mkdir(self.path+'\\merged')
+        outputFolder = self.path+f'\\{process}'
+        if not isdir(outputFolder):
+            mkdir(outputFolder)
 
         # check number of video
         if len(self.vList) <= 1:
@@ -1041,16 +1104,11 @@ class VideoScripy():
                     commandMetadata += f'-metadata:s:s:{index} title="{name}" '
 
         spendTime = time()
-        command = (
-            'start "VideoScripy-merge" /min /wait cmd /c " {}:'.format(self.path[0])
-            +' & cd {}'.format(self.path)
-            +' & ffmpeg'
-            +' -hwaccel cuda -hwaccel_output_format cuda'
-            +' {}'.format(commandInputs)
-            +' {}'.format(commandMap)
-            +' -c copy'
-            +' {}'.format(commandMetadata)
-            +' -y "merged\\{}" "'.format(name)
+        command = self._getCommand(
+            video, process,
+            commandInputs=commandInputs,
+            commandMap=commandMap,
+            commandMetadata=commandMetadata,
         )
         print(f'Merging {len(self.vList)} videos')
         self._runProc(command)
@@ -1204,3 +1262,7 @@ def run():
 
 if __name__ == '__main__':
     run()
+
+
+
+
