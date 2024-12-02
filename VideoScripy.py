@@ -48,8 +48,8 @@ class VideoProcess(Enum):
 
 
 def noticeProcessEnd():
-    pass
-    # Beep(440, 1500)
+    # pass
+    Beep(440, 1500)
     # input('Press enter to exit')
 
 def frameWatch(outDir:str, total:int):
@@ -344,6 +344,8 @@ class VideoScripy():
             killed
             proc
         """
+        processTime = time()
+
         self.killed = False
         self.proc = subprocess.Popen(
             command,
@@ -353,6 +355,11 @@ class VideoScripy():
         )
         self.proc.wait()
         self.proc = None
+
+        processTime = time() - processTime
+        processTime = timedelta(seconds=processTime)
+        print("Took :", str(processTime)[:-3])
+
 
     def _getFrames(self, video:VideoInfo) -> None:
         """
@@ -406,9 +413,12 @@ class VideoScripy():
             frameToVideo:bool=False,
             commandInputs:str=None, commandMap:str=None, commandMetadata:str=None,
         ) -> str:
-        
+        if not frameToVideo:
+            title = process
+        else:
+            title = f'{process}-frameToVideo'
         command = (
-            f'start "VideoScripy-{process}" /min /wait /realtime'
+            f'start "VideoScripy-{title}" /min /wait /realtime'
             +f' cmd /c " {self.path[0]}:'
             +f' & cd {self.path}'
         )
@@ -562,11 +572,8 @@ class VideoScripy():
             # check if optimization needed
             if optimizedBitRate * self.optimizationTolerence > bitRate:
                 print('Skiped')
-                # recored no optimization needed
-                self.vList[index]['optimizeTime'] = '0'
                 continue
 
-            optimizeTime = time()
             command = self._getCommand(
                 video, process,
                 bitRateParam=bitRateParam
@@ -578,12 +585,6 @@ class VideoScripy():
                 return
             
             print("Done")
-
-            optimizeTime = time()-optimizeTime
-            optimizeTime = timedelta(seconds=round(optimizeTime,0))
-            # recored optimization result
-            self.vList[index]['optimizeTime'] = str(optimizeTime)
-            print("Took :", str(optimizeTime))
         
         # notice optimization end
         noticeProcessEnd()
@@ -666,8 +667,6 @@ class VideoScripy():
             # check if resize needed
             if widthTemp == width and heightTemp == height:
                 print("Skiped")
-                # recored no resize needed
-                self.vList[index]['resizeTime'] = '0'
                 continue
 
             # compute resizedBitRate
@@ -681,7 +680,6 @@ class VideoScripy():
             print(resizedBitRateText)
             bitRateParam = f'{resizedBitRate} -maxrate:v {resizedBitRate} -bufsize:v 800M '
 
-            resizeTime = time()
             command = self._getCommand(
                 video, process,
                 bitRateParam=bitRateParam,
@@ -694,12 +692,6 @@ class VideoScripy():
                 return
             
             print("Done")
-            
-            resizeTime = time()-resizeTime
-            resizeTime = timedelta(seconds=round(resizeTime,0))
-            # recored resizing result
-            self.vList[index]['resizeTime'] = str(resizeTime)
-            print("Took :", str(resizeTime))
         
         # notice resize end
         noticeProcessEnd()
@@ -766,7 +758,6 @@ class VideoScripy():
 
             ######################
             # region - --get frame
-            frameTime = time()
 
             # wait till end
             self._getFrames(video)
@@ -774,19 +765,13 @@ class VideoScripy():
             if self.killed:
                 return
             
-            frameTime = time()-frameTime
-            frameTime = timedelta(seconds=round(frameTime,0))
             totalFrames = len(listdir(self.path+'\\{}_tmp_frames'.format(name)))
-            # recored frame time
-            self.vList[index]['frameTime'] = str(frameTime)
-
-            print("Took :", str(frameTime))
+            
             # endregion frame
             #################
 
             ####################
             # region - --upscale
-            upscaleTime = time()
 
             upscaleOutputPath = self.path+f'\\{name}_{process}x{upscaleFactor}_frames'
             # create upscaled frames folder if not existing
@@ -830,18 +815,12 @@ class VideoScripy():
 
             # remove frames
             rmtree(self.path+'\\{}_tmp_frames'.format(name))
-
-            upscaleTime = time()-upscaleTime
-            upscaleTime = timedelta(seconds=round(upscaleTime,0))
-            # recored upscale result
-            self.vList[index]['upscaleTime'] = str(upscaleTime)
-            print("Took :", str(upscaleTime))
+            
             # endregion upscale
             ###################
 
             ###########################
             # region - --frame to video
-            frameToVideoTime = time()
 
             # upscaled frames to video
             command = self._getCommand(
@@ -860,17 +839,9 @@ class VideoScripy():
             
             # remove upscaled frames
             rmtree(upscaleOutputPath)
-
-            frameToVideoTime = time()-frameToVideoTime
-            frameToVideoTime = timedelta(seconds=round(frameToVideoTime,0))
-            # recored upscale result
-            self.vList[index]['frameToVideoTime'] = str(frameToVideoTime)
-            print("Took :", str(frameToVideoTime))
+            
             # endregion frame to video
             ##########################
-
-            self.vList[index]['upscaleTotalTime'] = str(frameTime + upscaleTime + frameToVideoTime)
-            print("Total time :", str(frameTime + upscaleTime + frameToVideoTime))
             
             self.vList[index]['upscaleFactor'] = upscaleFactor
 
@@ -948,7 +919,6 @@ class VideoScripy():
 
             ######################
             # region - --get frame
-            frameTime = time()
 
             # wait till end
             self._getFrames(video)
@@ -956,18 +926,11 @@ class VideoScripy():
             if self.killed:
                 return
             
-            frameTime = time()-frameTime
-            frameTime = timedelta(seconds=round(frameTime,0))
-            # recored frame time
-            self.vList[index]['frameTime'] = str(frameTime)
-
-            print("Took :", str(frameTime))
             # endregion frame
             #################
             
             ####################
             # region - --interpolate
-            interpolateTime = time()
 
             interpolateOutputPath = self.path+f'\\{name}_{process}_frames'
             # empty interpolate frames folder
@@ -1002,18 +965,12 @@ class VideoScripy():
 
             # remove frames
             rmtree(self.path+'\\{}_tmp_frames'.format(name))
-
-            interpolateTime = time() - interpolateTime
-            interpolateTime = timedelta(seconds=round(interpolateTime,0))
-            # recored interpolate result
-            self.vList[index]['interpolateTime'] = str(interpolateTime)
-            print("Took :", str(interpolateTime))
+            
             # endregion interpolate
             ###################
 
             ###########################
             # region - --frame to video
-            frameToVideoTime = time()
 
             # interpolate frames to video
             command = self._getCommand(
@@ -1032,17 +989,9 @@ class VideoScripy():
 
             # remove upscaled frames
             rmtree(interpolateOutputPath)
-
-            frameToVideoTime = time()-frameToVideoTime
-            frameToVideoTime = timedelta(seconds=round(frameToVideoTime,0))
-            # recored upscale result
-            self.vList[index]['frameToVideoTime'] = str(frameToVideoTime)
-            print("Took :", str(frameToVideoTime))
+            
             # endregion frame to video
             ##########################
-
-            self.vList[index]['interpolateTotalTime'] = str(frameTime + interpolateTime + frameToVideoTime)
-            print("Total time :", self.vList[index]['interpolateTotalTime'])
             
             self.vList[index]['interpolateFrame'] = fps
 
@@ -1115,7 +1064,6 @@ class VideoScripy():
                     commandMap += f'-map {index}:s? '
                     commandMetadata += f'-metadata:s:s:{index} title="{name}" '
 
-        spendTime = time()
         command = self._getCommand(
             video, process,
             commandInputs=commandInputs,
@@ -1129,10 +1077,6 @@ class VideoScripy():
             return
 
         print("Done")
-                
-        spendTime = time()-spendTime
-        spendTime = timedelta(seconds=round(spendTime,0))
-        print("Took :", str(spendTime))
         
         # notice merging end
         noticeProcessEnd()
