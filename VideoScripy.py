@@ -402,7 +402,8 @@ class VideoScripy():
             bitRateParam:str=None,
             rWidth:int=None, rHeight:int=None,
             upscaleFactor:int=None,
-            interpolateFrame:int=None,
+            interpolateFrame:int=None, fps:float=None,
+            frameToVideo:bool=False,
             commandInputs:str=None, commandMap:str=None, commandMetadata:str=None,
         ) -> str:
         
@@ -438,32 +439,61 @@ class VideoScripy():
             )
 
         elif process == VideoProcess.upscale.value:
-
-            command += (
-                ' & realesrgan-ncnn-vulkan.exe'
-                +f' -i "{video["name"]}_tmp_frames" '
-                +f' -o "{video["name"]}_{process}x{upscaleFactor}_frames" '
-            )
-            # TODO
-            # if upscaleFactor == "4p":
-            #     command += ' -n realesrgan-x4plus'
-            # elif upscaleFactor == "4pa":
-            #     command += ' -n realesrgan-x4plus-anime'
-            if upscaleFactor in [2,3,4]:
-                command += f' -n realesr-animevideov3 -s {upscaleFactor}'
+            if not frameToVideo:
+                command += (
+                    ' & realesrgan-ncnn-vulkan.exe'
+                    +f' -i "{video["name"]}_tmp_frames" '
+                    +f' -o "{video["name"]}_{process}x{upscaleFactor}_frames" '
+                )
+                # TODO
+                # if upscaleFactor == "4p":
+                #     command += ' -n realesrgan-x4plus'
+                # elif upscaleFactor == "4pa":
+                #     command += ' -n realesrgan-x4plus-anime'
+                if upscaleFactor in [2,3,4]:
+                    command += f' -n realesr-animevideov3 -s {upscaleFactor}'
+                else:
+                    print(f'Unknown video process "{upscaleFactor}"')
+                    exit()
+                command += ' -f jpg -g 1"'
             else:
-                print(f'Unknown video process "{upscaleFactor}"')
-                exit()
-            command += ' -f jpg -g 1"'
+                command += (
+                    ' & ffmpeg'
+                    +' -hwaccel cuda -hwaccel_output_format cuda'
+                    +f' -c:v mjpeg_cuvid -r {video["fps"]}'
+                    +f' -i "{video["name"]}_{process}x{upscaleFactor}_frames/frame%08d.jpg" '
+                    +' -hwaccel cuda -hwaccel_output_format cuda'
+                    +f' -i "{video["path"]}"'
+                    +' -map 0:v:0 -map 1:a? -map 1:s?'
+                    +f' -c:v {self.encoder} -c:a copy -c:s copy'
+                    +f' -b:v {bitRateParam}'
+                    +f' -r {video["fps"]}'
+                    +f' -y "{process}\\{video["name"]}" "'
+                )
 
         elif process == VideoProcess.interpolate.value:
-            command += (
-                ' & ifrnet-ncnn-vulkan.exe'
-                +f' -i "{video["name"]}_tmp_frames" '
-                +f' -o "{video["name"]}_{process}_frames" '
-                +' -m IFRNet_GoPro -g 1 -f frame%08d.jpg'
-                +f' -n {interpolateFrame}"'
-            )
+            if not frameToVideo:
+                command += (
+                    ' & ifrnet-ncnn-vulkan.exe'
+                    +f' -i "{video["name"]}_tmp_frames" '
+                    +f' -o "{video["name"]}_{process}_frames" '
+                    +' -m IFRNet_GoPro -g 1 -f frame%08d.jpg'
+                    +f' -n {interpolateFrame}"'
+                )
+            else:
+                command += (
+                    ' & ffmpeg'
+                    +' -hwaccel cuda -hwaccel_output_format cuda'
+                    +f' -c:v mjpeg_cuvid -r {fps}'
+                    +f' -i "{video["name"]}_{process}_frames/frame%08d.jpg" '
+                    +' -hwaccel cuda -hwaccel_output_format cuda'
+                    +f' -i "{video["path"]}"'
+                    +' -map 0:v:0 -map 1:a? -map 1:s?'
+                    +f' -c:v {self.encoder} -c:a copy -c:s copy'
+                    +f' -b:v {bitRateParam}'
+                    +f' -r {fps}'
+                    +f' -y "{process}\\{video["name"]}" "'
+                )
 
         elif process == VideoProcess.merge.value:
             command += (
@@ -814,20 +844,11 @@ class VideoScripy():
             frameToVideoTime = time()
 
             # upscaled frames to video
-            command = (
-                'start "VideoScripy-framesToVideos" /min /wait cmd /c " {}:'.format(self.path[0])
-                +' & cd {}'.format(self.path)
-                +' & ffmpeg'
-                +' -hwaccel cuda -hwaccel_output_format cuda'
-                +' -c:v mjpeg_cuvid -r {}'.format(frameRate)
-                +' -i "{}_{}x{}_frames/frame%08d.jpg" '.format(name, process, upscaleFactor)
-                +' -hwaccel cuda -hwaccel_output_format cuda'
-                +' -i "{}"'.format(path)
-                +' -map 0:v:0 -map 1:a? -map 1:s?'
-                +' -c:v {} -c:a copy -c:s copy'.format(self.encoder)
-                +' -b:v {}'.format(bitRateParam)
-                +' -r {} -y'.format(frameRate)
-                +' "upscale\\{}" "'.format(name)
+            command = self._getCommand(
+                video, process,
+                bitRateParam=bitRateParam,
+                upscaleFactor=upscaleFactor,
+                frameToVideo=True
             )
             print(f'Upscaling frame to video "{name}"')
             self._runProc(command)
@@ -994,21 +1015,12 @@ class VideoScripy():
             # region - --frame to video
             frameToVideoTime = time()
 
-            # upscaled frames to video
-            command = (
-                'start "VideoScripy-framesToVideo" /min /wait cmd /c " {}:'.format(self.path[0])
-                +' & cd {}'.format(self.path)
-                +' & ffmpeg'
-                +' -hwaccel cuda -hwaccel_output_format cuda'
-                +' -c:v mjpeg_cuvid -r {}'.format(fps)
-                +' -i "{}_{}_frames/frame%08d.jpg" '.format(name, process)
-                +' -hwaccel cuda -hwaccel_output_format cuda'
-                +' -i "{}"'.format(path)
-                +' -map 0:v:0 -map 1:a? -map 1:s?'
-                +' -c:v {} -c:a copy -c:s copy'.format(self.encoder)
-                +' -b:v {}'.format(bitRateParam)
-                +' -r {} -y'.format(fps)
-                +' "interpolate\\{}" "'.format(name)
+            # interpolate frames to video
+            command = self._getCommand(
+                video, process,
+                bitRateParam=bitRateParam,
+                fps=fps,
+                frameToVideo=True
             )
             print(f'Interpolating frame to video "{name}"')
             self._runProc(command)
