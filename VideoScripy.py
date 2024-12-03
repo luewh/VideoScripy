@@ -240,6 +240,7 @@ class VideoScripy():
                 # get video probe
                 videoProbeTemp = probe(self.vList[videoIndex]["path"])
                 # get first video stream info
+                # TODO
                 videoStreamTemp = [streams for streams in videoProbeTemp['streams'] if streams['codec_type'] == 'video'][0]
                 # get video format info
                 videoFormatTemp = videoProbeTemp['format']
@@ -309,77 +310,69 @@ class VideoScripy():
 
     def _getFFmpegCommand(
             self, video:VideoInfo, process:str,
-            bitRateParam:str=None,
-            rWidth:int=None, rHeight:int=None,
             getFramesOutputPath:str=None,
             upscaleFactor:int=None,
-            interpolateFPS:float=None,
             commandInputs:str=None, commandMap:str=None, commandMetadata:str=None,
         ) -> str:
-
-        if interpolateFPS == None:
-            fps = video['fps']
-        else:
-            fps = interpolateFPS
         
         command = (
-            f'start "VideoScripy-{process}" /min /wait /realtime'+
-            f' cmd /c " {self.path[0]}:'+
-            f' & cd {self.path}'+
+            f'start "VideoScripy-{process}" /min /wait /realtime'
+            f' cmd /c " {self.path[0]}:'
+            f' & cd {self.path}'
             ' & ffmpeg'
         )
 
         if process == VideoProcess.optimize.value:
             command += (
-                ' -hwaccel cuda -hwaccel_output_format cuda'+
-                f' -i "{video["path"]}"'+
+                ' -hwaccel cuda -hwaccel_output_format cuda'
+                f' -i "{video["path"]}"'
                 ' -map 0:v -map 0:a? -map 0:s?'
             )
 
         elif process == VideoProcess.resize.value:
             command += (
-                ' -hwaccel cuda -hwaccel_output_format cuda'+
-                f' -i "{video["path"]}"'+
-                ' -map 0:v -map 0:a? -map 0:s?'+
-                f' -vf scale_cuda={rWidth}:{rHeight}'
+                ' -hwaccel cuda -hwaccel_output_format cuda'
+                f' -i "{video["path"]}"'
+                ' -map 0:v -map 0:a? -map 0:s?'
+                f' -vf scale_cuda={video["resizeWidth"]}:{video["resizeHeight"]}'
             )
             
         elif process == VideoProcess.getFrames.value:
             command += (
-                f' -i "{video["path"]}"'+
-                ' -qscale:v 1 -qmin 1 -qmax 1 -y'+
-                f' -r {fps}'
+                f' -i "{video["path"]}"'
+                ' -qscale:v 1 -qmin 1 -qmax 1 -y'
+                f' -r {video["fps"]}'
                 f' "{getFramesOutputPath}/frame%08d.jpg" "'
             )
             return command
 
         elif process == VideoProcess.upscale.value:
             command += (
-                ' -hwaccel cuda -hwaccel_output_format cuda'+
-                f' -i "{video["path"]}"'+
-                ' -hwaccel cuda -hwaccel_output_format cuda'+
-                f' -c:v mjpeg_cuvid -r {fps}'+
-                f' -i "{video["name"]}_{process}x{upscaleFactor}_frames/frame%08d.jpg"'+
+                ' -hwaccel cuda -hwaccel_output_format cuda'
+                f' -i "{video["path"]}"'
+                ' -hwaccel cuda -hwaccel_output_format cuda'
+                f' -c:v mjpeg_cuvid -r {video["fps"]}'
+                f' -i "{video["name"]}_{process}x{upscaleFactor}_frames/frame%08d.jpg"'
                 ' -map 1:v:0 -map 0:a? -map 0:s?'
             )
 
         elif process == VideoProcess.interpolate.value:
             command += (
-                ' -hwaccel cuda -hwaccel_output_format cuda'+
-                f' -i "{video["path"]}"'+
-                ' -hwaccel cuda -hwaccel_output_format cuda'+
-                f' -c:v mjpeg_cuvid -r {fps}'+
-                f' -i "{video["name"]}_{process}_frames/frame%08d.jpg" '+
+                ' -hwaccel cuda -hwaccel_output_format cuda'
+                f' -i "{video["path"]}"'
+                ' -hwaccel cuda -hwaccel_output_format cuda'
+                f' -c:v mjpeg_cuvid -r {video["fps"]}'
+                f' -i "{video["name"]}_{process}_frames/frame%08d.jpg" '
                 ' -map 1:v:0 -map 0:a? -map 0:s?'
             )
 
         elif process == VideoProcess.merge.value:
             command += (
-                f' {commandInputs}'+
-                f' {commandMap}'+
-                ' -c copy'+
-                f' {commandMetadata}'+
-                f' -y'+
+                f' {commandInputs}'
+                f' {commandMap}'
+                ' -c copy'
+                f' {commandMetadata}'
+                f' -y'
                 f' "{process}\\{video["name"]}" "'
             )
             return command
@@ -388,13 +381,13 @@ class VideoScripy():
             exit()
         
         command += (
-            f' -c:v {self.encoder} -c:a copy -c:s copy'+
-            f' -b:v {bitRateParam}'+
-            f' -r {fps}'+
-            f' -y'+
+            f' -c:v {self.encoder} -c:a copy -c:s copy'
+            f' -b:v {video["optimizeBitRateParam"]}'
+            f' -r {video["fps"]}'
+            f' -y'
             f' "{process}\\{video["name"]}" "'
         )
-
+        
         return command
 
 
@@ -482,6 +475,16 @@ class VideoScripy():
         self._runProc(command)
         print("Done")
 
+    def pre_optimize(self, video:VideoInfo, width:int, height:int, quality:float) -> None:
+
+        # compute optimization bit rate
+        optimizeBitRate = width * height * quality
+
+        print(f'{video["bitRate"]/1_000:_.0f} Kbits/s --> {optimizeBitRate/1_000:_.0f} Kbits/s')
+
+        video['optimizeBitRate'] = optimizeBitRate
+        video['optimizeBitRateParam'] = f'{optimizeBitRate} -maxrate:v {optimizeBitRate} -bufsize:v 800M '
+        
     def optimize(self, quality:float=3.0) -> None:
         """
         Reduce video bit rate
@@ -516,29 +519,17 @@ class VideoScripy():
             # show current optimizing video
             print('--- {}/{} ---'.format(index+1,len(self.vList)))
             print(name)
-            print('{}x{}'.format(width, height), flush=True)
+            print('{}x{}'.format(width, height))
 
-            # compute optimization bit rate
-            optimizedBitRate = width * height * quality
-            # save and show bit rate change
-            optimizedBitRateText = (
-                '{:_.0f} --> {:_.0f} Kbits/s'
-                .format(bitRate/1_000, optimizedBitRate/1_000)
-            )
-            self.vList[index]['optimizedBitRate'] = optimizedBitRateText
-            print(optimizedBitRateText)
-            bitRateParam = f'{optimizedBitRate} -maxrate:v {optimizedBitRate} -bufsize:v 800M '
-            
+            self.pre_optimize(video, width, height, quality)
+
             # check if optimization needed
-            if optimizedBitRate * self.optimizationTolerence > bitRate:
+            if video["optimizeBitRate"] * self.optimizationTolerence > bitRate:
                 print('Skiped')
                 continue
 
-            command = self._getFFmpegCommand(
-                video, process,
-                bitRateParam=bitRateParam
-            )
-            print(f'Optimizing "{name}"')
+            command = self._getFFmpegCommand(video, process)
+            
             self._runProc(command)
 
             if self.killed:
@@ -547,15 +538,15 @@ class VideoScripy():
         # notice optimization end
         noticeProcessEnd()
     
-    def resize(self, rWidth:int, rHeight:int, quality:float=3.0) -> None:
+    def resize(self, setWidth:int, setHeight:int, quality:float=3.0) -> None:
         """
         Resize video
 
         Parameters:
-            rWidth (int):
+            setWidth (int):
                 -1 to let it by default
 
-            rHeight (int):
+            setHeight (int):
                 -1 to let it by default
 
             quality (float):
@@ -586,63 +577,54 @@ class VideoScripy():
             print('--- {}/{} ---'.format(index+1,len(self.vList)))
             print(name)
 
-            # compute rWidth and rHeight
-            if rWidth == -1 and rHeight == -1:
-                widthTemp = width
-                heightTemp = height
-            elif rWidth == -1:
-                widthTemp = ceil(width * rHeight/height)
-                heightTemp = rHeight
-            elif rHeight == -1:
-                widthTemp = rWidth
-                heightTemp = ceil(height * rWidth/width)
+            # compute setWidth and setHeight
+            if setWidth == -1 and setHeight == -1:
+                newWidth = width
+                newHeight = height
+            elif setWidth == -1:
+                newWidth = ceil(width * setHeight/height)
+                newHeight = setHeight
+            elif setHeight == -1:
+                newWidth = setWidth
+                newHeight = ceil(height * setWidth/width)
             else:
-                widthTemp = rWidth
-                heightTemp = rHeight
+                newWidth = setWidth
+                newHeight = setHeight
             
             # to positive size
-            widthTemp = abs(widthTemp)
-            heightTemp = abs(heightTemp)
+            newWidth = abs(newWidth)
+            newHeight = abs(newHeight)
 
-            # even widthTemp and heightTemp
-            if widthTemp%2 != 0:
-                widthTemp += 1
-            if heightTemp%2 != 0:
-                heightTemp += 1
+            # even newWidth and newHeight
+            if newWidth%2 != 0:
+                newWidth += 1
+            if newHeight%2 != 0:
+                newHeight += 1
 
             # ratio warning
-            if widthTemp/heightTemp != width/height:
+            if newWidth/newHeight != width/height:
                 print('Warning, rize ratio will be changed')
             
             # save and show size change
             resizedSizeText = (
                 '{}x{} --> {}x{}'
-                .format(width, height, widthTemp, heightTemp)
+                .format(width, height, newWidth, newHeight)
             )
             self.vList[index]['resizedSize'] = resizedSizeText
             print(resizedSizeText)
             
             # check if resize needed
-            if widthTemp == width and heightTemp == height:
+            if newWidth == width and newHeight == height:
                 print("Skiped")
                 continue
+            
+            video["resizeWidth"] = newWidth
+            video["resizeHeight"] = newHeight
 
-            # compute resizedBitRate
-            resizedBitRate = widthTemp * heightTemp * quality
-            # save and show bit rate change
-            resizedBitRateText = (
-                '{:_.0f} --> {:_.0f} Kbits/s'
-                .format(bitRate/1_000, resizedBitRate/1_000)
-            )
-            self.vList[index]['resizedBitRate'] = resizedBitRateText
-            print(resizedBitRateText)
-            bitRateParam = f'{resizedBitRate} -maxrate:v {resizedBitRate} -bufsize:v 800M '
+            self.pre_optimize(video, newWidth, newHeight, quality)
 
-            command = self._getFFmpegCommand(
-                video, process,
-                bitRateParam=bitRateParam,
-                rWidth=widthTemp, rHeight=heightTemp
-            )
+            command = self._getFFmpegCommand(video, process)
+
             print(f'Resizing "{name}"')
             self._runProc(command)
 
@@ -696,47 +678,24 @@ class VideoScripy():
             print(name)
 
             # save and show size change
-            upscaledSizeText = (
-                '{}x{} --> {}x{}'
-                .format(width, height, int(width*upscaleFactor), int(height*upscaleFactor))
-            )
-            self.vList[index]['upscaledSize'] = upscaledSizeText
-            print(upscaledSizeText)
+            newWidth = width * upscaleFactor
+            newHeight = height * upscaleFactor
+            print(f'{width}x{height} --> {newWidth}x{newHeight}')
 
-            # compute upscale bit rate
-            upscaledBitRate = width * height * quality * upscaleFactor**2
-            # save and show bit rate change
-            upscaledBitRateText = (
-                '{:_.0f} --> {:_.0f} Kbits/s'
-                .format(bitRate/1_000, upscaledBitRate/1_000)
-            )
-            self.vList[index]['upscaledBitRate'] = upscaledBitRateText
-            print(upscaledBitRateText)
-            bitRateParam = f'{upscaledBitRate} -maxrate {upscaledBitRate} -bufsize 800M '
+            self.pre_optimize(video, newWidth, newHeight, quality)
 
-            ######################
-            # region - --get frame
-
-            # wait till end
             self._getFrames(video)
             
             if self.killed:
                 return
             
             totalFrames = len(listdir(self.path+'\\{}_tmp_frames'.format(name)))
-            
-            # endregion frame
-            #################
-
-            ####################
-            # region - --upscale
 
             upscaleOutputPath = self.path+f'\\{name}_{process}x{upscaleFactor}_frames'
             # create upscaled frames folder if not existing
             if not isdir(upscaleOutputPath):
                 mkdir(upscaleOutputPath)
                 print(f'Upscaling "{name}"')
-
             # continue existing frames upscale
             else:
                 for root, _, files in walk(upscaleOutputPath):
@@ -787,17 +746,10 @@ class VideoScripy():
 
             # remove frames
             rmtree(self.path+'\\{}_tmp_frames'.format(name))
-            
-            # endregion upscale
-            ###################
-
-            ###########################
-            # region - --frame to video
 
             # upscaled frames to video
             command = self._getFFmpegCommand(
                 video, process,
-                bitRateParam=bitRateParam,
                 upscaleFactor=upscaleFactor
             )
             print(f'Upscaling frame to video "{name}"')
@@ -805,8 +757,6 @@ class VideoScripy():
 
             if self.killed:
                 return
-            
-            print("Done")
             
             # remove upscaled frames
             rmtree(upscaleOutputPath)
@@ -877,31 +827,12 @@ class VideoScripy():
             self.vList[index]['interpolateFrame'] = interpolateFrameText
             print(interpolateFrameText)
 
-            # compute interpolate bit rate
-            interpolateBitRate = width * height * quality
-            # save and show bit rate change
-            interpolateBitRateText = (
-                '{:_.0f} --> {:_.0f} Kbits/s'
-                .format(bitRate/1_000, interpolateBitRate/1_000)
-            )
-            self.vList[index]['interpolateBitRate'] = interpolateBitRateText
-            print(interpolateBitRateText)
-            bitRateParam = f'{interpolateBitRate} -maxrate:v {interpolateBitRate} -bufsize:v 800M '
+            self.pre_optimize(video, width, height, quality)
 
-            ######################
-            # region - --get frame
-
-            # wait till end
             self._getFrames(video)
 
             if self.killed:
                 return
-            
-            # endregion frame
-            #################
-            
-            ####################
-            # region - --interpolate
 
             interpolateOutputPath = self.path+f'\\{name}_{process}_frames'
             # empty interpolate frames folder
@@ -931,7 +862,7 @@ class VideoScripy():
             print(f'Interpolating "{name}"')
 
             self._runProc(command)
-            
+
             if self.killed:
                 global stop_threads
                 stop_threads = True
@@ -943,34 +874,20 @@ class VideoScripy():
 
             # remove frames
             rmtree(self.path+'\\{}_tmp_frames'.format(name))
-            
-            # endregion interpolate
-            ###################
 
-            ###########################
-            # region - --frame to video
+            video['fps'] = fps
 
             # interpolate frames to video
-            command = self._getFFmpegCommand(
-                video, process,
-                bitRateParam=bitRateParam,
-                interpolateFPS=fps
-            )
+            command = self._getFFmpegCommand(video, process)
+
             print(f'Interpolating frame to video "{name}"')
             self._runProc(command)
 
             if self.killed:
                 return
 
-            print("Done")
-
             # remove upscaled frames
             rmtree(interpolateOutputPath)
-            
-            # endregion frame to video
-            ##########################
-            
-            self.vList[index]['interpolateFrame'] = fps
 
         # notice interpolate end
         noticeProcessEnd()
@@ -1052,8 +969,6 @@ class VideoScripy():
 
         if self.killed:
             return
-
-        print("Done")
         
         # notice merging end
         noticeProcessEnd()
