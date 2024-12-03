@@ -16,6 +16,7 @@ from winsound import Beep
 from math import ceil
 from typing import TypedDict
 from enum import Enum
+from math import ceil
 
 
 
@@ -36,6 +37,7 @@ class VideoInfo(TypedDict):
     width: int
     height: int
     fps: float
+    nbFrames: int
 
 class VideoProcess(Enum):
     optimize = "optimize"
@@ -238,19 +240,21 @@ class VideoScripy():
         for videoIndex in range(len(self.vList)-1,-1,-1):
             try:
                 # get video probe
-                videoProbeTemp = probe(self.vList[videoIndex]["path"])
+                videoProbe = probe(self.vList[videoIndex]["path"])
                 # get first video stream info
                 # TODO
-                videoStreamTemp = [streams for streams in videoProbeTemp['streams'] if streams['codec_type'] == 'video'][0]
-                # get video format info
-                videoFormatTemp = videoProbeTemp['format']
+                videoStreamTemp = [
+                    streams for streams in videoProbe['streams']
+                    if streams['codec_type'] == 'video'
+                ][0]
                 # write info
-                self.vList[videoIndex]['duration'] = timedelta(seconds=round(float(videoFormatTemp['duration']),3))
-                self.vList[videoIndex]['bitRate'] = int(videoFormatTemp['bit_rate'])
+                self.vList[videoIndex]['duration'] = timedelta(seconds=float(videoStreamTemp['duration']))
+                self.vList[videoIndex]['bitRate'] = int(videoStreamTemp['bit_rate'])
                 self.vList[videoIndex]['width'] = int(videoStreamTemp['width'])
                 self.vList[videoIndex]['height'] = int(videoStreamTemp['height'])
-                frameRateTemp = videoStreamTemp['r_frame_rate'].split('/')
-                self.vList[videoIndex]['fps'] = round(float(frameRateTemp[0])/float(frameRateTemp[1]),2)
+                num, denom = videoStreamTemp['r_frame_rate'].split('/')
+                self.vList[videoIndex]['fps'] = float(num)/float(denom)
+                self.vList[videoIndex]['nbFrames'] = int(videoStreamTemp['nb_frames'])
             except Exception as e:
                 print(e)
                 print(f'Can not get video info of "{self.vList[videoIndex]["name"]}"')
@@ -310,8 +314,6 @@ class VideoScripy():
 
     def _getFFmpegCommand(
             self, video:VideoInfo, process:str,
-            getFramesOutputPath:str=None,
-            upscaleFactor:int=None,
             commandInputs:str=None, commandMap:str=None, commandMetadata:str=None,
         ) -> str:
         
@@ -342,7 +344,7 @@ class VideoScripy():
                 f' -i "{video["path"]}"'
                 ' -qscale:v 1 -qmin 1 -qmax 1 -y'
                 f' -r {video["fps"]}'
-                f' "{getFramesOutputPath}/frame%08d.jpg" "'
+                f' "{video["getFramesOutputPath"]}/frame%08d.jpg" "'
             )
             return command
 
@@ -352,7 +354,7 @@ class VideoScripy():
                 f' -i "{video["path"]}"'
                 ' -hwaccel cuda -hwaccel_output_format cuda'
                 f' -c:v mjpeg_cuvid -r {video["fps"]}'
-                f' -i "{video["name"]}_{process}x{upscaleFactor}_frames/frame%08d.jpg"'
+                f' -i "{video["upscaleOutputPath"]}/frame%08d.jpg"'
                 ' -map 1:v:0 -map 0:a? -map 0:s?'
             )
 
@@ -362,7 +364,7 @@ class VideoScripy():
                 f' -i "{video["path"]}"'
                 ' -hwaccel cuda -hwaccel_output_format cuda'
                 f' -c:v mjpeg_cuvid -r {video["fps"]}'
-                f' -i "{video["name"]}_{process}_frames/frame%08d.jpg" '
+                f' -i "{video["interpolateOutputPath"]}/frame%08d.jpg" '
                 ' -map 1:v:0 -map 0:a? -map 0:s?'
             )
 
@@ -447,33 +449,36 @@ class VideoScripy():
             path
             proc
         """
-        name = video['name']
-        path = video['path']
-        frameRate = video['fps']
-        duration = video['duration']
-
-        frameOutputPath = self.path+'\\{}_tmp_frames'.format(name)
+        getFramesOutputPath = video["getFramesOutputPath"]
         # check if get frame is necessary
-        if isdir(frameOutputPath):
-            # less than what it should has
-            if len(listdir(frameOutputPath)) < int(duration.total_seconds() * frameRate):
-                print("Missing frames, regenerate frames needed")
-                rmtree(frameOutputPath)
-            else:
+        if isdir(getFramesOutputPath):
+            # equal to what it should has
+            if len(listdir(getFramesOutputPath)) == video["nbFrames"]:
                 print("No need to get frames")
                 return
+            # less than what it should has
+            elif len(listdir(getFramesOutputPath)) < video["nbFrames"]:
+                print("Missing frames, regenerate frames needed")
+                rmtree(getFramesOutputPath)
+            # more than what it should has
+            elif len(listdir(getFramesOutputPath)) > video["nbFrames"]:
+                print("To much frames, regenerate frames needed")
+                rmtree(getFramesOutputPath)
+            else:
+                print("_getFrames() : ???")
 
         # create new temporary frames folder
-        mkdir(frameOutputPath)
+        mkdir(getFramesOutputPath)
 
-        command = self._getFFmpegCommand(
-            video, VideoProcess.getFrames.value,
-            getFramesOutputPath=frameOutputPath
-        )
+        command = self._getFFmpegCommand(video, VideoProcess.getFrames.value)
         
-        print(f'Getting Frames of "{name}"')
+        print(f'Getting Frames')
         self._runProc(command)
-        print("Done")
+
+        # check _getFrames accuracy
+        getedFrames = len(listdir(getFramesOutputPath))
+        if getedFrames != video["nbFrames"]:
+            print(f'Waring, geted frames {getedFrames} != video frames {video["nbFrames"]}')
 
     def pre_optimize(self, video:VideoInfo, width:int, height:int, quality:float) -> None:
 
@@ -484,7 +489,8 @@ class VideoScripy():
 
         video['optimizeBitRate'] = optimizeBitRate
         video['optimizeBitRateParam'] = f'{optimizeBitRate} -maxrate:v {optimizeBitRate} -bufsize:v 800M '
-        
+    
+
     def optimize(self, quality:float=3.0) -> None:
         """
         Reduce video bit rate
@@ -684,12 +690,12 @@ class VideoScripy():
 
             self.pre_optimize(video, newWidth, newHeight, quality)
 
+            getFramesOutputPath = self.path+'\\{}_tmp_frames'.format(name)
+            video["getFramesOutputPath"] = getFramesOutputPath
             self._getFrames(video)
             
             if self.killed:
                 return
-            
-            totalFrames = len(listdir(self.path+'\\{}_tmp_frames'.format(name)))
 
             upscaleOutputPath = self.path+f'\\{name}_{process}x{upscaleFactor}_frames'
             # create upscaled frames folder if not existing
@@ -698,19 +704,19 @@ class VideoScripy():
                 print(f'Upscaling "{name}"')
             # continue existing frames upscale
             else:
-                for root, _, files in walk(upscaleOutputPath):
+                for _, _, files in walk(upscaleOutputPath):
                     # remove upscaled frame's origin frames except last two
-                    for upscaled in files[:-2]:
-                        remove(root.replace(f'_{process}x{upscaleFactor}_frames','_tmp_frames')+'\\'+upscaled)
+                    for framesUpscaled in files[:-2]:
+                        remove(getFramesOutputPath+'\\'+framesUpscaled)
                     # remove last two upscaled frames
                     for lastTwoUpscaled in files[-2:]:
-                        remove(root+'\\'+lastTwoUpscaled)
+                        remove(upscaleOutputPath+'\\'+lastTwoUpscaled)
                 print(f'Continue upscaling "{name}"')
             
             # frames watch
             watch = Thread(
                 target=frameWatch,
-                args=(upscaleOutputPath,totalFrames)
+                args=(upscaleOutputPath, video["nbFrames"])
             )
             watch.start()
 
@@ -719,8 +725,8 @@ class VideoScripy():
                 f' cmd /c " {self.path[0]}:'+
                 f' & cd {self.path}'+
                 ' & realesrgan-ncnn-vulkan.exe'+
-                f' -i "{video["name"]}_tmp_frames"'+
-                f' -o "{video["name"]}_{process}x{upscaleFactor}_frames"'
+                f' -i "{getFramesOutputPath}"'+
+                f' -o "{upscaleOutputPath}"'
             )
             if upscaleFactor in [2,3,4]:
                 command += f' -n realesr-animevideov3 -s {upscaleFactor} -f jpg -g 1 "'
@@ -745,13 +751,12 @@ class VideoScripy():
                 watch.join()
 
             # remove frames
-            rmtree(self.path+'\\{}_tmp_frames'.format(name))
+            rmtree(getFramesOutputPath)
 
+            
+            video["upscaleOutputPath"] = upscaleOutputPath
             # upscaled frames to video
-            command = self._getFFmpegCommand(
-                video, process,
-                upscaleFactor=upscaleFactor
-            )
+            command = self._getFFmpegCommand(video, process)
             print(f'Upscaling frame to video "{name}"')
             self._runProc(command)
 
@@ -760,11 +765,6 @@ class VideoScripy():
             
             # remove upscaled frames
             rmtree(upscaleOutputPath)
-            
-            # endregion frame to video
-            ##########################
-            
-            self.vList[index]['upscaleFactor'] = upscaleFactor
 
         # notice upscale end
         noticeProcessEnd()
@@ -819,22 +819,21 @@ class VideoScripy():
                 continue
 
             # save and show interpolate change
-            interpolateFrame = int(duration.total_seconds() * fps)
-            interpolateFrameText = (
-                '{}fps --> {}fps'
-                .format(frameRate, fps)
-            )
-            self.vList[index]['interpolateFrame'] = interpolateFrameText
-            print(interpolateFrameText)
+            interpolateFrame = ceil(duration.total_seconds() * fps)
+
+            print('{frameRate}fps --> {fps}fps')
 
             self.pre_optimize(video, width, height, quality)
-
+            
+            getFramesOutputPath = self.path+'\\{}_tmp_frames'.format(name)
+            video["getFramesOutputPath"] = getFramesOutputPath
             self._getFrames(video)
 
             if self.killed:
                 return
 
             interpolateOutputPath = self.path+f'\\{name}_{process}_frames'
+
             # empty interpolate frames folder
             if isdir(interpolateOutputPath):
                 rmtree(interpolateOutputPath)
@@ -854,8 +853,8 @@ class VideoScripy():
                 f' cmd /c " {self.path[0]}:'+
                 f' & cd {self.path}'+
                 ' & ifrnet-ncnn-vulkan.exe'+
-                f' -i "{video["name"]}_tmp_frames"'+
-                f' -o "{video["name"]}_{process}_frames"'+
+                f' -i "{getFramesOutputPath}"'+
+                f' -o "{interpolateOutputPath}"'+
                 ' -m IFRNet_GoPro -g 1 -f frame%08d.jpg'+
                 f' -n {interpolateFrame}"'
             )
@@ -873,9 +872,10 @@ class VideoScripy():
                 watch.join()
 
             # remove frames
-            rmtree(self.path+'\\{}_tmp_frames'.format(name))
+            rmtree(getFramesOutputPath)
 
             video['fps'] = fps
+            video["interpolateOutputPath"] = interpolateOutputPath
 
             # interpolate frames to video
             command = self._getFFmpegCommand(video, process)
