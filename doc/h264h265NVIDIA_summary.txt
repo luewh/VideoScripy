@@ -1,6 +1,7 @@
 https://slhck.info/video/2017/03/01/rate-control.html
 https://docs.nvidia.com/video-technologies/video-codec-sdk/12.1/nvenc-video-encoder-api-prog-guide/index.html
 https://www.nvidia.com/en-us/geforce/guides/broadcasting-guide/
+https://developer.nvidia.com/video-encode-and-decode-gpu-support-matrix-new
 
 # Constant bitrate
 self.encoder = ' -rc cbr -b:v avBR'
