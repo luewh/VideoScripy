@@ -323,56 +323,51 @@ class VideoScripy():
             f' & cd {self.path}'
             ' & ffmpeg'
         )
+        path = video['path']
+        name = video['name']
+        fps = video['fps']
 
         if process == VideoProcess.optimize.value:
             command += (
                 ' -hwaccel cuda -hwaccel_output_format cuda'
-                f' -i "{video["path"]}"'
+                f' -i "{path}"'
                 ' -map 0:v -map 0:a? -map 0:s?'
             )
 
         elif process == VideoProcess.resize.value:
             command += (
                 ' -hwaccel cuda -hwaccel_output_format cuda'
-                f' -i "{video["path"]}"'
+                f' -i "{path}"'
                 ' -map 0:v -map 0:a? -map 0:s?'
                 f' -vf scale_cuda={video["resizeWidth"]}:{video["resizeHeight"]}'
             )
             
         elif process == VideoProcess.getFrames.value:
             command += (
-                f' -i "{video["path"]}"'
+                f' -i "{path}"'
                 ' -qscale:v 1 -qmin 1 -qmax 1 -y'
-                f' -r {video["fps"]}'
+                f' -r {fps}'
                 f' "{video["getFramesOutputPath"]}/frame%08d.jpg" "'
             )
             return command
 
-        elif process == VideoProcess.upscale.value:
-            command += (
-                ' -hwaccel cuda -hwaccel_output_format cuda'
-                f' -i "{video["path"]}"'
-                ' -hwaccel cuda -hwaccel_output_format cuda'
-                f' -c:v mjpeg_cuvid -r {video["fps"]}'
-                f' -i "{video["upscaleOutputPath"]}/frame%08d.jpg"'
-                ' -map 1:v:0 -map 0:a? -map 0:s?'
-            )
+        elif process in [VideoProcess.upscale.value, VideoProcess.interpolate.value]:
 
-        elif process == VideoProcess.interpolate.value:
+            if process == VideoProcess.upscale.value:
+                processOutputPath = video["upscaleOutputPath"]
+
+            elif process == VideoProcess.interpolate.value:
+                processOutputPath = video["interpolateOutputPath"]
+                fps = video["interpolateFps"]
+
             command += (
                 ' -hwaccel cuda -hwaccel_output_format cuda'
-                f' -i "{video["path"]}"'
+                f' -i "{path}"'
                 ' -hwaccel cuda -hwaccel_output_format cuda'
-                f' -c:v mjpeg_cuvid -r {video["interpolateFps"]}'
-                f' -i "{video["interpolateOutputPath"]}/frame%08d.jpg" '
+                f' -c:v mjpeg_cuvid -r {fps}'
+                f' -i "{processOutputPath}/frame%08d.jpg"'
                 ' -map 1:v:0 -map 0:a? -map 0:s?'
-                f' -c:v {self.encoder} -c:a copy -c:s copy'
-                f' -b:v {video["optimizeBitRateParam"]}'
-                f' -r {video["interpolateFps"]}'
-                f' -y'
-                f' "{process}\\{video["name"]}" "'
             )
-            return command
 
         elif process == VideoProcess.merge.value:
             command += (
@@ -381,7 +376,7 @@ class VideoScripy():
                 ' -c copy'
                 f' {commandMetadata}'
                 f' -y'
-                f' "{process}\\{video["name"]}" "'
+                f' "{process}\\{name}" "'
             )
             return command
         
@@ -392,9 +387,9 @@ class VideoScripy():
         command += (
             f' -c:v {self.encoder} -c:a copy -c:s copy'
             f' -b:v {video["optimizeBitRateParam"]}'
-            f' -r {video["fps"]}'
+            f' -r {fps}'
             f' -y'
-            f' "{process}\\{video["name"]}" "'
+            f' "{process}\\{name}" "'
         )
         return command
 
@@ -541,6 +536,7 @@ class VideoScripy():
 
             command = self._getFFmpegCommand(video, process)
             
+            print(f'Optimizing "{name}"')
             self._runProc(command)
 
             if self.killed:
