@@ -253,7 +253,7 @@ class VideoScripy():
                 self.vList[videoIndex]['width'] = int(videoStreamTemp['width'])
                 self.vList[videoIndex]['height'] = int(videoStreamTemp['height'])
                 num, denom = videoStreamTemp['r_frame_rate'].split('/')
-                self.vList[videoIndex]['fps'] = float(num)/float(denom)
+                self.vList[videoIndex]['fps'] = round(float(num)/float(denom),2)
                 self.vList[videoIndex]['nbFrames'] = int(videoStreamTemp['nb_frames'])
             except Exception as e:
                 print(e)
@@ -284,9 +284,9 @@ class VideoScripy():
         
         if not gpu:
             if not h265:
-                self.encoder = ' libx264 -crf 23'
+                self.encoder = ' libx264 -crf 1'
             else:
-                self.encoder = ' libx265 -crf 28'
+                self.encoder = ' libx265 -crf 0'
             
             self.encoder += (
                 ' -preset medium'
@@ -294,21 +294,17 @@ class VideoScripy():
 
         else:
             if not h265:
-                self.encoder = ' h264_nvenc'
+                self.encoder = ' h264_nvenc -b_ref_mode middle'
             else:
-                self.encoder = ' hevc_nvenc'
+                self.encoder = ' hevc_nvenc -weighted_pred 1'
 
             self.encoder += (
-                ' -preset p4'+
-                ' -tune hq'+
-                ' -rc vbr'+
-                ' -rc-lookahead 32'+
-                ' -multipass qres'+
-                # ' -b_ref_mode middle'
-                ' -spatial_aq 1'+
-                ' -weighted_pred 1'+
-                ' -bufsize:v 800M'+
-                ' -maxrate:v 800M'+
+                ' -preset p6'
+                ' -tune hq'
+                ' -rc vbr'
+                ' -rc-lookahead 32'
+                ' -multipass fullres'
+                ' -spatial_aq 1'
                 ' -cq 1'
             )
 
@@ -323,23 +319,34 @@ class VideoScripy():
             f' & cd {self.path}'
             ' & ffmpeg'
         )
+
         path = video['path']
         name = video['name']
         fps = video['fps']
 
+        if self.gpu:
+            haccel = ' -hwaccel cuda -hwaccel_output_format cuda'
+        else:
+            haccel = ''
+
+
         if process == VideoProcess.optimize.value:
             command += (
-                ' -hwaccel cuda -hwaccel_output_format cuda'
+                f' {haccel}'
                 f' -i "{path}"'
                 ' -map 0:v -map 0:a? -map 0:s?'
             )
 
         elif process == VideoProcess.resize.value:
+            if self.gpu:
+                resizeFilter = "scale_cuda"
+            else:
+                resizeFilter = "scale"
             command += (
-                ' -hwaccel cuda -hwaccel_output_format cuda'
+                f' {haccel}'
                 f' -i "{path}"'
                 ' -map 0:v -map 0:a? -map 0:s?'
-                f' -vf scale_cuda={video["resizeWidth"]}:{video["resizeHeight"]}'
+                f' -vf {resizeFilter}={video["resizeWidth"]}:{video["resizeHeight"]}'
             )
             
         elif process == VideoProcess.getFrames.value:
@@ -361,9 +368,9 @@ class VideoScripy():
                 fps = video["interpolateFps"]
 
             command += (
-                ' -hwaccel cuda -hwaccel_output_format cuda'
+                f' {haccel}'
                 f' -i "{path}"'
-                ' -hwaccel cuda -hwaccel_output_format cuda'
+                f' {haccel}'
                 f' -c:v mjpeg_cuvid -r {fps}'
                 f' -i "{processOutputPath}/frame%08d.jpg"'
                 ' -map 1:v:0 -map 0:a? -map 0:s?'
@@ -385,8 +392,8 @@ class VideoScripy():
             exit()
         
         command += (
-            f' -c:v {self.encoder} -c:a copy -c:s copy'
-            f' -b:v {video["optimizeBitRateParam"]}'
+            f' -c:v copy -c:a copy -c:s copy'
+            f' -c:v:0 {self.encoder} {video["optimizeBitRateParam"]}'
             f' -r {fps}'
             f' -y'
             f' "{process}\\{name}" "'
@@ -489,7 +496,10 @@ class VideoScripy():
         print(f'{video["bitRate"]/1_000:_.0f} Kbits/s --> {optimizeBitRate/1_000:_.0f} Kbits/s')
 
         video['optimizeBitRate'] = optimizeBitRate
-        video['optimizeBitRateParam'] = f'{optimizeBitRate} -maxrate:v {optimizeBitRate} -bufsize:v 800M '
+        video['optimizeBitRateParam'] = (
+            f' -maxrate:v {optimizeBitRate}'
+            f' -bufsize:v {optimizeBitRate*2} '
+        )
 
 
     def optimize(self, quality:float=3.0) -> None:
