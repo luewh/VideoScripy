@@ -9,7 +9,7 @@ from threading import Thread
 from pathlib import Path
 from datetime import timedelta
 from shutil import rmtree
-from os import walk, mkdir, remove, listdir, getcwd
+from os import walk, mkdir, remove, listdir, getcwd, rmdir
 from os.path import isdir
 from time import time, sleep
 from winsound import Beep
@@ -145,9 +145,9 @@ class VideoScripy():
 
         self.proc = None
         self.killed = False
-
-
-    # get video related #####################
+    
+    
+    # get video related
     def setPath(self, path:str="") -> bool:
         """
         Set attributes path, return setting result
@@ -242,7 +242,7 @@ class VideoScripy():
                 # get video probe
                 videoProbe = probe(self.vList[videoIndex]["path"])
                 # get first video stream info
-                # TODO
+                # TODO add multiple video stream waring
                 videoStreamTemp = [
                     streams for streams in videoProbe['streams']
                     if streams['codec_type'] == 'video'
@@ -262,7 +262,7 @@ class VideoScripy():
                 self.vList.pop(videoIndex)
 
 
-    # ffmpeg encoder related #####################
+    # ffmpeg encoder related
     def setEncoder(self, h265=True, gpu=True):
         """
         Set encoder parameters according h265 and GPU usage
@@ -363,10 +363,16 @@ class VideoScripy():
                 ' -hwaccel cuda -hwaccel_output_format cuda'
                 f' -i "{video["path"]}"'
                 ' -hwaccel cuda -hwaccel_output_format cuda'
-                f' -c:v mjpeg_cuvid -r {video["fps"]}'
+                f' -c:v mjpeg_cuvid -r {video["interpolateFps"]}'
                 f' -i "{video["interpolateOutputPath"]}/frame%08d.jpg" '
                 ' -map 1:v:0 -map 0:a? -map 0:s?'
+                f' -c:v {self.encoder} -c:a copy -c:s copy'
+                f' -b:v {video["optimizeBitRateParam"]}'
+                f' -r {video["interpolateFps"]}'
+                f' -y'
+                f' "{process}\\{video["name"]}" "'
             )
+            return command
 
         elif process == VideoProcess.merge.value:
             command += (
@@ -378,6 +384,7 @@ class VideoScripy():
                 f' "{process}\\{video["name"]}" "'
             )
             return command
+        
         else:
             print(f'Unknown video process "{process}"')
             exit()
@@ -389,11 +396,10 @@ class VideoScripy():
             f' -y'
             f' "{process}\\{video["name"]}" "'
         )
-        
         return command
 
 
-    # video process related #####################
+    # video process related
     def killProc(self) -> None:
         """
         Kill and stop running video process,
@@ -489,7 +495,7 @@ class VideoScripy():
 
         video['optimizeBitRate'] = optimizeBitRate
         video['optimizeBitRateParam'] = f'{optimizeBitRate} -maxrate:v {optimizeBitRate} -bufsize:v 800M '
-    
+
 
     def optimize(self, quality:float=3.0) -> None:
         """
@@ -515,12 +521,11 @@ class VideoScripy():
             mkdir(outputFolder)
         
         for index, video in enumerate(self.vList):
-            path = video['path']
+
             name = video['name']
             width = video['width']
             height = video['height']
             bitRate = video['bitRate']
-            frameRate = video['fps']
 
             # show current optimizing video
             print('--- {}/{} ---'.format(index+1,len(self.vList)))
@@ -540,8 +545,13 @@ class VideoScripy():
 
             if self.killed:
                 return
-            
-        # notice optimization end
+        
+        # remove empty folder
+        try:
+            rmdir(outputFolder)
+        except:
+            pass
+
         noticeProcessEnd()
     
     def resize(self, setWidth:int, setHeight:int, quality:float=3.0) -> None:
@@ -571,13 +581,10 @@ class VideoScripy():
             mkdir(outputFolder)
         
         for index, video in enumerate(self.vList):
-                
-            path = video['path']
+            
             name = video['name']
             width = video['width']
             height = video['height']
-            bitRate = video['bitRate']
-            frameRate = video['fps']
 
             # show current resizing video
             print('--- {}/{} ---'.format(index+1,len(self.vList)))
@@ -611,13 +618,7 @@ class VideoScripy():
             if newWidth/newHeight != width/height:
                 print('Warning, rize ratio will be changed')
             
-            # save and show size change
-            resizedSizeText = (
-                '{}x{} --> {}x{}'
-                .format(width, height, newWidth, newHeight)
-            )
-            self.vList[index]['resizedSize'] = resizedSizeText
-            print(resizedSizeText)
+            print(f'{width}x{height} --> {newWidth}x{newHeight}')
             
             # check if resize needed
             if newWidth == width and newHeight == height:
@@ -636,10 +637,13 @@ class VideoScripy():
 
             if self.killed:
                 return
-            
-            print("Done")
         
-        # notice resize end
+        # remove empty folder
+        try:
+            rmdir(outputFolder)
+        except:
+            pass
+
         noticeProcessEnd()
 
     def upscale(self, upscaleFactor:int=2, quality:float=3) -> None:
@@ -671,13 +675,10 @@ class VideoScripy():
             mkdir(outputFolder)
 
         for index, video in enumerate(self.vList):
-                
-            path = video['path']
+            
             name = video['name']
             width = video['width']
             height = video['height']
-            bitRate = video['bitRate']
-            frameRate = video['fps']
 
             # show current upscaling video
             print('--- {}/{} ---'.format(index+1,len(self.vList)))
@@ -766,7 +767,12 @@ class VideoScripy():
             # remove upscaled frames
             rmtree(upscaleOutputPath)
 
-        # notice upscale end
+        # remove empty folder
+        try:
+            rmdir(outputFolder)
+        except:
+            pass
+        
         noticeProcessEnd()
 
     def interpolate(self, fps:float=30.0, quality:float=3) -> None:
@@ -797,14 +803,11 @@ class VideoScripy():
         if not isdir(outputFolder):
             mkdir(outputFolder)
 
-
         for index, video in enumerate(self.vList):
 
-            path = video['path']
             name = video['name']
             width = video['width']
             height = video['height']
-            bitRate = video['bitRate']
             frameRate = video['fps']
             duration = video['duration']
 
@@ -821,7 +824,7 @@ class VideoScripy():
             # save and show interpolate change
             interpolateFrame = ceil(duration.total_seconds() * fps)
 
-            print('{frameRate}fps --> {fps}fps')
+            print(f'{frameRate}fps --> {fps}fps')
 
             self.pre_optimize(video, width, height, quality)
             
@@ -874,7 +877,7 @@ class VideoScripy():
             # remove frames
             rmtree(getFramesOutputPath)
 
-            video['fps'] = fps
+            video['interpolateFps'] = fps
             video["interpolateOutputPath"] = interpolateOutputPath
 
             # interpolate frames to video
@@ -889,7 +892,12 @@ class VideoScripy():
             # remove upscaled frames
             rmtree(interpolateOutputPath)
 
-        # notice interpolate end
+        # remove empty folder
+        try:
+            rmdir(outputFolder)
+        except:
+            pass
+        
         noticeProcessEnd()
 
     def merge(self, allVideo:bool=True, allAudio:bool=False, allSubtitle:bool=False) -> None:
@@ -970,7 +978,12 @@ class VideoScripy():
         if self.killed:
             return
         
-        # notice merging end
+        # remove empty folder
+        try:
+            rmdir(outputFolder)
+        except:
+            pass
+        
         noticeProcessEnd()
 
 

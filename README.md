@@ -150,10 +150,10 @@ This project relies on the following software and projects.
 - ✅ Skip video if "&" present in video path and name
 - [N] Add FFmpeg visual quality metrics (PSNR, SSIM, VMAF)
 - ✅ Better encoders parameters
-- [N] Remove empty folders
+- ✅ Remove empty folders
 - [ ] Catch process error, and stop frame watch thread appropriately
 - [ ] Check tools
-- [ ] framesToVideo()
+- ✅ framesToVideo()
 - [ ] Running disable all new button
 - [ ] Separate repository for WebUI
 - [ ] Better upscale recovery
