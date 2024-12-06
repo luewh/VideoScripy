@@ -48,7 +48,11 @@ class VideoProcess(Enum):
     merge = "merge"
 
 
-
+def removeEmptyFolder(folderName:str):
+    try:
+        rmdir(folderName)
+    except:
+        pass
 
 def noticeProcessEnd():
     pass
@@ -438,7 +442,7 @@ class VideoScripy():
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
         )
-        self.proc.wait()
+        self.proc.communicate()
         self.proc = None
 
         processTime = time() - processTime
@@ -552,12 +556,7 @@ class VideoScripy():
             if self.killed:
                 return
         
-        # remove empty folder
-        try:
-            rmdir(outputFolder)
-        except:
-            pass
-
+        removeEmptyFolder(outputFolder)
         noticeProcessEnd()
     
     def resize(self, setWidth:int, setHeight:int, quality:float=3.0) -> None:
@@ -644,12 +643,7 @@ class VideoScripy():
             if self.killed:
                 return
         
-        # remove empty folder
-        try:
-            rmdir(outputFolder)
-        except:
-            pass
-
+        removeEmptyFolder(outputFolder)
         noticeProcessEnd()
 
     def upscale(self, upscaleFactor:int=2, quality:float=3) -> None:
@@ -773,12 +767,7 @@ class VideoScripy():
             # remove upscaled frames
             rmtree(upscaleOutputPath)
 
-        # remove empty folder
-        try:
-            rmdir(outputFolder)
-        except:
-            pass
-        
+        removeEmptyFolder(outputFolder)
         noticeProcessEnd()
 
     def interpolate(self, fps:float=30.0, quality:float=3) -> None:
@@ -898,12 +887,7 @@ class VideoScripy():
             # remove upscaled frames
             rmtree(interpolateOutputPath)
 
-        # remove empty folder
-        try:
-            rmdir(outputFolder)
-        except:
-            pass
-        
+        removeEmptyFolder(outputFolder)
         noticeProcessEnd()
 
     def merge(self, allVideo:bool=True, allAudio:bool=False, allSubtitle:bool=False) -> None:
@@ -984,12 +968,7 @@ class VideoScripy():
         if self.killed:
             return
         
-        # remove empty folder
-        try:
-            rmdir(outputFolder)
-        except:
-            pass
-        
+        removeEmptyFolder(outputFolder)
         noticeProcessEnd()
 
 
