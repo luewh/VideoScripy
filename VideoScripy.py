@@ -49,25 +49,6 @@ class VideoProcess(Enum):
 
 
 
-def checkTools():
-    tools = {
-        "FFmpeg": "ffmpeg -h",
-        "Real-ESRGAN": "realesrgan-ncnn-vulkan.exe -h",
-        "IFRNet": "ifrnet-ncnn-vulkan.exe -h",
-    }
-    for tool, cmd in tools.items():
-        proc = subprocess.Popen(
-            cmd,
-            shell=True,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL
-        )
-        proc.communicate()
-        if proc.returncode == 0:
-            print(f'{tool} found')
-        else:
-            print(f'{tool} not found, please check it is correctly installed')
-
 def removeEmptyFolder(folderName:str):
     try:
         rmdir(folderName)
@@ -170,11 +151,36 @@ class VideoScripy():
         self.proc = None
         self.killed = False
 
-        checkTools()
-
         self.exitCodeFileName = "exitCode.txt"
+
+        self.checkTools()
     
+
     
+    def checkTools(self):
+        tools = {
+            "FFmpeg": "ffmpeg -h",
+            "Real-ESRGAN": "realesrgan-ncnn-vulkan.exe -h",
+            "IFRNet": "ifrnet-ncnn-vulkan.exe -h",
+        }
+        prefix = 'start "checkTools" /min /wait cmd /v:on /c " '
+        sufix = f' & echo ^!errorLevel^! > {self.exitCodeFileName}"'
+        for tool, cmd in tools.items():
+            proc = subprocess.Popen(
+                prefix+cmd+sufix,
+                cwd=self.path,
+                shell=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL
+            )
+            proc.communicate()
+            result = self._checkExitCode(silence=True)
+            if result:
+                print(f'{tool} found')
+            else:
+                print(f'{tool} not found, please check if it is correctly installed')
+
+
     # get video related
     def setPath(self, path:str="") -> bool:
         """
@@ -477,11 +483,12 @@ class VideoScripy():
 
         return self._checkExitCode()
 
-    def _checkExitCode(self) -> bool:
+    def _checkExitCode(self, silence=False) -> bool:
         filePath = self.path+f'\\{self.exitCodeFileName}'
 
         if not isfile(filePath):
-            print("Process stoped")
+            if not silence:
+                print("Process stoped")
             return False
 
         else:
@@ -489,11 +496,13 @@ class VideoScripy():
                 returnCode = int(f.readline().replace("\n",""))
             remove(filePath)
 
-            if returnCode == 0:
-                print('Process end correctly')
+            if returnCode in [0, -1]:
+                if not silence:
+                    print('Process end correctly')
                 return True
             else:
-                print(f'Process end with return code {returnCode}')
+                if not silence:
+                    print(f'Process end with return code {returnCode}')
                 return False
 
             
