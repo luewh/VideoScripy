@@ -48,6 +48,26 @@ class VideoProcess(Enum):
     merge = "merge"
 
 
+
+def checkTools():
+    tools = {
+        "FFmpeg": "ffmpeg -h",
+        "Real-ESRGAN": "realesrgan-ncnn-vulkan.exe -h",
+        "IFRNet": "ifrnet-ncnn-vulkan.exe -h",
+    }
+    for tool, cmd in tools.items():
+        proc = subprocess.Popen(
+            cmd,
+            shell=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
+        proc.communicate()
+        if proc.returncode == 0:
+            print(f'{tool} found')
+        else:
+            print(f'{tool} not found, please check it is correctly installed')
+
 def removeEmptyFolder(folderName:str):
     try:
         rmdir(folderName)
@@ -149,6 +169,8 @@ class VideoScripy():
 
         self.proc = None
         self.killed = False
+
+        checkTools()
     
     
     # get video related
@@ -393,7 +415,7 @@ class VideoScripy():
         
         else:
             print(f'Unknown video process "{process}"')
-            exit()
+            return None
         
         command += (
             f' -c:v copy -c:a copy -c:s copy'
