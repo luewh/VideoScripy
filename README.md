@@ -15,16 +15,16 @@ VideoScripyWebUI is a local web user interface developed with **Dash**, it has t
 - [Embedded version](#embedded-version)
     * [Installation](#installation)
     * [Usage](#usage)
-
+<!-- 
 - [Self setup version](#self-setup-version)
     * [Installation](#installation-1)
-    * [Usage](#usage-1)
+    * [Usage](#usage-1) -->
 
 - [Processes Description](#processes-description)
 
 - [Credits](#credits)
-
-- [TODO list](#todo-list)
+<!-- 
+- [TODO list](#todo-list) -->
 
 
 
@@ -41,7 +41,7 @@ Advantage : **Beginner-friendly**
 
 - Run the `RUN.bat` to launch WebUI
 
-
+<!-- 
 
 ## Self setup version
 
@@ -78,10 +78,10 @@ Advantage : **Freedom**
     - `<pathTo>\Real-ESRGAN`
     - `<pathTo>\Ifrnet`
 
-    in the environment variable *PATH*
+    in the environment variable *PATH* -->
 
 
-
+<!-- 
 ### Usage
 
 - VideoScripy.py
@@ -91,7 +91,7 @@ Advantage : **Freedom**
 - VideoScripyWebUI.py
 
     Run the script, a web page should be opened automatically, select a process, select a path where videos are located, **SCAN** then **RUN**. The processed videos are under a folder of selected path example ./upscaled.
-
+ -->
 
 
 ## Processes Description
@@ -132,7 +132,7 @@ This project relies on the following software and projects.
 - [Dash](https://dash.plotly.com/)
 
 
-
+<!-- 
 ## TODO list
 
 - ✅ stdout to Dash
@@ -159,5 +159,5 @@ This project relies on the following software and projects.
 - [ ] Better upscale recovery
 - [ ] Gif to explain processes, tooltip on process dropdown
 - [ ] Log ?
-
+ -->
 
