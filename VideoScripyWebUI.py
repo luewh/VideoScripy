@@ -17,7 +17,15 @@ from threading import Timer
 # own classes
 from VideoScripy import VideoScripy
 
+addPath = []
+addPath.append("./releases/tools/ffmpeg-full_build/bin")
+addPath.append("./releases/tools/Real-ESRGAN")
+addPath.append("./releases/tools/Ifrnet")
 
+for index, path in enumerate(addPath):
+    addPath[index] = os.path.abspath(path)
+
+os.environ["PATH"] += os.pathsep.join(addPath)
 
 ip = "localhost"
 port = "8848"
@@ -746,7 +754,6 @@ def scanFiles(_):
 
     # record scanned video, for video selection purpose
     allVideoList = vs.vList
-    print(f"Scan {len(allVideoList)} video")
 
     # generate list of video items
     videoItems = []
@@ -1028,14 +1035,27 @@ class StdoutIntercept(object):
         sys.stdout.write = self.write
         sys.stderr.write = self.write
         self.queue = []
+        self.queueLimit = 1000
         self.carriage = False
+        self.ansiColor = [
+            "\x1b[0m", # reset
+            "\x1b[31m", # red
+            "\x1b[32m", # green
+            "\x1b[33m", # yellow
+            "\x1b[34m", # red
+        ]
 
     def __del__(self):
         sys.stdout.write = self.stdoutW
         sys.stderr.write = self.stderrW
 
-    def write(self, msg):
+    def write(self, msg:str):
         self.stdoutW(msg)
+
+        # remove ansi color
+        for ansiColor in self.ansiColor:
+            if ansiColor in msg:
+                msg = msg.replace(ansiColor, "")
 
         if msg == "\r":
             # init carriage line
@@ -1052,12 +1072,13 @@ class StdoutIntercept(object):
             self.carriage = True
             return
         
-        # stop carriage
         if msg == "\n":
-            self.carriage = False
-            # alive-progress remove ANSI clears line from cursor
-            if "\x1b[K" in self.queue[-1]:
-                self.queue[-1] = self.queue[-1].replace("\x1b[K", "")
+            # stop carriage
+            if self.carriage:
+                self.carriage = False
+                # alive-progress remove ANSI clears line from cursor
+                if "\x1b[K" in self.queue[-1]:
+                    self.queue[-1] = self.queue[-1].replace("\x1b[K", "")
 
         # append carriage line
         if self.carriage:
@@ -1065,6 +1086,11 @@ class StdoutIntercept(object):
         # append line
         else:
             self.queue.append(msg)
+        
+        # limit queue size
+        if len(self.queue) > self.queueLimit:
+            self.queue = self.queue[-self.queueLimit:]
+        
 
 stdout = StdoutIntercept()
 
@@ -1077,19 +1103,7 @@ def logConsole(_):
     return ''.join(stdout.queue)
 
 
-
-
 if __name__ == '__main__':
-
-    addPath = []
-    addPath.append("./releases/tools/ffmpeg-full_build/bin")
-    addPath.append("./releases/tools/Real-ESRGAN")
-    addPath.append("./releases/tools/Ifrnet")
-
-    for index, path in enumerate(addPath):
-        addPath[index] = os.path.abspath(path)
-
-    os.environ["PATH"] += os.pathsep.join(addPath)
 
     def open_browser():
         if not os.environ.get("WERKZEUG_RUN_MAIN"):

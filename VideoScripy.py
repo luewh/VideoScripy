@@ -1,6 +1,9 @@
 # dependencies
 from ffmpeg import probe
 from alive_progress import alive_bar
+from colorama import init, Fore, Style
+
+init()
 
 # built-in
 import subprocess
@@ -17,7 +20,6 @@ from math import ceil
 from typing import TypedDict
 from enum import Enum
 from math import ceil
-
 
 
 # from VideoScripy import *
@@ -47,7 +49,18 @@ class VideoProcess(Enum):
     interpolate = "interpolate"
     merge = "merge"
 
-
+def printC(text, color:str=None):
+    if color == "red":
+        print(Fore.RED, end='')
+    elif color == "green":
+        print(Fore.GREEN, end='')
+    elif color == "blue":
+        print(Fore.BLUE, end='')
+    elif color == "yellow":
+        print(Fore.YELLOW, end='')
+    else:
+        pass
+    print(text + Style.RESET_ALL)
 
 def removeEmptyFolder(folderName:str):
     try:
@@ -78,8 +91,8 @@ def frameWatch(outDir:str, total:int):
     
     alreadyProgressed = len(listdir(outDir))
     restToProgress = total - alreadyProgressed
-    print("Already progressed : {}/{}".format(alreadyProgressed, total))
-    print("Remain to progress : {}/{}".format(restToProgress, total))
+    print(f"Already progressed : {alreadyProgressed}/{total}")
+    print(f"Remain to progress : {restToProgress}/{total}")
 
     progressedPrev = 0
     with alive_bar(total) as bar:
@@ -176,9 +189,9 @@ class VideoScripy():
             proc.communicate()
             result = self._checkExitCode(silence=True)
             if result:
-                print(f'{tool} found')
+                printC(f'{tool} found', 'green')
             else:
-                print(f'{tool} not found, please check if it is correctly installed')
+                printC(f'{tool} not found, please check if it is correctly installed', 'red')
 
 
     # get video related
@@ -195,15 +208,15 @@ class VideoScripy():
         """
         if path == "":
             self.path = getcwd()
-            print(f'Path set to default "{self.path}"')
+            printC(f'Path set to default "{self.path}"', "green")
             return True
         else:
             if isdir(path):
                 self.path = path
-                print(f'Path correctly set to "{self.path}"')
+                printC(f'Path correctly set to "{self.path}"', "green")
                 return True
             else:
-                print("Path do not exist")
+                printC("Path do not exist", "red")
                 return False
     
     def getVideo(self, folderDepthLimit:int=0) -> None:
@@ -234,7 +247,7 @@ class VideoScripy():
             skip = False
             for folderSkip in self.folderSkip:
                 if Path(root).name == folderSkip:
-                    print(f'Self generated folder "{folderSkip}" skiped')
+                    printC(f'Self generated folder "{folderSkip}" skiped', "yellow")
                     skip = True
                     break
             if skip:
@@ -246,8 +259,8 @@ class VideoScripy():
                 if fileFormat in self.vType:
                     # check &
                     if "&" in root+"\\"+file:
-                        print(f'"&" must not used in path or file name')
-                        print(f'Skipped "{file}"')
+                        printC(f'"&" must not used in path or file name', "yellow")
+                        printC(f'Skipped "{file}"', "yellow")
                         continue
                     self.vList.append({
                         "type" : fileFormat,
@@ -290,10 +303,12 @@ class VideoScripy():
                 self.vList[videoIndex]['fps'] = round(float(num)/float(denom),2)
                 self.vList[videoIndex]['nbFrames'] = int(videoStreamTemp['nb_frames'])
             except Exception as e:
-                print(e)
-                print(f'Can not get video info of "{self.vList[videoIndex]["name"]}"')
+                printC(e, "red")
+                printC(f'Can not get video info of "{self.vList[videoIndex]["name"]}"', "red")
                 # delete errored video
                 self.vList.pop(videoIndex)
+        
+        print(f"Get {len(self.vList)} video info")
 
 
     # ffmpeg encoder related
@@ -423,7 +438,7 @@ class VideoScripy():
             return command
         
         else:
-            print(f'Unknown video process "{process}"')
+            printC(f'Unknown video process "{process}"', "red")
             return None
         
         command += (
@@ -479,7 +494,7 @@ class VideoScripy():
 
         processTime = time() - processTime
         processTime = timedelta(seconds=processTime)
-        print("Took :", str(processTime)[:-3])
+        print(f"Took :{str(processTime)[:-3]}")
 
         return self._checkExitCode()
 
@@ -488,7 +503,7 @@ class VideoScripy():
 
         if not isfile(filePath):
             if not silence:
-                print("Process stoped")
+                printC("Process stoped", "red")
             return False
 
         else:
@@ -498,11 +513,11 @@ class VideoScripy():
 
             if returnCode in [0, -1]:
                 if not silence:
-                    print('Process end correctly')
+                    printC('Process end correctly', "green")
                 return True
             else:
                 if not silence:
-                    print(f'Process end with return code {returnCode}')
+                    printC(f'Process end with return code {returnCode}', "red")
                 return False
 
             
@@ -524,32 +539,32 @@ class VideoScripy():
         if isdir(getFramesOutputPath):
             # equal to what it should has
             if len(listdir(getFramesOutputPath)) == video["nbFrames"]:
-                print("No need to get frames")
+                printC("No need to get frames", "yellow")
                 self.killed = False
                 return True
             # less than what it should has
             elif len(listdir(getFramesOutputPath)) < video["nbFrames"]:
-                print("Missing frames, regenerate frames needed")
+                printC("Missing frames, regenerate frames needed", "yellow")
                 rmtree(getFramesOutputPath)
             # more than what it should has
             elif len(listdir(getFramesOutputPath)) > video["nbFrames"]:
-                print("To much frames, regenerate frames needed")
+                printC("To much frames, regenerate frames needed", "yellow")
                 rmtree(getFramesOutputPath)
             else:
-                print("_getFrames() : ???")
+                printC("_getFrames() : ???", "red")
 
         # create new temporary frames folder
         mkdir(getFramesOutputPath)
 
         command = self._getFFmpegCommand(video, VideoProcess.getFrames.value)
         
-        print(f'Getting Frames')
+        printC(f'Getting Frames', "green")
         result = self._runProc(command)
 
         # check _getFrames accuracy
         getedFrames = len(listdir(getFramesOutputPath))
         if getedFrames != video["nbFrames"]:
-            print(f'Waring, geted frames {getedFrames} != video frames {video["nbFrames"]}')
+            printC(f'Waring, geted frames {getedFrames} != video frames {video["nbFrames"]}', "yellow")
         
         return result
 
@@ -606,12 +621,12 @@ class VideoScripy():
 
             # check if optimization needed
             if video["optimizeBitRate"] * self.optimizationTolerence > bitRate:
-                print('Skiped')
+                printC('Skipped', "yellow")
                 continue
 
             command = self._getFFmpegCommand(video, process)
             
-            print(f'Optimizing "{name}"')
+            printC(f'Optimizing "{name}"', "green")
             self._runProc(command)
 
             if self.killed:
@@ -683,13 +698,13 @@ class VideoScripy():
 
             # ratio warning
             if newWidth/newHeight != width/height:
-                print('Warning, rize ratio will be changed')
+                printC('Warning, rize ratio will be changed', "yellow")
             
             print(f'{width}x{height} --> {newWidth}x{newHeight}')
             
             # check if resize needed
             if newWidth == width and newHeight == height:
-                print("Skiped")
+                printC("Skipped", "yellow")
                 continue
             
             video["resizeWidth"] = newWidth
@@ -699,7 +714,7 @@ class VideoScripy():
 
             command = self._getFFmpegCommand(video, process)
 
-            print(f'Resizing "{name}"')
+            printC(f'Resizing "{name}"', "green")
             self._runProc(command)
 
             if self.killed:
@@ -767,7 +782,7 @@ class VideoScripy():
             # create upscaled frames folder if not existing
             if not isdir(upscaleOutputPath):
                 mkdir(upscaleOutputPath)
-                print(f'Upscaling "{name}"')
+                printC(f'Upscaling "{name}"', "green")
             # continue existing frames upscale
             else:
                 for _, _, files in walk(upscaleOutputPath):
@@ -777,7 +792,7 @@ class VideoScripy():
                     # remove last two upscaled frames
                     for lastTwoUpscaled in files[-2:]:
                         remove(upscaleOutputPath+'\\'+lastTwoUpscaled)
-                print(f'Continue upscaling "{name}"')
+                printC(f'Continue upscaling "{name}"', "green")
             
             # frames watch
             watch = Thread(
@@ -802,8 +817,8 @@ class VideoScripy():
             elif upscaleFactor == "4pa":
                 command += ' -n realesrgan-x4plus-anime'
             else:
-                print(f'Unknown video process "{upscaleFactor}"')
-                exit()
+                printC(f'Unknown upscale factor "{upscaleFactor}"', "red")
+                return
             command += (
                 ' -f jpg -g 1'
                 f' & echo ^!errorLevel^! > {self.exitCodeFileName}"'
@@ -831,7 +846,7 @@ class VideoScripy():
             video["upscaleOutputPath"] = upscaleOutputPath
             # upscaled frames to video
             command = self._getFFmpegCommand(video, process)
-            print(f'Upscaling frame to video "{name}"')
+            printC(f'Upscaling frame to video "{name}"', "green")
 
             result = self._runProc(command)
 
@@ -888,8 +903,8 @@ class VideoScripy():
 
             # check if interpolation needed
             if fps < frameRate:
-                print("Skiped")
                 print(fps, '<', frameRate)
+                printC("Skipped", "yellow")
                 continue
 
             # save and show interpolate change
@@ -935,7 +950,7 @@ class VideoScripy():
                 f' -n {interpolateFrame}'
                 f' & echo ^!errorLevel^! > {self.exitCodeFileName}"'
             )
-            print(f'Interpolating "{name}"')
+            printC(f'Interpolating "{name}"', "green")
 
             result = self._runProc(command)
             if not result:
@@ -960,7 +975,7 @@ class VideoScripy():
             # interpolate frames to video
             command = self._getFFmpegCommand(video, process)
 
-            print(f'Interpolating frame to video "{name}"')
+            printC(f'Interpolating frame to video "{name}"', "green")
             result = self._runProc(command)
 
             if self.killed:
@@ -1001,14 +1016,14 @@ class VideoScripy():
 
         # check number of video
         if len(self.vList) <= 1:
-            print("0 or 1 video is not enought to merge")
+            printC("0 or 1 video is not enought to merge", "yellow")
             return
 
         # check video length
         duration = self.vList[0]['duration']
         for video in self.vList:
             if duration != video['duration']:
-                print(f'Warning, "{video["name"]}" has different duration')
+                printC(f'Warning, "{video["name"]}" has different duration', "yellow")
         
         commandInputs = ""
         commandMap = ""
@@ -1046,7 +1061,7 @@ class VideoScripy():
             commandMap=commandMap,
             commandMetadata=commandMetadata,
         )
-        print(f'Merging {len(self.vList)} videos')
+        printC(f'Merging {len(self.vList)} videos', "green")
         self._runProc(command)
 
         if self.killed:
