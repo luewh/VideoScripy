@@ -845,22 +845,30 @@ def videoSelectionNONE(_):
     Output('list_videos', 'children', allow_duplicate=True),
     Input('button_lvideo_revert', 'n_clicks'),
     State('list_videos', 'children'),
+    State({'type':'video', 'index': ALL}, 'color'),
     running=[
         (Output('interval_log', 'n_intervals'), 0, 0),
         (Output('button_lvideo_revert', 'disabled'), True, False)
     ],
     prevent_initial_call=True,
 )
-def reverseVideoList(_, children):
+def reverseVideoList(_, listVideo, colorALL):
 
     global vs, allVideoList
 
-    if children is not None:
+    if listVideo is not None:
         vs.vList = vs.vList[::-1]
         allVideoList = allVideoList[::-1]
-        children.reverse()
+        colorALL = colorALL[::-1]
+
+        # generate list of video items
+        videoItems = []
+        for index, video in enumerate(allVideoList):
+            videoItems.append(getVideoItem(video,index,colorALL[index]))
+
         print("Reverse video list")
-        return children
+
+        return videoItems
     
     else:
         raise PreventUpdate
