@@ -1072,6 +1072,8 @@ class StdoutIntercept(object):
                 # alive-progress remove ANSI Escape Code (hide the cursor on terminal)
                 if "\x1b[?25l" in self.queue[-1]:
                     self.queue[-1] = self.queue[-1].replace("\x1b[?25l", "")
+                if "\x1b[?25h" in self.queue[-1]:
+                    self.queue[-1] = self.queue[-1].replace("\x1b[?25h", "")
                 else:
                     self.queue.append("")
             # rewrite carriage line
@@ -1091,7 +1093,13 @@ class StdoutIntercept(object):
 
         # append carriage line
         if self.carriage:
-            self.queue[-1] += msg
+            # for print during bar progress
+            if "on " in msg:
+                self.queue[-1] = msg
+            else:
+                if "\x1b[\x1b[J" in msg:
+                    msg.replace("\x1b[\x1b[J", "")
+                self.queue[-1] += msg
         # append line
         else:
             self.queue.append(msg)

@@ -101,7 +101,7 @@ def frameWatch(outDir:str, total:int):
         if alreadyProgressed != 0:
             bar(alreadyProgressed, skipped=True)
         while len(listdir(outDir)) < total:
-            sleep(1)
+            sleep(0)
             progressed = len(listdir(outDir)) - alreadyProgressed
             bar(progressed - progressedPrev)
             progressedPrev = progressed
@@ -795,13 +795,6 @@ class VideoScripy():
                     for lastTwoUpscaled in files[-2:]:
                         remove(upscaleOutputPath+'\\'+lastTwoUpscaled)
                 printC(f'Continue upscaling "{name}"', "green")
-            
-            # frames watch
-            watch = Thread(
-                target=frameWatch,
-                args=(upscaleOutputPath, video["nbFrames"])
-            )
-            watch.start()
 
             command = (
                 f'start "VideoScripy-{process}" /min /wait /realtime'+
@@ -826,6 +819,12 @@ class VideoScripy():
                 f' & echo ^!errorLevel^! > {self.exitCodeFileName}"'
             )
 
+            # frames watch
+            watch = Thread(
+                target=frameWatch,
+                args=(upscaleOutputPath, video["nbFrames"])
+            )
+            watch.start()
 
             result = self._runProc(command)
             if not result:
@@ -843,7 +842,6 @@ class VideoScripy():
 
             # remove frames
             rmtree(getFramesOutputPath)
-
             
             video["upscaleOutputPath"] = upscaleOutputPath
             # upscaled frames to video
@@ -934,13 +932,6 @@ class VideoScripy():
             # new frames interpolate
             mkdir(interpolateOutputPath)
 
-            # frames watch
-            watch = Thread(
-                target=frameWatch,
-                args=(interpolateOutputPath,interpolateFrame)
-            )
-            watch.start()
-            
             command = (
                 f'start "VideoScripy-{process}" /min /wait /realtime'+
                 f' cmd /v:on /c " {self.path[0]}:'+
@@ -954,6 +945,13 @@ class VideoScripy():
             )
             printC(f'Interpolating "{name}"', "green")
 
+            # frames watch
+            watch = Thread(
+                target=frameWatch,
+                args=(interpolateOutputPath,interpolateFrame)
+            )
+            watch.start()
+            
             result = self._runProc(command)
             if not result:
                 global stop_threads
