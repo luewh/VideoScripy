@@ -392,7 +392,7 @@ def clientClose(_):
     print("-"*(len(text)+4))
     print("| "+text+" |")
     print("-"*(len(text)+4))
-    raise no_update
+    raise PreventUpdate
 
 
 
