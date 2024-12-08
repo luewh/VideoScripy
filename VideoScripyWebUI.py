@@ -893,19 +893,20 @@ def sortVideoList(sortBy, allColor):
         print("Unknow sort selection")
         raise PreventUpdate
     
+    # add color to allVideoList
+    for index in range(len(allVideoList)):
+        allVideoList[index]["color"] = allColor[index]
+    
     # special sort
     if sortBy == "w x h":
         for index in range(len(allVideoList)):
-            allVideoList[index]["w x h"] = allVideoList[index]["width"] * allVideoList[index]["height"]
+            allVideoList[index]["w x h"] = (
+                allVideoList[index]["width"] * allVideoList[index]["height"]
+            )
         allVideoList.sort(key= lambda video: video['w x h'],)
     # normal sort
     else:
         allVideoList.sort(key= lambda video: video[sortBy],)
-        
-    
-    # add color to allVideoList
-    for index in range(len(allVideoList)):
-        allVideoList[index]["color"] = allColor[index]
         
     # re generate list of video items
     videoItems = []
@@ -915,13 +916,7 @@ def sortVideoList(sortBy, allColor):
         if allVideoList[index]["color"] == f"{videoItemColor['select']}":
             vs.vList.append(video)
         
-        videoItems.append(
-            getVideoItem(
-                video,
-                index,
-                allVideoList[index]["color"]
-            )
-        )
+        videoItems.append(getVideoItem(video,index,allVideoList[index]["color"]))
     
     print(f'Sort by {sortBy}')
 
