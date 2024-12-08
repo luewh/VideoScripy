@@ -696,9 +696,9 @@ def getVideoItem(video:dict, index:int, color:str, prefix:str=""):
     bitRate = (f'{video["bitRate"]/1_000:_.0f}'+" Kbits/s").rjust(16)
     videoInfoText = (
         f'|{width}x{height}|'+
-        f'{frameRate}  |'+
-        f'{duration}  |'+
-        f'{bitRate}  |'
+        f'{frameRate} |'+
+        f'{duration} |'+
+        f'{bitRate} |'
     )
 
     return dcc.Loading(
@@ -732,7 +732,6 @@ def getVideoItem(video:dict, index:int, color:str, prefix:str=""):
         overlay_style={"visibility":"visible","opacity":0.5},
     )
 
-
 @callback(
     Output('button_runProcess', 'disabled', allow_duplicate=True),
     Output('button_scanFiles', 'children', allow_duplicate=True),
@@ -757,7 +756,7 @@ def scanFiles(_):
 
     # generate list of video items
     videoItems = []
-    for index, video in enumerate(vs.vList):
+    for index, video in enumerate(allVideoList):
         videoItems.append(getVideoItem(video,index,videoItemColor["select"]))
 
     return False, no_update, "Ready to RUN", videoItems
@@ -775,6 +774,7 @@ def switchVideoSelection(_, color, colorAll):
 
     id = ctx.triggered_id['index']
 
+    # remove or add video
     vs.vList = []
     for index, video in enumerate(allVideoList):
         # clicked
@@ -796,7 +796,7 @@ def switchVideoSelection(_, color, colorAll):
         return f"{videoItemColor['select']}"
 
 @callback(
-    Output({'type':'video', 'index': ALL}, 'color', allow_duplicate=True),
+    Output('list_videos', 'children', allow_duplicate=True),
     Input('button_lvideo_all', 'n_clicks'),
     running=[
         (Output('interval_log', 'n_intervals'), 0, 0),
@@ -807,16 +807,19 @@ def switchVideoSelection(_, color, colorAll):
 def videoSelectionALL(_):
     global vs, allVideoList, videoItemColor
 
-    vs.vList = []
-    for video in allVideoList:
-        vs.vList.append(video)
+    vs.vList = allVideoList
+
+    # generate list of video items
+    videoItems = []
+    for index, video in enumerate(allVideoList):
+        videoItems.append(getVideoItem(video,index,videoItemColor["select"]))
 
     print(f'Select all video')
 
-    return [videoItemColor['select']]*len(allVideoList)
+    return videoItems
 
 @callback(
-    Output({'type':'video', 'index': ALL}, 'color', allow_duplicate=True),
+    Output('list_videos', 'children', allow_duplicate=True),
     Input('button_lvideo_none', 'n_clicks'),
     running=[
         (Output('interval_log', 'n_intervals'), 0, 0),
@@ -828,10 +831,15 @@ def videoSelectionNONE(_):
     global vs, allVideoList, videoItemColor
 
     vs.vList = []
+
+    # generate list of video items
+    videoItems = []
+    for index, video in enumerate(allVideoList):
+        videoItems.append(getVideoItem(video,index,videoItemColor["unselect"]))
     
     print(f'Unselect all video')
 
-    return [videoItemColor['unselect']]*len(allVideoList)
+    return videoItems
 
 @callback(
     Output('list_videos', 'children', allow_duplicate=True),
@@ -1090,10 +1098,7 @@ class StdoutIntercept(object):
         # limit queue size
         if len(self.queue) > self.queueLimit:
             self.queue = self.queue[-self.queueLimit:]
-        
-
 stdout = StdoutIntercept()
-
 @callback(
     Output('div_processRunning', 'children'),
     Input('interval_log', 'n_intervals'),
