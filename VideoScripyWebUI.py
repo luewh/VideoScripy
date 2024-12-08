@@ -18,13 +18,11 @@ from threading import Timer
 from VideoScripy import VideoScripy
 
 addPath = []
-addPath.append("./releases/tools/ffmpeg-full_build/bin")
-addPath.append("./releases/tools/Real-ESRGAN")
-addPath.append("./releases/tools/Ifrnet")
-
+addPath.append("./tools/ffmpeg-full_build/bin")
+addPath.append("./tools/Real-ESRGAN")
+addPath.append("./tools/Ifrnet")
 for index, path in enumerate(addPath):
     addPath[index] = os.path.abspath(path)
-
 os.environ["PATH"] += os.pathsep.join(addPath)
 
 ip = "localhost"
@@ -63,6 +61,7 @@ videoSortBy = [
 ]
 
 
+
 app = Dash(
     __name__,
     external_stylesheets=[],
@@ -82,7 +81,7 @@ app.layout = html.Div(
         children=[
             
             html.Button(
-                id="notifyClose",
+                id="button_clientClose",
                 hidden=True,
                 n_clicks=0,
             ),
@@ -383,15 +382,17 @@ app.layout = html.Div(
 
 
 @callback(
-    Input("notifyClose", "n_clicks"),
+    Output("button_clientClose", "children"),
+    Input("button_clientClose", "n_clicks"),
     prevent_initial_call=True,
 )
-def showURL(_):
+def clientClose(_):
     global ip, port
     text = f"Dash is running on http://{ip}:{port}/"
     print("-"*(len(text)+4))
     print("| "+text+" |")
     print("-"*(len(text)+4))
+    raise no_update
 
 
 
@@ -642,21 +643,18 @@ def switchVideoSize(_, width, height):
 
 @callback(
     Output('input_path', 'disabled'),
-    Output('input_path', 'n_submit', allow_duplicate=True),
+    Output('button_editPath', 'disabled'),
     Input('button_editPath', 'n_clicks'),
     prevent_initial_call=True,
 )
-def editPath(n_clicks):
-    if n_clicks%2 == 0:
-        return True, 0
-    else:
-        return False, no_update
+def editPath(_):
+    return False, True
 
 @callback(
     Output('input_path', 'value'),
     Output('input_path', 'n_submit'),
     Input('button_selectDir', 'n_clicks'),
-    running=[Output('button_selectDir', 'disabled'), True, False],
+    running=[(Output('button_selectDir', 'disabled'), True, False)],
     prevent_initial_call=True,
 )
 def selectDir(_):
@@ -670,20 +668,20 @@ def selectDir(_):
 @callback(
     Output('input_path', 'disabled', allow_duplicate=True),
     Output('input_path', 'value', allow_duplicate=True),
-    Output('button_runProcess', 'disabled'),
-    Output('tooltip_run', 'children'),
-    Output('button_editPath', 'n_clicks'),
-    Output('interval_log', 'n_intervals', allow_duplicate=True),
+    Output('button_editPath', 'disabled', allow_duplicate=True),
+    Output('tooltip_run', 'children', allow_duplicate=True),
+    Output('button_scanFiles', 'n_clicks'),
     Input('input_path', 'n_submit'),
     State('input_path', 'value'),
+    running=[(Output('interval_log', 'n_intervals'), 0, 0)],
     prevent_initial_call=True,
 )
 def setPath(_, enteredPath):
     global vs
     if vs.setPath(enteredPath):
-        return True, vs.path, True, "SCAN atleast once to RUN", 0, 0
+        return True, vs.path, False, "SCAN atleast once to RUN", 0
     else:
-        return False, no_update, True, "SCAN atleast once to RUN", 0, 0
+        raise PreventUpdate
 
 
 

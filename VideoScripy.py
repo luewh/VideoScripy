@@ -49,6 +49,8 @@ class VideoProcess(Enum):
     interpolate = "interpolate"
     merge = "merge"
 
+
+
 def printC(text, color:str=None):
     if color == "red":
         print(Fore.RED, end='')
@@ -216,7 +218,7 @@ class VideoScripy():
                 printC(f'Path correctly set to "{self.path}"', "green")
                 return True
             else:
-                printC("Path do not exist", "red")
+                printC(f'Path "{path}" do not exist', "red")
                 return False
     
     def getVideo(self, folderDepthLimit:int=0) -> None:

@@ -1,6 +1,6 @@
 window.addEventListener(
     'beforeunload', () => {
-        document.querySelector("#notifyClose").click()
+        document.querySelector("#button_clientClose").click()
     }
 );
 
