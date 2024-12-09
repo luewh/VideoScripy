@@ -1,5 +1,4 @@
 # dependencies
-from ffmpeg import probe
 from alive_progress import alive_bar
 from colorama import init, Fore, Style
 
@@ -8,6 +7,7 @@ init()
 # built-in
 import subprocess
 import psutil
+import json
 from threading import Thread
 from pathlib import Path
 from datetime import timedelta
@@ -285,16 +285,43 @@ class VideoScripy():
         Used attributes:
             vList
         """
+    
+        def probeProcess(fileName) -> subprocess.Popen:
+            command = [
+                'ffprobe', '-show_format', '-show_streams',
+                '-of', 'json', fileName
+            ]
+            return subprocess.Popen(
+                command,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+        
+        # run probe
+        processes = []
+        for videoIndex in range(len(self.vList)-1,-1,-1):
+            processes.append(probeProcess(self.vList[videoIndex]["path"]))
+        processes.reverse()
+
+        # wait and retrieve results
+        results = []
+        for processIndex in range(len(processes)-1,-1,-1):
+            out, err = processes[processIndex].communicate()
+            if processes[processIndex].returncode != 0:
+                print(f'FFprobe error, remove {self.vList[processIndex]["name"]}')
+                # delete errored video
+                self.vList.pop(processIndex)
+            else:
+                results.append(json.loads(out.decode('utf-8')))
+        results.reverse()
 
         # get info
         for videoIndex in range(len(self.vList)-1,-1,-1):
             try:
-                # get video probe
-                videoProbe = probe(self.vList[videoIndex]["path"])
                 # get first video stream info
                 # TODO add multiple video stream waring
                 videoStreamTemp = [
-                    streams for streams in videoProbe['streams']
+                    streams for streams in results[videoIndex]['streams']
                     if streams['codec_type'] == 'video'
                 ][0]
                 # write info
@@ -305,12 +332,13 @@ class VideoScripy():
                 num, denom = videoStreamTemp['r_frame_rate'].split('/')
                 self.vList[videoIndex]['fps'] = round(float(num)/float(denom),2)
                 self.vList[videoIndex]['nbFrames'] = int(videoStreamTemp['nb_frames'])
+            
             except Exception as e:
                 printC(e, "red")
                 printC(f'Can not get video info of "{self.vList[videoIndex]["name"]}"', "red")
                 # delete errored video
                 self.vList.pop(videoIndex)
-        
+
         print(f"Get {len(self.vList)} video info")
 
 

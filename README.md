@@ -94,6 +94,14 @@ Advantage : **Freedom**
  -->
 
 
+## Features
+
+- ### Faster FFprobe by running it "asynchronously"
+![Faster FFprobe](./doc/faster_way_to_run_ffprobe.png)
+
+
+
+
 ## Processes Description
 
 - optimize
@@ -129,6 +137,7 @@ This project relies on the following software and projects.
 - [Real-ESRGAN](https://github.com/xinntao/Real-ESRGAN)
 - [IFRNet](https://github.com/ltkong218/IFRNet)
 - [FFmpeg](https://www.ffmpeg.org/)
+- [FFmpeg-python](https://github.com/kkroening/ffmpeg-python)
 - [Dash](https://dash.plotly.com/)
 
 
