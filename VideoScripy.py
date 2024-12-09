@@ -174,7 +174,8 @@ class VideoScripy():
     
     def checkTools(self):
         tools = {
-            "FFmpeg": "ffmpeg -h",
+            "FFmpeg": "ffmpeg -version",
+            "FFprobe": "ffprobe -version",
             "Real-ESRGAN": "realesrgan-ncnn-vulkan.exe -h",
             "IFRNet": "ifrnet-ncnn-vulkan.exe -h",
         }
