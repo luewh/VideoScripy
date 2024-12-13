@@ -1,12 +1,12 @@
 # dependencies
 from alive_progress import alive_bar
 from colorama import init, Fore, Style
+import psutil
 
 init()
 
 # built-in
 import subprocess
-import psutil
 import json
 from threading import Thread
 from pathlib import Path
@@ -15,7 +15,7 @@ from shutil import rmtree
 from os import walk, mkdir, remove, listdir, getcwd, rmdir
 from os.path import isdir, isfile
 from time import time, sleep
-from winsound import Beep
+from playsound import playsound
 from math import ceil
 from typing import TypedDict
 from enum import Enum
@@ -70,10 +70,19 @@ def removeEmptyFolder(folderName:str):
     except:
         pass
 
+def noticeProcessBegin():
+    sound = "./assets/typewriter_carriage_return.mp3"
+    try:
+        playsound(sound, block=False)
+    except:
+        pass
+
 def noticeProcessEnd():
-    pass
-    Beep(440, 1500)
-    # input('Press enter to exit')
+    sound = "./assets/typewriter_bell.mp3"
+    try:
+        playsound(sound, block=True)
+    except:
+        pass
 
 def frameWatch(outDir:str, total:int):
     """
@@ -637,6 +646,7 @@ class VideoScripy():
             mkdir(outputFolder)
         
         for index, video in enumerate(self.vList):
+            noticeProcessBegin()
 
             name = video['name']
             width = video['width']
@@ -693,6 +703,7 @@ class VideoScripy():
             mkdir(outputFolder)
         
         for index, video in enumerate(self.vList):
+            noticeProcessBegin()
             
             name = video['name']
             width = video['width']
@@ -783,6 +794,7 @@ class VideoScripy():
             mkdir(outputFolder)
 
         for index, video in enumerate(self.vList):
+            noticeProcessBegin()
             
             name = video['name']
             width = video['width']
@@ -919,6 +931,7 @@ class VideoScripy():
             mkdir(outputFolder)
 
         for index, video in enumerate(self.vList):
+            noticeProcessBegin()
 
             name = video['name']
             width = video['width']
@@ -1036,6 +1049,8 @@ class VideoScripy():
             path
             vList
         """
+        
+        noticeProcessBegin()
         
         process = VideoProcess.merge.value
         # create output folder

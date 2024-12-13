@@ -20,6 +20,8 @@ VideoScripyWebUI is a local web user interface developed with **Dash**, it has t
     * [Installation](#installation-1)
     * [Usage](#usage-1) -->
 
+- [Benchmarking](#benchmarking)
+
 - [Processes Description](#processes-description)
 
 - [Credits](#credits)
@@ -94,10 +96,11 @@ Advantage : **Freedom**
  -->
 
 
-## Features
+## Benchmarking
 
-- ### Faster FFprobe by running it "asynchronously"
-![Faster FFprobe](./doc/faster_way_to_run_ffprobe.png)
+- ### x3 Faster FFprobe by running it "asynchronously"
+![Fast FFprobe](./doc/faster_way_to_run_ffprobe.png)
+(ffprobe on 64 ~2h long videos)
 
 
 
@@ -132,7 +135,7 @@ Advantage : **Freedom**
 
 ## Credits
 
-This project relies on the following software and projects.
+This project relies on the following software and projects :
 - [alive-progress](https://github.com/rsalmei/alive-progress)
 - [Real-ESRGAN](https://github.com/xinntao/Real-ESRGAN)
 - [IFRNet](https://github.com/ltkong218/IFRNet)
@@ -140,6 +143,8 @@ This project relies on the following software and projects.
 - [FFmpeg-python](https://github.com/kkroening/ffmpeg-python)
 - [Dash](https://dash.plotly.com/)
 
+Sounds come from :
+- [Pixabay](https://pixabay.com/sound-effects/search/typewriter/)
 
 <!-- 
 ## TODO list
