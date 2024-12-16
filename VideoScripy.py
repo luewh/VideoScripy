@@ -39,6 +39,7 @@ class VideoInfo(TypedDict):
     height: int
     fps: float
     nbFrames: int
+    streams : dict
 
 class VideoProcess(Enum):
     """
@@ -333,23 +334,48 @@ class VideoScripy():
         # get info
         for videoIndex in range(len(self.vList)-1,-1,-1):
             try:
-                # get first video stream info
-                # TODO add multiple video stream waring
-                videoStreamTemp = [
-                    streams for streams in results[videoIndex]['streams']
-                    if streams['codec_type'] == 'video'
-                ][0]
+                streamInfo = []
+                videoStream = []
+                # get stream info
+                for stream in results[videoIndex]['streams']:
+                    streamInfo.append({
+                        "index": int(stream["index"]),
+                        "codec_type": stream["codec_type"],
+                        "codec_name": stream["codec_name"],
+                    })                    
+                    if stream['codec_type'] == 'video':
+                        videoStream.append(stream)
+
+                # warn more than video stream
+                if len(videoStream) > 1:
+                    printC(
+                        f'More than 1 video stream found in "{self.vList[videoIndex]["name"]}", '
+                        +'only the first will be processed', "yellow"
+                    )
+                videoStream = videoStream[0]
+
                 # write info
-                self.vList[videoIndex]['duration'] = timedelta(seconds=float(videoStreamTemp['duration']))
-                self.vList[videoIndex]['bitRate'] = int(videoStreamTemp['bit_rate'])
-                self.vList[videoIndex]['width'] = int(videoStreamTemp['width'])
-                self.vList[videoIndex]['height'] = int(videoStreamTemp['height'])
-                num, denom = videoStreamTemp['r_frame_rate'].split('/')
+                self.vList[videoIndex]['streams'] = streamInfo
+                self.vList[videoIndex]['width'] = int(videoStream['width'])
+                self.vList[videoIndex]['height'] = int(videoStream['height'])
+                num, denom = videoStream['r_frame_rate'].split('/')
                 self.vList[videoIndex]['fps'] = round(float(num)/float(denom),2)
-                self.vList[videoIndex]['nbFrames'] = int(videoStreamTemp['nb_frames'])
+                # mp4
+                try:
+                    self.vList[videoIndex]['duration'] = timedelta(seconds=float(videoStream['duration']))
+                    self.vList[videoIndex]['bitRate'] = int(videoStream['bit_rate'])
+                    self.vList[videoIndex]['nbFrames'] = int(videoStream['nb_frames'])
+                # mkv
+                except KeyError:
+                    self.vList[videoIndex]['duration'] = timedelta(seconds=float(results[videoIndex]['format']['duration']))
+                    self.vList[videoIndex]['bitRate'] = int(results[videoIndex]['format']['bit_rate'])
+                    self.vList[videoIndex]['nbFrames'] = ceil(
+                        self.vList[videoIndex]['fps'] 
+                        * self.vList[videoIndex]['duration'].total_seconds()
+                    )
             
             except Exception as e:
-                printC(e, "red")
+                printC(f'Unexpected erro "{e}"', "red")
                 printC(f'Can not get video info of "{self.vList[videoIndex]["name"]}"', "red")
                 # delete errored video
                 self.vList.pop(videoIndex)
