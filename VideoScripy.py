@@ -1,10 +1,3 @@
-# dependencies
-from alive_progress import alive_bar
-from colorama import init, Fore, Style
-import psutil
-
-init()
-
 # built-in
 import subprocess
 import json
@@ -15,11 +8,17 @@ from shutil import rmtree
 from os import walk, mkdir, remove, listdir, getcwd, rmdir
 from os.path import isdir, isfile
 from time import time, sleep
-from playsound import playsound
 from math import ceil
 from typing import TypedDict
 from enum import Enum
-from math import ceil
+
+# dependencies
+from alive_progress import alive_bar
+from colorama import init, Fore, Style
+from playsound import playsound
+import psutil
+
+init()
 
 
 # from VideoScripy import *
@@ -42,6 +41,9 @@ class VideoInfo(TypedDict):
     nbFrames: int
 
 class VideoProcess(Enum):
+    """
+    Implemented processes
+    """
     optimize = "optimize"
     resize = "resize"
     getFrames = "getFrames"
@@ -52,6 +54,9 @@ class VideoProcess(Enum):
 
 
 def printC(text, color:str=None):
+    """
+    print with color : red green blue yellow
+    """
     if color == "red":
         print(Fore.RED, end='')
     elif color == "green":
@@ -84,6 +89,7 @@ def noticeProcessEnd():
     except:
         pass
 
+stop_threads = False
 def frameWatch(outDir:str, total:int):
     """
     Track video frame process with progress bar,
@@ -434,7 +440,7 @@ class VideoScripy():
                 f' {haccel}'
                 f' -i "{path}"'
                 ' -map 0:v -map 0:a? -map 0:s?'
-                f' -vf {resizeFilter}={video["resizeWidth"]}:{video["resizeHeight"]}'
+                f' -filter:v:0 {resizeFilter}={video["resizeWidth"]}:{video["resizeHeight"]}'
             )
             
         elif process == VideoProcess.getFrames.value:
