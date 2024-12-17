@@ -1,3 +1,10 @@
+# built-in
+import os
+import sys
+from time import sleep
+from webbrowser import open_new
+from threading import Timer
+
 # dependencies
 from dash import Dash, dcc, html
 from dash import no_update, ctx, callback, ALL, MATCH
@@ -7,15 +14,9 @@ import dash_bootstrap_components as dbc
 import dash_daq as daq
 from tkinter import Tk, filedialog
 
-# built-in
-import os
-import sys
-from time import sleep
-from webbrowser import open_new
-from threading import Timer
-
-# own classes
+# own class
 from VideoScripy import VideoScripy
+
 
 addPath = []
 addPath.append("./tools/ffmpeg-full_build/bin")
@@ -125,6 +126,7 @@ app.layout = html.Div(
                                 value=processes[0],
                                 placeholder="Select a process ...",
                                 id="dropdown_processes",
+                                optionHeight=30,
                                 searchable=False,
                                 clearable=False,
                                 style={
@@ -408,14 +410,15 @@ def qualityInputUI():
             type="number",
             value=3.0,
             min=0.1,
-            max=20.0,
+            max=9.9,
             step=0.1,
             persistence=True,
             className="uni_width_height",
+            style={"width":"50px"},
         ),
     ]
 
-def sizeInputUI():
+def resizeInputUI():
     global videoSizesDict
     return [
         html.Div(
@@ -423,59 +426,54 @@ def sizeInputUI():
             className="uni_text",
             disable_n_clicks=True,
         ),
-        dbc.Row(
+        dbc.Stack(
             [
-                dbc.Col(
-                    dcc.Input(
-                        id={"type": "input", "id": "videoWidth"},
-                        type="number",
-                        value=1920,
-                        persistence=True,
-                        min=1,
-                        step=1,
-                        className="uni_width_height",
-                    ),
-                    width=3,
+                dcc.Input(
+                    id={"type": "input", "id": "videoWidth"},
+                    type="number",
+                    value=1920,
+                    persistence=True,
+                    min=-1,
+                    max=8192,
+                    step=1,
+                    className="uni_width_height",
+                    style={"width":"65px"},
                 ),
-                dbc.Col(
-                    html.Button(
-                        "X",
-                        id={"type": "spec", "id": "button_sizeSwitch"},
-                        n_clicks=0,
-                        className="uni_width_height",
-                    ),
-                    width=1,
+                html.Button(
+                    "X",
+                    id={"type": "spec", "id": "button_sizeSwitch"},
+                    n_clicks=0,
+                    className="uni_width_height",
+                    style={"width":"5vh"},
                 ),
-                dbc.Col(
-                    dcc.Input(
-                        id={"type": "input", "id": "videoHeight"},
-                        type="number",
-                        value=1080,
-                        persistence=True,
-                        min=1,
-                        step=1,
-                        className="uni_width_height",
-                    ),
-                    width=3,
+                dcc.Input(
+                    id={"type": "input", "id": "videoHeight"},
+                    type="number",
+                    value=1080,
+                    persistence=True,
+                    min=-1,
+                    max=8192,
+                    step=1,
+                    className="uni_width_height",
+                    style={"width":"65px"},
                 ),
-                dbc.Col(
-                    dcc.Dropdown(
-                        [videoSizes["label"] for videoSizes in videoSizesDict],
-                        value=[videoSizes["label"] for videoSizes in videoSizesDict][2],
-                        id={"type": "spec", "id": "dropdown_videoSize"},
-                        persistence=True,
-                        searchable=False,
-                        clearable=False,
-                        className="uni_width_height",
-                        style={
-                            "color": "black",
-                            "height":"5vh",
-                        },
-                    ),
-                    width=5,
+                dcc.Dropdown(
+                    [videoSizes["label"] for videoSizes in videoSizesDict],
+                    placeholder="STANDAR SIZE",
+                    id={"type": "spec", "id": "dropdown_videoSize"},
+                    searchable=False,
+                    clearable=False,
+                    maxHeight=80,
+                    optionHeight=20,
+                    className="uni_width_height",
+                    style={
+                        "color": "black",
+                        "height":"5vh",
+                        "width":"140px",
+                    },
                 ),
             ],
-            className="g-0",
+            direction="horizontal",
         ),
     ]
 
@@ -494,9 +492,11 @@ def upscaleInputUI():
             persistence=True,
             searchable=False,
             clearable=False,
+            optionHeight=20,
             className="uni_width_height",
             style={
-                "color": "black"
+                "color": "black",
+                "width":"50px",
             },
         ),
     ]
@@ -516,108 +516,109 @@ def interpolateInputUI():
             max=240.0,
             persistence=True,
             className="uni_width_height",
+            style={"width":"65px"},
         ),
     ]
 
 def mergeInputUI():
-    return [dbc.Row([
-        dbc.Col(
-            daq.BooleanSwitch(
-                label="All video",
-                labelPosition="top",
-                vertical=True,
-                id={"type": "input", "id": "allVideo"},
-                on=True,
-                persistence=True,
-                style={"white-space":"nowrap"},
-            )
-        ),
-        dbc.Col(
-            daq.BooleanSwitch(
-                label="All audio",
-                labelPosition="top",
-                vertical=True,
-                id={"type": "input", "id": "allAudio"},
-                on=False,
-                persistence=True,
-                style={"white-space":"nowrap"},
-            )
-        ),
-        dbc.Col(
-            daq.BooleanSwitch(
-                label="All subtitle",
-                labelPosition="top",
-                vertical=True,
-                id={"type": "input", "id": "allSubtitle"},
-                on=False,
-                persistence=True,
-                style={"white-space":"nowrap"},
-            )
-        ),
-    ])]
+    return [
+        dbc.Stack(
+            [
+                daq.BooleanSwitch(
+                    label="All video",
+                    labelPosition="top",
+                    vertical=True,
+                    id={"type": "input", "id": "allVideo"},
+                    on=True,
+                    persistence=True,
+                    className="column_left",
+                    style={
+                        "white-space":"nowrap",
+                        "width":"70px",
+                    },
+                ),
+                daq.BooleanSwitch(
+                    label="All audio",
+                    labelPosition="top",
+                    vertical=True,
+                    id={"type": "input", "id": "allAudio"},
+                    on=False,
+                    persistence=True,
+                    className="column_left",
+                    style={
+                        "white-space":"nowrap",
+                        "width":"68px",
+                    },
+                ),
+                daq.BooleanSwitch(
+                    label="All subtitle",
+                    labelPosition="top",
+                    vertical=True,
+                    id={"type": "input", "id": "allSubtitle"},
+                    on=False,
+                    persistence=True,
+                    style={
+                        "white-space":"nowrap",
+                        "width":"72px",
+                    },
+                ),
+            ],
+            direction="horizontal"
+        )
+    ]
 
 @callback(
     Output('div_processParamUI', 'children'),
     Input('dropdown_processes', 'value'),
 )
 def update_div_processParamUI(selectedProcess):
+
+    processParamUI = [
+        html.H6(
+            f"{selectedProcess.capitalize()} parameters :",
+            disable_n_clicks=True,
+            className="uni_text",
+            style={
+                "height":"3vh",
+                "marginBottom":"0vh",
+            }
+        ),
+    ]
     if selectedProcess == "optimize":
-        return [
-            html.H6(
-                "Optimize parameters :",
-                className="uni_text",
-                disable_n_clicks=True,
-            ),
+        processParamUI.extend([
             *qualityInputUI(),
-        ]
+        ])
     elif selectedProcess == "resize":
-        return [
-            html.H6(
-                "Resize parameters :",
-                className="uni_text",
-                disable_n_clicks=True,
-            ),
-            *sizeInputUI(),
+        processParamUI.extend([
+            *resizeInputUI(),
             *qualityInputUI(),
-        ]
+        ])
     elif selectedProcess == "upscale":
-        return [
-            html.H6(
-                "Upscale parameters :",
-                className="uni_text",
-                disable_n_clicks=True,
-            ),
+        processParamUI.extend([
             *upscaleInputUI(),
             *qualityInputUI(),
-        ]
+        ])
     elif selectedProcess == "interpolate":
-        return [
-            html.H6(
-                "Interpolate parameters :",
-                className="uni_text",
-                disable_n_clicks=True,
-            ),
+        processParamUI.extend([
             *interpolateInputUI(),
             *qualityInputUI(),
-        ]
+        ])
     elif selectedProcess == "merge":
-        return [
-            html.H6(
-                "Merge parameters :",
-                className="uni_text",
-                disable_n_clicks=True,
-            ),
+        processParamUI.extend([
             *mergeInputUI(),
-        ]
+        ])
     else:
         print('Not configured process : "{}"')
         raise PreventUpdate
+    
+    return processParamUI
 
 
 
 @callback(
     Output({"type": "input", "id": "videoWidth"}, 'value'),
     Output({"type": "input", "id": "videoHeight"}, 'value'),
+    Output({"type": "spec", "id": "dropdown_videoSize"}, 'value'),
     Input({"type": "spec", "id": "dropdown_videoSize"}, 'value'),
     prevent_initial_call=True,
 )
@@ -625,7 +626,7 @@ def setVideoSize(selectedVideoSize):
     global videoSizesDict
     for videoSize in videoSizesDict:
         if videoSize["label"] == selectedVideoSize:
-            return videoSize["width"], videoSize["height"]
+            return videoSize["width"], videoSize["height"], None
     raise PreventUpdate
 
 @callback(
