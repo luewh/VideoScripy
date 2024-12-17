@@ -22,7 +22,7 @@ init()
 
 
 # from VideoScripy import *
-__all__ = ['VideoScripy', 'run']
+__all__ = ['VideoScripy', 'VideoInfo', 'VideoProcess', 'run']
 
 
 
@@ -339,11 +339,15 @@ class VideoScripy():
                 videoStream = []
                 # get stream info
                 for stream in results[videoIndex]['streams']:
+                    try :
+                        codecName = stream["codec_name"]
+                    except:
+                        codecName = stream["codec_tag_string"]
                     streamInfo.append({
                         "index": int(stream["index"]),
                         "codec_type": stream["codec_type"],
-                        "codec_name": stream["codec_name"],
-                    })                    
+                        "codec_name": codecName,
+                    })
                     if stream['codec_type'] == 'video':
                         videoStream.append(stream)
 

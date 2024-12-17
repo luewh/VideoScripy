@@ -15,7 +15,7 @@ import dash_daq as daq
 from tkinter import Tk, filedialog
 
 # own class
-from VideoScripy import VideoScripy
+from VideoScripy import *
 
 
 addPath = []
@@ -686,18 +686,20 @@ def setPath(_, enteredPath):
 
 
 
-def getVideoItem(video:dict, index:int, color:str, prefix:str=""):
+def getVideoItem(video:VideoInfo, index:int, color:str, prefix:str=""):
 
-    width = str(video["width"]).rjust(7)
-    height = str(video["height"]).ljust(7)
+    width = str(video["width"]).rjust(6)
+    height = str(video["height"]).ljust(6)
     frameRate = (str(video["fps"])+" fps").rjust(10)
-    duration = str(video["duration"]).split(".")[0].rjust(10)
+    duration = str(video["duration"]).split(".")[0].rjust(8)
     bitRate = (f'{video["bitRate"]/1_000:_.0f}'+" Kbits/s").rjust(16)
+    fileSize = (f'{video["fileSize"]/1_024:_.0f}'+" Ko").rjust(13)
     videoInfoText = (
-        f'|{width}x{height}|'+
-        f'{frameRate} |'+
-        f'{duration} |'+
+        f'|{width}x{height}|'
+        f'{frameRate} |'
+        f'{duration} |'
         f'{bitRate} |'
+        f'{fileSize} |'
     )
 
     return dcc.Loading(
