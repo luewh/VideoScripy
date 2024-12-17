@@ -40,6 +40,7 @@ class VideoInfo(TypedDict):
     fps: float
     nbFrames: int
     streams : dict
+    fileSize : int
 
 class VideoProcess(Enum):
     """
@@ -356,6 +357,7 @@ class VideoScripy():
 
                 # write info
                 self.vList[videoIndex]['streams'] = streamInfo
+                self.vList[videoIndex]['fileSize'] = int(results[videoIndex]['format']['size'])
                 self.vList[videoIndex]['width'] = int(videoStream['width'])
                 self.vList[videoIndex]['height'] = int(videoStream['height'])
                 num, denom = videoStream['r_frame_rate'].split('/')
