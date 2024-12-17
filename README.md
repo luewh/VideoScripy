@@ -100,7 +100,7 @@ Advantage : **Freedom**
 
 - ### x3 Faster FFprobe by running it "asynchronously"
 ![Fast FFprobe](./doc/faster_way_to_run_ffprobe.png)
-(ffprobe on 64 ~2h long videos)
+(ffprobe on 64 videos, ~2h long each)
 
 
 

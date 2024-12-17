@@ -58,7 +58,8 @@ videoSortBy = [
     "width", "height", "w x h",
     "fps",
     "duration",
-    "bitRate"
+    "bitRate",
+    "fileSize"
 ]
 
 
@@ -718,6 +719,17 @@ def getVideoItem(video:VideoInfo, index:int, color:str, prefix:str=""):
                         "white-space":"pre",
                         "font-family":"monospace",
                     },
+                ),
+                dbc.Tooltip(
+                    [
+                        html.Div(f'{width}x{height}',className="uni_text"),
+                        html.Div(f'{frameRate}',className="uni_text"),
+                        html.Div(f'{duration}',className="uni_text"),
+                        html.Div(f'{bitRate}',className="uni_text"),
+                        html.Div(f'{fileSize}',className="uni_text"),
+                    ],
+                    target={"type":"video", "index":index},
+                    delay={"show": 1000, "hide": 0},
                 ),
             ],
             id={"type":"video", "index":index},
