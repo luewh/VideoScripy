@@ -992,7 +992,6 @@ def runSetVideoListPrefix(_, allColor):
         (Output('dropdown_lvideo_sort', 'disabled'), True, False),
 
         (Output('interval_log', 'disabled'), False, True),
-        # ensure last print of callback
         (Output('interval_log', 'n_intervals'), 0, 0),
     ],
     prevent_initial_call=True,

@@ -275,18 +275,20 @@ class VideoScripy():
 
             # get videos
             for file in files:
+                # skip not supported type
                 fileFormat = file.split(".")[-1].lower()
-                if fileFormat in self.vType:
-                    # check &
-                    if "&" in root+"\\"+file:
-                        printC(f'"&" must not used in path or file name', "yellow")
-                        printC(f'Skipped "{file}"', "yellow")
-                        continue
-                    self.vList.append({
-                        "type" : fileFormat,
-                        "path" : root+"\\"+file,
-                        "name" : (root+"\\"+file).replace(self.path+'\\','').replace('\\','__')
-                    })
+                if fileFormat not in self.vType:
+                    continue
+                # check &
+                if "&" in root+"\\"+file:
+                    printC(f'"&" must not used in path or file name', "yellow")
+                    printC(f'Skipped "{file}"', "yellow")
+                    continue
+                self.vList.append({
+                    "type" : fileFormat,
+                    "path" : root+"\\"+file,
+                    "name" : (root+"\\"+file).replace(self.path+'\\','').replace('\\','__')
+                })
             
             # stop scan for perfomance
             if folderDepthLimit == 0:
@@ -751,7 +753,6 @@ class VideoScripy():
             print('--- {}/{} ---'.format(index+1,len(self.vList)))
             print(name)
 
-            # TODO directly use -1
             # compute setWidth and setHeight
             if setWidth == -1 and setHeight == -1:
                 newWidth = width
@@ -776,14 +777,16 @@ class VideoScripy():
             if newHeight%2 != 0:
                 newHeight += 1
 
+            print(f'{width}x{height} --> {newWidth}x{newHeight}')
+
             # ratio warning
             if newWidth/newHeight != width/height:
                 printC('Warning, rize ratio will be changed', "yellow")
             
-            print(f'{width}x{height} --> {newWidth}x{newHeight}')
-            
-            # check if resize needed
-            if newWidth == width and newHeight == height:
+            # skip if same size
+            # skip if bigger size
+            if ((newWidth == width and newHeight == height)
+                or (newWidth > width and newHeight > height)):
                 printC("Skipped", "yellow")
                 continue
             
@@ -885,7 +888,6 @@ class VideoScripy():
             )
             if upscaleFactor in [2,3,4]:
                 command += f' -n realesr-animevideov3 -s {upscaleFactor}'
-            # TODO
             elif upscaleFactor == "4p":
                 command += ' -n realesrgan-x4plus'
             elif upscaleFactor == "4pa":
