@@ -43,13 +43,13 @@ class VideoInfo(TypedDict):
 
 class VideoProcess(Enum):
     """
-    Implemented processes
+    Implemented processes and its substep
     """
     optimize = "optimize"
     resize = "resize"
     getFrames = "getFrames"
-    upscale = "upscale"
-    interpolate = "interpolate"
+    upscale = ["getFrames", "upscale", "frameToVideo"]
+    interpolate = ["getFrames", "interpolate", "frameToVideo"]
     merge = "merge"
 
 
@@ -149,8 +149,8 @@ class VideoScripy():
         folderSkip ([str]):
             self generated folders, skiped when scanning
 
-        optimizationTolerence (float):
-            do not optimize if optimizedBitRate * optimizationTolerence < bitRate
+        OPTIMIZE_TOLERENCE (float):
+            do not optimize if optimizedBitRate * OPTIMIZE_TOLERENCE < bitRate
 
         highQualityParam (str):
             hevc_nvenc high quality parameters
@@ -172,8 +172,8 @@ class VideoScripy():
         
         self.vList:list[VideoInfo] = []
         self.vType = ["mp4","mkv"]
-        self.folderSkip = [p.value for p in VideoProcess]
-        self.optimizationTolerence = 1.15
+        self.folderSkip = [p.name for p in VideoProcess]
+        self.OPTIMIZE_TOLERENCE = 1.15
         
         self.h265 = True
         self.gpu = True
@@ -185,9 +185,7 @@ class VideoScripy():
         self.EXIT_CODE_FILE_NAME = "exitCode.txt"
 
         self.checkTools()
-    
-
-    
+        
     def checkTools(self):
         tools = {
             "FFmpeg": "ffmpeg -version",
@@ -425,23 +423,20 @@ class VideoScripy():
                 ' -cq 1'
             )
 
-    def _getFFmpegCommand(
-            self, video:VideoInfo, process:str,
-            commandInputs:str=None, commandMap:str=None, commandMetadata:str=None,
-        ) -> str:
+    def _getCommand(self, video:VideoInfo, process:str, substep='') -> str:
         
         videoPath = video['path']
         videoName = video['name']
 
         videoFps = video['fps']
-        if process == VideoProcess.interpolate.value:
+        if substep == 2 and process == VideoProcess.interpolate.name:
             videoFps = video["interpolateFps"]
 
         haccel = ''
         if self.gpu:
             haccel = ' -hwaccel cuda -hwaccel_output_format cuda'
 
-        if process != VideoProcess.merge.value:
+        if process != VideoProcess.merge.name:
             communFFmpegOut = (
                 f' -c:v copy -c:a copy -c:s copy'
                 f' -c:v:0 {self.encoder} {video["optimizeBitRateParam"]}'
@@ -450,7 +445,7 @@ class VideoScripy():
                 f' "{process}\\{videoName}"'
             )
 
-        if process == VideoProcess.optimize.value:
+        if process == VideoProcess.optimize.name:
             command = (
                 f' ffmpeg'
                 f' {haccel}'
@@ -459,11 +454,12 @@ class VideoScripy():
                 f' {communFFmpegOut}'
             )
 
-        elif process == VideoProcess.resize.value:
+        elif process == VideoProcess.resize.name:
+            
+            resizeFilter = "scale"
             if self.gpu:
                 resizeFilter = "scale_cuda"
-            else:
-                resizeFilter = "scale"
+            
             command = (
                 f' ffmpeg'
                 f' {haccel}'
@@ -472,42 +468,70 @@ class VideoScripy():
                 f' -filter:v:0 {resizeFilter}={video["resizeWidth"]}:{video["resizeHeight"]}'
                 f' {communFFmpegOut}'
             )
-            
-        elif process == VideoProcess.getFrames.value:
+
+        elif process in [VideoProcess.upscale.name, VideoProcess.interpolate.name]:
+
+            if substep == 0:
+                command = (
+                    f' ffmpeg'
+                    f' -i "{videoPath}"'
+                    f' -qscale:v 1 -qmin 1 -qmax 1 -y'
+                    f' -r {videoFps}'
+                    f' "{video["getFramesOutputPath"]}/frame%08d.jpg"'
+                )
+            else:
+                if process == VideoProcess.upscale.name:
+                    processOutputPath = video["upscaleOutputPath"]
+                    upscaleFactor = video["upscaleFactor"]
+                elif process == VideoProcess.interpolate.name:
+                    processOutputPath = video["interpolateOutputPath"]
+
+                if substep == 1 and process == VideoProcess.upscale.name:
+                    command = (
+                        f' realesrgan-ncnn-vulkan.exe'
+                        f' -i "{video["getFramesOutputPath"]}"'
+                        f' -o "{processOutputPath}"'
+                    )
+                    if upscaleFactor in [2,3,4]:
+                        command += f' -n realesr-animevideov3 -s {upscaleFactor}'
+                    elif upscaleFactor == "4p":
+                        command += ' -n realesrgan-x4plus'
+                    elif upscaleFactor == "4pa":
+                        command += ' -n realesrgan-x4plus-anime'
+                    else:
+                        printC(f'Unknown upscale factor "{upscaleFactor}"', "red")
+                        return None
+                    command += (
+                        f' -f jpg -g 1'
+                    )
+                elif substep == 1 and process == VideoProcess.interpolate.name:
+                    command = (
+                        f' ifrnet-ncnn-vulkan.exe'+
+                        f' -i "{video["getFramesOutputPath"]}"'+
+                        f' -o "{processOutputPath}"'+
+                        ' -m IFRNet_GoPro -g 1 -f frame%08d.jpg'+
+                        f' -n {video["interpolateFrame"]}'
+                    )
+
+                elif substep == 2:
+                    command = (
+                        f' ffmpeg'
+                        f' {haccel}'
+                        f' -i "{videoPath}"'
+                        f' {haccel}'
+                        f' -c:v mjpeg_cuvid -r {videoFps}'
+                        f' -i "{processOutputPath}/frame%08d.jpg"'
+                        f' -map 1:v:0 -map 0:a? -map 0:s?'
+                        f' {communFFmpegOut}'
+                    )
+
+        elif process == VideoProcess.merge.name:
             command = (
                 f' ffmpeg'
-                f' -i "{videoPath}"'
-                f' -qscale:v 1 -qmin 1 -qmax 1 -y'
-                f' -r {videoFps}'
-                f' "{video["getFramesOutputPath"]}/frame%08d.jpg"'
-            )
-
-        elif process in [VideoProcess.upscale.value, VideoProcess.interpolate.value]:
-
-            if process == VideoProcess.upscale.value:
-                processOutputPath = video["upscaleOutputPath"]
-
-            elif process == VideoProcess.interpolate.value:
-                processOutputPath = video["interpolateOutputPath"]
-
-            command = (
-                f' ffmpeg'
-                f' {haccel}'
-                f' -i "{videoPath}"'
-                f' {haccel}'
-                f' -c:v mjpeg_cuvid -r {videoFps}'
-                f' -i "{processOutputPath}/frame%08d.jpg"'
-                f' -map 1:v:0 -map 0:a? -map 0:s?'
-                f' {communFFmpegOut}'
-            )
-
-        elif process == VideoProcess.merge.value:
-            command = (
-                f' ffmpeg'
-                f' {commandInputs}'
-                f' {commandMap}'
+                f' {video["commandInputs"]}'
+                f' {video["commandMap"]}'
                 f' -c copy'
-                f' {commandMetadata}'
+                f' {video["commandMetadata"]}'
                 f' -y'
                 f' "{process}\\{videoName}"'
             )
@@ -538,7 +562,7 @@ class VideoScripy():
     def _runProc(self, command:str, processName='', silence=False) -> bool:
         """
         Warp shell script then run it in a minimized and realtime cmd.exe,
-        wait till its end and check it exit code.\n
+        wait till its end and check its exit code.\n
         Return True if exit code is 0 or -1, else False.
 
         Parameters:
@@ -607,9 +631,8 @@ class VideoScripy():
                     printC(f'Process end with return code {returnCode}', "red")
                 return False
 
-            
 
-    def _getFrames(self, video:VideoInfo) -> bool:
+    def _getFrames(self, video:VideoInfo, process:VideoProcess) -> bool:
         """
         Transform video to frames
 
@@ -643,12 +666,11 @@ class VideoScripy():
         # create new temporary frames folder
         mkdir(getFramesOutputPath)
 
-        command = self._getFFmpegCommand(video, VideoProcess.getFrames.value)
-        
         printC(f'Getting Frames', "green")
-        result = self._runProc(command)
+        command = self._getCommand(video, process.name, substep=0)
+        result = self._runProc(command, process.value[0])
 
-        # check _getFrames accuracy
+        # check frames count
         getedFrames = len(listdir(getFramesOutputPath))
         if getedFrames != video["nbFrames"]:
             printC(f'Waring, geted frames {getedFrames} != video frames {video["nbFrames"]}', "yellow")
@@ -680,13 +702,13 @@ class VideoScripy():
         Used attributes:
             path
             vList
-            optimizationTolerence
+            OPTIMIZE_TOLERENCE
             highQualityParam
             killed
             proc
         """
         
-        process = VideoProcess.optimize.value
+        process = VideoProcess.optimize.name
         # create output folder
         outputFolder = self.path+f'\\{process}'
         if not isdir(outputFolder):
@@ -708,13 +730,13 @@ class VideoScripy():
             self.pre_optimize(video, width, height, quality)
 
             # check if optimization needed
-            if video["optimizeBitRate"] * self.optimizationTolerence > bitRate:
+            if video["optimizeBitRate"] * self.OPTIMIZE_TOLERENCE > bitRate:
                 printC('Skipped', "yellow")
                 continue
 
             printC(f'Optimizing "{name}"', "green")
-            command = self._getFFmpegCommand(video, process)
-            self._runProc(command)
+            command = self._getCommand(video, process)
+            self._runProc(command, process)
 
             if self.killed:
                 return
@@ -742,7 +764,7 @@ class VideoScripy():
             highQualityParam
         """
         
-        process = VideoProcess.resize.value
+        process = VideoProcess.resize.name
         # create output folder
         outputFolder = self.path+f'\\{process}'
         if not isdir(outputFolder):
@@ -809,8 +831,8 @@ class VideoScripy():
             self.pre_optimize(video, widthResize, heightResize, quality)
 
             printC(f'Resizing "{name}"', "green")
-            command = self._getFFmpegCommand(video, process)
-            self._runProc(command)
+            command = self._getCommand(video, process)
+            self._runProc(command, process)
 
             if self.killed:
                 return
@@ -840,9 +862,9 @@ class VideoScripy():
         
         """
 
-        process = VideoProcess.upscale.value
+        process = VideoProcess.upscale
         # create output folder
-        outputFolder = self.path+f'\\{process}'
+        outputFolder = self.path+f'\\{process.name}'
         if not isdir(outputFolder):
             mkdir(outputFolder)
 
@@ -867,14 +889,14 @@ class VideoScripy():
             getFramesOutputPath = self.path+'\\{}_tmp_frames'.format(name)
             video["getFramesOutputPath"] = getFramesOutputPath
 
-            result = self._getFrames(video)
+            result = self._getFrames(video, process)
             
             if self.killed:
                 return
             if not result:
                 continue
 
-            upscaleOutputPath = self.path+f'\\{name}_{process}x{upscaleFactor}_frames'
+            upscaleOutputPath = self.path+f'\\{name}_{process.name}x{upscaleFactor}_frames'
             # create upscaled frames folder if not existing
             if not isdir(upscaleOutputPath):
                 mkdir(upscaleOutputPath)
@@ -890,24 +912,6 @@ class VideoScripy():
                         remove(upscaleOutputPath+'\\'+lastTwoUpscaled)
                 printC(f'Continue upscaling "{name}"', "green")
 
-            command = (
-                f' realesrgan-ncnn-vulkan.exe'
-                f' -i "{getFramesOutputPath}"'
-                f' -o "{upscaleOutputPath}"'
-            )
-            if upscaleFactor in [2,3,4]:
-                command += f' -n realesr-animevideov3 -s {upscaleFactor}'
-            elif upscaleFactor == "4p":
-                command += ' -n realesrgan-x4plus'
-            elif upscaleFactor == "4pa":
-                command += ' -n realesrgan-x4plus-anime'
-            else:
-                printC(f'Unknown upscale factor "{upscaleFactor}"', "red")
-                return
-            command += (
-                f' -f jpg -g 1'
-            )
-
             # frames watch
             watch = Thread(
                 target=frameWatch,
@@ -915,7 +919,10 @@ class VideoScripy():
             )
             watch.start()
 
-            result = self._runProc(command)
+            video["upscaleOutputPath"] = upscaleOutputPath
+            video["upscaleFactor"] = upscaleFactor
+            command = self._getCommand(video, process.name, substep=1)
+            result = self._runProc(command, process.value[1])
             if not result:
                 global stop_threads
                 stop_threads = True
@@ -933,11 +940,9 @@ class VideoScripy():
             rmtree(getFramesOutputPath)
             
             # upscaled frames to video
-            video["upscaleOutputPath"] = upscaleOutputPath
-
             printC(f'Upscaling frame to video "{name}"', "green")
-            command = self._getFFmpegCommand(video, process)
-            result = self._runProc(command)
+            command = self._getCommand(video, process.name, substep=2)
+            result = self._runProc(command, process.value[2])
 
             if self.killed:
                 return
@@ -972,9 +977,9 @@ class VideoScripy():
         
         """
         
-        process = VideoProcess.interpolate.value
+        process = VideoProcess.interpolate
         # create output folder
-        outputFolder = self.path+f'\\{process}'
+        outputFolder = self.path+f'\\{process.name}'
         if not isdir(outputFolder):
             mkdir(outputFolder)
 
@@ -999,6 +1004,7 @@ class VideoScripy():
 
             # save and show interpolate change
             interpolateFrame = ceil(duration.total_seconds() * fpsInterp)
+            video["interpolateFrame"] = interpolateFrame
 
             print(f'{fps}fps --> {fpsInterp}fps')
 
@@ -1006,14 +1012,16 @@ class VideoScripy():
             
             getFramesOutputPath = self.path+'\\{}_tmp_frames'.format(name)
             video["getFramesOutputPath"] = getFramesOutputPath
-            result = self._getFrames(video)
+            video['interpolateFps'] = fpsInterp
+            result = self._getFrames(video, process)
 
             if self.killed:
                 return
             if not result:
                 continue
 
-            interpolateOutputPath = self.path+f'\\{name}_{process}_frames'
+            interpolateOutputPath = self.path+f'\\{name}_{process.name}_frames'
+            video["interpolateOutputPath"] = interpolateOutputPath
 
             # empty interpolate frames folder
             if isdir(interpolateOutputPath):
@@ -1022,15 +1030,6 @@ class VideoScripy():
             # new frames interpolate
             mkdir(interpolateOutputPath)
 
-            command = (
-                f' ifrnet-ncnn-vulkan.exe'+
-                f' -i "{getFramesOutputPath}"'+
-                f' -o "{interpolateOutputPath}"'+
-                ' -m IFRNet_GoPro -g 1 -f frame%08d.jpg'+
-                f' -n {interpolateFrame}'
-            )
-            printC(f'Interpolating "{name}"', "green")
-
             # frames watch
             watch = Thread(
                 target=frameWatch,
@@ -1038,7 +1037,9 @@ class VideoScripy():
             )
             watch.start()
             
-            result = self._runProc(command)
+            printC(f'Interpolating "{name}"', "green")
+            command = self._getCommand(video, process.name, substep=1)
+            result = self._runProc(command, process.value[1])
             if not result:
                 global stop_threads
                 stop_threads = True
@@ -1055,13 +1056,10 @@ class VideoScripy():
             # remove frames
             rmtree(getFramesOutputPath)
 
-            video['interpolateFps'] = fpsInterp
-            video["interpolateOutputPath"] = interpolateOutputPath
-
             # interpolate frames to video
             printC(f'Interpolating frame to video "{name}"', "green")
-            command = self._getFFmpegCommand(video, process)
-            result = self._runProc(command)
+            command = self._getCommand(video, process.name, substep=2)
+            result = self._runProc(command, process.value[2])
 
             if self.killed:
                 return
@@ -1095,7 +1093,7 @@ class VideoScripy():
         
         noticeProcessBegin()
         
-        process = VideoProcess.merge.value
+        process = VideoProcess.merge.name
         # create output folder
         outputFolder = self.path+f'\\{process}'
         if not isdir(outputFolder):
@@ -1145,13 +1143,11 @@ class VideoScripy():
                         commandMetadata += f'-metadata:s:s:{index} title="{name}" '
 
             printC(f'Merging {len(self.vList)} videos', "green")
-            command = self._getFFmpegCommand(
-                video, process,
-                commandInputs=commandInputs,
-                commandMap=commandMap,
-                commandMetadata=commandMetadata,
-            )
-            self._runProc(command)
+            video["commandInputs"] = commandInputs
+            video["commandMap"] = commandMap
+            video["commandMetadata"] = commandMetadata
+            command = self._getCommand(video, process)
+            self._runProc(command, process)
 
             if self.killed:
                 return
