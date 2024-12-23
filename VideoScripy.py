@@ -14,10 +14,9 @@ from enum import Enum
 
 # dependencies
 from alive_progress import alive_bar
-from colorama import init, Fore, Style
 from playsound import playsound
 import psutil
-
+from colorama import init, Fore, Style
 init()
 
 
@@ -299,7 +298,7 @@ class VideoScripy():
     
     def getVideoInfo(self) -> None:
         """
-        Set attributes vList's video properties with ffmpeg probe
+        Set attributes vList's video properties with ffprobe
         
         Used attributes:
             vList
@@ -548,7 +547,7 @@ class VideoScripy():
                 child.kill()
             self.killed = True
 
-    def _runProc(self, command:str) -> bool:
+    def _runProc(self, command:str, silence=False) -> bool:
         """
         Run shell script and wait till its end
 
@@ -572,11 +571,12 @@ class VideoScripy():
         self.proc.communicate()
         self.proc = None
 
-        processTime = time() - processTime
-        processTime = timedelta(seconds=processTime)
-        print(f"Took :{str(processTime)[:-3]}")
+        if not silence:
+            processTime = time() - processTime
+            processTime = timedelta(seconds=processTime)
+            print(f"Took :{str(processTime)[:-3]}")
 
-        return self._checkExitCode()
+        return self._checkExitCode(silence)
 
     def _checkExitCode(self, silence=False) -> bool:
         filePath = self.path+f'\\{self.exitCodeFileName}'
@@ -1098,59 +1098,61 @@ class VideoScripy():
         if not isdir(outputFolder):
             mkdir(outputFolder)
 
+        print(f'---  {len(self.vList)}  ---')
+
         # check number of video
         if len(self.vList) <= 1:
             printC("0 or 1 video is not enought to merge", "yellow")
-            return
+        else:
+            # check video length
+            duration = self.vList[0]['duration']
+            for video in self.vList:
+                if duration != video['duration']:
+                    printC(f'Warning, "{video["name"]}" has different duration', "yellow")
+            
+            commandInputs = ""
+            commandMap = ""
+            commandMetadata = ""
+            for index, video in enumerate(self.vList):
 
-        # check video length
-        duration = self.vList[0]['duration']
-        for video in self.vList:
-            if duration != video['duration']:
-                printC(f'Warning, "{video["name"]}" has different duration', "yellow")
-        
-        commandInputs = ""
-        commandMap = ""
-        commandMetadata = ""
-        for index, video in enumerate(self.vList):
+                path = video['path']
+                name = video['name']
+                print(name)
 
-            path = video['path']
-            name = video['name']
-
-            if index == 0:
-                commandInputs += f'-i "{path}" '
-                commandMap += f'-map {index} '
-                # remove time codec for mp4
-                commandMap += f'-map -{index}:d '
-                commandMetadata += f'-metadata:s:v:{index} title="{name}" '
-                commandMetadata += f'-metadata:s:a:{index} title="{name}" '
-                commandMetadata += f'-metadata:s:s:{index} title="{name}" '
-            else:
-                commandInputs += f'-i "{path}" '
-                # remove time codec for mp4
-                commandMap += f'-map -{index}:d '
-                if allVideo:
-                    commandMap += f'-map {index}:v? '
+                if index == 0:
+                    commandInputs += f'-i "{path}" '
+                    commandMap += f'-map {index} '
+                    # remove time codec for mp4
+                    commandMap += f'-map -{index}:d '
                     commandMetadata += f'-metadata:s:v:{index} title="{name}" '
-                if allAudio:
-                    commandMap += f'-map {index}:a? '
                     commandMetadata += f'-metadata:s:a:{index} title="{name}" '
-                if allSubtitle:
-                    commandMap += f'-map {index}:s? '
                     commandMetadata += f'-metadata:s:s:{index} title="{name}" '
+                else:
+                    commandInputs += f'-i "{path}" '
+                    # remove time codec for mp4
+                    commandMap += f'-map -{index}:d '
+                    if allVideo:
+                        commandMap += f'-map {index}:v? '
+                        commandMetadata += f'-metadata:s:v:{index} title="{name}" '
+                    if allAudio:
+                        commandMap += f'-map {index}:a? '
+                        commandMetadata += f'-metadata:s:a:{index} title="{name}" '
+                    if allSubtitle:
+                        commandMap += f'-map {index}:s? '
+                        commandMetadata += f'-metadata:s:s:{index} title="{name}" '
 
-        command = self._getFFmpegCommand(
-            video, process,
-            commandInputs=commandInputs,
-            commandMap=commandMap,
-            commandMetadata=commandMetadata,
-        )
-        printC(f'Merging {len(self.vList)} videos', "green")
-        self._runProc(command)
+            command = self._getFFmpegCommand(
+                video, process,
+                commandInputs=commandInputs,
+                commandMap=commandMap,
+                commandMetadata=commandMetadata,
+            )
+            printC(f'Merging {len(self.vList)} videos', "green")
+            self._runProc(command)
 
-        if self.killed:
-            return
-        
+            if self.killed:
+                return
+            
         removeEmptyFolder(outputFolder)
         noticeProcessEnd()
 
