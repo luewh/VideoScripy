@@ -15,6 +15,7 @@ from enum import Enum
 # dependencies
 from alive_progress import alive_bar
 from playsound import playsound
+from PIL import Image
 import psutil
 from colorama import init, Fore, Style
 init()
@@ -53,6 +54,7 @@ class VideoProcess(Enum):
     upscale = ["getFrames", "upscale", "frameToVideo"]
     interpolate = ["getFrames", "interpolate", "frameToVideo"]
     merge = "merge"
+    preview = "preview"
 
 
 
@@ -1189,6 +1191,78 @@ class VideoScripy():
         removeEmptyFolder(outputFolder)
         noticeProcessEnd()
 
+    def preview(self, gridWidth:int=3, gridHeight:int=2) -> None:
+
+        process = VideoProcess.preview.name
+        # create output folder
+        outputFolder = self.path+f'\\{process}'
+        if not isdir(outputFolder):
+            mkdir(outputFolder)
+
+        gridNb = gridWidth*gridHeight
+        
+        for index, video in enumerate(self.vList):
+            noticeProcessBegin()
+
+            name = video['name']
+            duration = video['duration'].total_seconds()
+            width = video['width']
+            height = video['height']
+
+            outputName = video['name'].replace(f".{video['type']}",".png")
+
+            # show current previewing video
+            print('--- {}/{} ---'.format(index+1,len(self.vList)))
+            print(name)
+            
+            processTime = time()
+
+            chopTime = 0.233 * duration/(gridNb-1)
+            for imgNb in range(gridNb):
+                
+                if imgNb == 0:
+                    imgTime = chopTime
+                elif imgNb == gridNb-1:
+                    imgTime = duration - chopTime
+                else:
+                    imgTime = chopTime + imgNb*(duration-2*chopTime)/(gridNb-1)
+
+                command = (
+                    f' ffmpeg'
+                    f' -ss {imgTime}'
+                    f' -i "{video["path"]}"'
+                    f' -frames:v 1'
+                    f' -y'
+                    f' "{self.path}\\{process}\\{imgNb}.png"'
+                )
+                self._runProcAsync(command)
+            self._runProcAsyncWait()
+
+            newImageWidth = width*gridWidth
+            newImageHeight = height*gridHeight
+            newImage = Image.new('RGB', (newImageWidth,newImageHeight))
+
+            imgNb = 0
+            for ghCount in range(gridHeight):
+                for gwCount in range(gridWidth):
+                    imTempPath = f"{self.path}\\{process}\\{imgNb}.png"
+                    imgNb += 1
+                    imTemp = Image.open(imTempPath)
+                    newImage.paste(imTemp, (gwCount*width, ghCount*height))
+
+            newImage.save(f"{self.path}\\{process}\\{outputName}")
+
+            for imgNb in range(gridNb):
+                imTempPath = f"{self.path}\\{process}\\{imgNb}.png"
+                imgNb += 1
+                remove(imTempPath)
+
+            processTime = time() - processTime
+            processTime = timedelta(seconds=processTime)
+            print(f"Took :{str(processTime)[:-3]}")
+
+        noticeProcessEnd()
+        removeEmptyFolder(outputFolder)
 
 def run():
     def getInputInt(
@@ -1279,15 +1353,12 @@ def run():
     vs.getVideo(folderDepthLimit=0)
     vs.getVideoInfo()
 
-    print('1 - optimize')
-    print('2 - resize')
-    print('3 - upscale')
-    print('4 - interpolate')
-    print('5 - merge')
+    for index, process in enumerate(VideoProcess):
+        print(f'{index+1} - {process.name}')
     process = getInputInt(
         message='Select a process',
         default=1,
-        selections=[1,2,3,4,5]
+        selections=[i+1 for i in range(len(VideoProcess))]
     )
 
     if process == 1:
@@ -1315,6 +1386,11 @@ def run():
         allAudio = getInputBool("All audio",False)
         allSubtitle = getInputBool("All subtitle",False)
         vs.merge(allVideo, allAudio, allSubtitle)
+
+    elif process == 6:
+        gridWidth = getInputInt("Width",3)
+        gridHeight = getInputInt("Height",2)
+        vs.preview(gridWidth, gridHeight)
     
     input("Press enter to exit")
 
