@@ -24,6 +24,9 @@ init()
 __all__ = ['VideoScripy', 'VideoInfo', 'VideoProcess', 'run']
 
 
+class ProcAsyncReturn(TypedDict):
+    returnCode : int
+    stdout: str
 
 class VideoInfo(TypedDict):
     """
@@ -47,7 +50,6 @@ class VideoProcess(Enum):
     """
     optimize = "optimize"
     resize = "resize"
-    getFrames = "getFrames"
     upscale = ["getFrames", "upscale", "frameToVideo"]
     interpolate = ["getFrames", "interpolate", "frameToVideo"]
     merge = "merge"
@@ -182,11 +184,13 @@ class VideoScripy():
         self.proc = None
         self.killed = False
 
+        self.procAsync:list[subprocess.Popen] = []
+
         self.EXIT_CODE_FILE_NAME = "exitCode.txt"
 
         self.checkTools()
         
-    def checkTools(self):
+    def checkTools(self) -> None:
         tools = {
             "FFmpeg": "ffmpeg -version",
             "FFprobe": "ffprobe -version",
@@ -194,7 +198,11 @@ class VideoScripy():
             "IFRNet": "ifrnet-ncnn-vulkan.exe -h",
         }
         for tool, cmd in tools.items():
-            if self._runProc(cmd, "checkTools", silence=True):
+            self._runProcAsync(cmd)
+
+        results = self._runProcAsyncWait()
+        for tool, result in zip(tools, results):
+            if result["returnCode"] in [0, 4294967295]:
                 printC(f'{tool} found', 'green')
             else:
                 printC(f'{tool} not found, please check if it is in environment "PATH"', 'red')
@@ -291,34 +299,30 @@ class VideoScripy():
             vList
         """
     
-        def probeProcess(fileName) -> subprocess.Popen:
-            command = [
-                'ffprobe', '-show_format', '-show_streams',
-                '-of', 'json', fileName
-            ]
-            return subprocess.Popen(
-                command,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-            )
-        
         # run probe
-        processes = []
-        for videoIndex in range(len(self.vList)-1,-1,-1):
-            processes.append(probeProcess(self.vList[videoIndex]["path"]))
-        processes.reverse()
+        for video in self.vList:
+            command = (
+                f' ffprobe'
+                f' -i "{video["path"]}"'
+                f' -show_format'
+                f' -show_streams'
+                f' -of json'
+            )
+            self._runProcAsync(command)
 
         # wait and retrieve results
-        results = []
-        for processIndex in range(len(processes)-1,-1,-1):
-            out, err = processes[processIndex].communicate()
-            if processes[processIndex].returncode != 0:
-                print(f'FFprobe error, remove {self.vList[processIndex]["name"]}')
+        results = self._runProcAsyncWait()
+        for index in range(len(results)-1,-1,-1):
+            if results[index]['returnCode'] != 0:
+                print(f'FFprobe error, remove {self.vList[index]["name"]}')
                 # delete errored video
-                self.vList.pop(processIndex)
+                self.vList.pop(index)
+                results.pop(index)
             else:
-                results.append(json.loads(out.decode('utf-8')))
-        results.reverse()
+                # convert stdout to json format
+                results[index] = (
+                    json.loads(results[index]['stdout'].decode('utf-8'))
+                )
 
         # get info
         for videoIndex in range(len(self.vList)-1,-1,-1):
@@ -343,7 +347,7 @@ class VideoScripy():
                 if len(videoStream) > 1:
                     printC(
                         f'More than 1 video stream found in "{self.vList[videoIndex]["name"]}", '
-                        +'only the first will be processed', "yellow"
+                        f'only the first will be processed', "yellow"
                     )
                 videoStream = videoStream[0]
 
@@ -630,6 +634,36 @@ class VideoScripy():
                 if not silence:
                     printC(f'Process end with return code {returnCode}', "red")
                 return False
+
+    def _runProcAsync(self, command:str) -> None:
+        """
+        Run shell script in a hidden "cmd.exe".\n
+        Warning ! Output path must be absolute.\n
+        Must call _runProcAsyncWait() to get its return code and content.
+        """
+        self.procAsync.append(
+            subprocess.Popen(
+                command,
+                shell=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+        )
+    
+    def _runProcAsyncWait(self) -> list[ProcAsyncReturn]:
+        """
+        Wait all "asynchronous" process.\n
+        Return list of process's (return code, stdout)
+        """
+        result:list[ProcAsyncReturn] = []
+        for proc in self.procAsync:
+            out, _ = proc.communicate()
+            result.append({
+                "returnCode": proc.returncode,
+                "stdout": out,
+            })
+        self.procAsync.clear()
+        return result
 
 
     def _getFrames(self, video:VideoInfo, process:VideoProcess) -> bool:
