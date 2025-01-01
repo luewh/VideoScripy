@@ -22,7 +22,11 @@ init()
 
 
 # from VideoScripy import *
-__all__ = ['VideoScripy', 'VideoInfo', 'VideoProcess', 'run']
+__all__ = [
+    'VideoScripy',
+    'VideoInfo', 'VideoProcess', 'ProcAsyncReturn',
+    'run'
+]
 
 
 class ProcAsyncReturn(TypedDict):
@@ -94,45 +98,6 @@ def noticeProcessEnd():
     except:
         pass
 
-stop_threads = False
-def frameWatch(outDir:str, total:int):
-    """
-    Track video frame process with progress bar,
-    Set global variable stop_threads to True to stop.
-
-    Parameters:
-        outDir (str):
-            process output directory, where progress increase
-        
-        total (int):
-            when to stop
-    """
-    
-    global stop_threads
-    stop_threads = False
-    
-    alreadyProgressed = len(listdir(outDir))
-    restToProgress = total - alreadyProgressed
-    print(f"Already progressed : {alreadyProgressed}/{total}")
-    print(f"Remain to progress : {restToProgress}/{total}")
-
-    progressedPrev = 0
-    with alive_bar(total) as bar:
-        if alreadyProgressed != 0:
-            bar(alreadyProgressed, skipped=True)
-        while len(listdir(outDir)) < total:
-            sleep(0)
-            progressed = len(listdir(outDir)) - alreadyProgressed
-            bar(progressed - progressedPrev)
-            progressedPrev = progressed
-
-            if stop_threads:
-                break
-        else:
-            progressed = len(listdir(outDir)) - alreadyProgressed
-            bar(progressed - progressedPrev)
-            progressedPrev = progressed
-
 
 
 class VideoScripy():
@@ -185,6 +150,7 @@ class VideoScripy():
 
         self.proc = None
         self.killed = False
+        self.stop_threads = False
 
         self.procAsync:list[subprocess.Popen] = []
 
@@ -549,7 +515,7 @@ class VideoScripy():
         return command
 
 
-    # video process related
+    # run process related
     def killProc(self) -> None:
         """
         Kill and stop running video process,
@@ -667,7 +633,56 @@ class VideoScripy():
         self.procAsync.clear()
         return result
 
+    def _frameWatch(self, outDir:str, total:int) -> None:
+        """
+        Track video frame process with progress bar,
+        Set global variable stop_threads to True to stop.
 
+        Parameters:
+            outDir (str):
+                process output directory, where progress increase
+            
+            total (int):
+                when to stop
+        """
+        self.stop_threads = False
+        
+        alreadyProgressed = len(listdir(outDir))
+        restToProgress = total - alreadyProgressed
+        print(f"Already progressed : {alreadyProgressed}/{total}")
+        print(f"Remain to progress : {restToProgress}/{total}")
+
+        progressedPrev = 0
+        with alive_bar(total) as bar:
+            if alreadyProgressed != 0:
+                bar(alreadyProgressed, skipped=True)
+            while len(listdir(outDir)) < total:
+                sleep(0)
+                progressed = len(listdir(outDir)) - alreadyProgressed
+                bar(progressed - progressedPrev)
+                progressedPrev = progressed
+
+                if self.stop_threads:
+                    break
+            
+            progressed = len(listdir(outDir)) - alreadyProgressed
+            bar(progressed - progressedPrev)
+            progressedPrev = progressed
+
+    def _frameWatchStart(self, outDir:str, total:int) -> None:
+        self.watch = Thread(
+            target=self._frameWatch,
+            args=(outDir, total)
+        )
+        self.watch.start()
+
+    def _frameWatchStop(self) -> None:
+        self.stop_threads = True
+        while self.watch.is_alive():
+            pass
+
+
+    # video process related
     def _getFrames(self, video:VideoInfo, process:VideoProcess) -> bool:
         """
         Transform video to frames
@@ -710,6 +725,9 @@ class VideoScripy():
         getedFrames = len(listdir(getFramesOutputPath))
         if getedFrames != video["nbFrames"]:
             printC(f'Waring, geted frames {getedFrames} != video frames {video["nbFrames"]}', "yellow")
+            # allow +- 1 frame difference
+            if abs(video["nbFrames"]-getedFrames) < 2:
+                video["nbFrames"] = getedFrames
         
         return result
 
@@ -774,6 +792,7 @@ class VideoScripy():
             command = self._getCommand(video, process)
             self._runProc(command, process)
 
+            # stop whole process if killProc() called
             if self.killed:
                 return
         
@@ -870,6 +889,7 @@ class VideoScripy():
             command = self._getCommand(video, process)
             self._runProc(command, process)
 
+            # stop whole process if killProc() called
             if self.killed:
                 return
         
@@ -927,8 +947,11 @@ class VideoScripy():
 
             result = self._getFrames(video, process)
             
+            # stop whole process if killProc() called
             if self.killed:
                 return
+            
+            # skip next steps if process not correctly ended
             if not result:
                 continue
 
@@ -949,26 +972,21 @@ class VideoScripy():
                 printC(f'Continue upscaling "{name}"', "green")
 
             # frames watch
-            watch = Thread(
-                target=frameWatch,
-                args=(upscaleOutputPath, video["nbFrames"])
-            )
-            watch.start()
+            self._frameWatchStart(upscaleOutputPath, video["nbFrames"])
 
             video["upscaleOutputPath"] = upscaleOutputPath
             video["upscaleFactor"] = upscaleFactor
             command = self._getCommand(video, process.name, substep=1)
             result = self._runProc(command, process.value[1])
-            if not result:
-                global stop_threads
-                stop_threads = True
-                while watch.is_alive():
-                    pass
-            else:
-                watch.join()
+            
+            # frames watch end
+            self._frameWatchStop()
 
+            # stop whole process if killProc() called
             if self.killed:
                 return
+            
+            # skip next steps if process not correctly ended
             if not result:
                 continue
 
@@ -980,8 +998,11 @@ class VideoScripy():
             command = self._getCommand(video, process.name, substep=2)
             result = self._runProc(command, process.value[2])
 
+            # stop whole process if killProc() called
             if self.killed:
                 return
+            
+            # skip next steps if process not correctly ended
             if not result:
                 continue
             
@@ -1051,8 +1072,11 @@ class VideoScripy():
             video['interpolateFps'] = fpsInterp
             result = self._getFrames(video, process)
 
+            # stop whole process if killProc() called
             if self.killed:
                 return
+            
+            # skip next steps if process not correctly ended
             if not result:
                 continue
 
@@ -1067,25 +1091,20 @@ class VideoScripy():
             mkdir(interpolateOutputPath)
 
             # frames watch
-            watch = Thread(
-                target=frameWatch,
-                args=(interpolateOutputPath,interpolateFrame)
-            )
-            watch.start()
+            self._frameWatchStart(interpolateOutputPath,interpolateFrame)
             
             printC(f'Interpolating "{name}"', "green")
             command = self._getCommand(video, process.name, substep=1)
             result = self._runProc(command, process.value[1])
-            if not result:
-                global stop_threads
-                stop_threads = True
-                while watch.is_alive():
-                    pass
-            else:
-                watch.join()
+            
+            # frame watch end
+            self._frameWatchStop()
 
+            # stop whole process if killProc() called
             if self.killed:
                 return
+            
+            # skip next steps if process not correctly ended
             if not result:
                 continue
 
@@ -1097,12 +1116,15 @@ class VideoScripy():
             command = self._getCommand(video, process.name, substep=2)
             result = self._runProc(command, process.value[2])
 
+            # stop whole process if killProc() called
             if self.killed:
                 return
+            
+            # skip next steps if process not correctly ended
             if not result:
                 continue
 
-            # remove upscaled frames
+            # remove interpolated frames
             rmtree(interpolateOutputPath)
 
         removeEmptyFolder(outputFolder)
@@ -1185,6 +1207,7 @@ class VideoScripy():
             command = self._getCommand(video, process)
             self._runProc(command, process)
 
+            # stop whole process if killProc() called
             if self.killed:
                 return
             
@@ -1263,6 +1286,9 @@ class VideoScripy():
 
         noticeProcessEnd()
         removeEmptyFolder(outputFolder)
+
+
+
 
 def run():
     def getInputInt(
