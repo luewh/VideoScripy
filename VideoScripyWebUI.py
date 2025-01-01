@@ -1,6 +1,6 @@
 # built-in
 import os
-import sys
+from sys import stdout, stderr
 from time import sleep
 from webbrowser import open_new
 from threading import Timer
@@ -32,7 +32,7 @@ port = "8848"
 vs = VideoScripy()
 allVideoList = []
 
-processes = ["optimize", "resize", "upscale", "interpolate", "merge"]
+processes = [p.name for p in VideoProcess]
 runningProcess = None
 
 videoSizesDict = [
@@ -568,11 +568,54 @@ def mergeInputUI():
         )
     ]
 
+def previewInputUI():
+    return [
+        html.Div(
+            "column x row",
+            className="uni_text",
+            disable_n_clicks=True,
+        ),
+        dbc.Stack(
+            [
+                dcc.Input(
+                    id={"type": "input", "id": "previewCol"},
+                    type="number",
+                    value=3,
+                    persistence=True,
+                    min=1,
+                    max=10,
+                    step=1,
+                    className="uni_width_height",
+                    style={"width":"45px"},
+                ),
+                html.Button(
+                    "X",
+                    id={"type": "spec", "id": "button_sizeSwitch"},
+                    disabled=True,
+                    className="uni_width_height",
+                    style={"width":"5vh"},
+                ),
+                dcc.Input(
+                    id={"type": "input", "id": "previewRow"},
+                    type="number",
+                    value=2,
+                    persistence=True,
+                    min=1,
+                    max=10,
+                    step=1,
+                    className="uni_width_height",
+                    style={"width":"45px"},
+                ),
+            ],
+            direction="horizontal",
+        ),
+    ]
+
 @callback(
     Output('div_processParamUI', 'children'),
     Input('dropdown_processes', 'value'),
 )
-def update_div_processParamUI(selectedProcess):
+def update_div_processParamUI(selectedProcess:str):
 
     processParamUI = [
         html.H6(
@@ -585,28 +628,32 @@ def update_div_processParamUI(selectedProcess):
             }
         ),
     ]
-    if selectedProcess == "optimize":
+    if selectedProcess == VideoProcess.optimize.name:
         processParamUI.extend([
             *qualityInputUI(),
         ])
-    elif selectedProcess == "resize":
+    elif selectedProcess == VideoProcess.resize.name:
         processParamUI.extend([
             *resizeInputUI(),
             *qualityInputUI(),
         ])
-    elif selectedProcess == "upscale":
+    elif selectedProcess == VideoProcess.upscale.name:
         processParamUI.extend([
             *upscaleInputUI(),
             *qualityInputUI(),
         ])
-    elif selectedProcess == "interpolate":
+    elif selectedProcess == VideoProcess.interpolate.name:
         processParamUI.extend([
             *interpolateInputUI(),
             *qualityInputUI(),
         ])
-    elif selectedProcess == "merge":
+    elif selectedProcess == VideoProcess.merge.name:
         processParamUI.extend([
             *mergeInputUI(),
+        ])
+    elif selectedProcess == VideoProcess.preview.name:
+        processParamUI.extend([
+            *previewInputUI(),
         ])
     else:
         print('Not configured process : "{}"')
@@ -753,7 +800,7 @@ def getVideoItem(video:VideoInfo, index:int, color:str, prefix:str=""):
     Input('button_scanFiles', 'n_clicks'),
     running=[
         (Output('list_videos', 'children'), "", ""),
-        (Output('interval_log', 'n_intervals'), 0, 0)
+        (Output('interval_log', 'n_intervals'), 0, 0),
     ],
     prevent_initial_call=True,
 )
@@ -1002,6 +1049,7 @@ def runProcess(_, selectedProcess, inputValues, inputOns):
     values = ctx.states_list[1]
     ons = ctx.states_list[2]
 
+    # get inputs values
     for value in values:
         if value["id"]["id"] == "videoQuality":
             videoQuality = value["value"]
@@ -1013,7 +1061,10 @@ def runProcess(_, selectedProcess, inputValues, inputOns):
             upscaleFactor = value["value"]
         if value["id"]["id"] == "videoFPS":
             videoFPS = value["value"]
-
+        if value["id"]["id"] == "previewCol":
+            previewCol = value["value"]
+        if value["id"]["id"] == "previewRow":
+            previewRow = value["value"]
     for on in ons:
         if on["id"]["id"] == "allVideo":
             allVideo = on["value"]
@@ -1022,16 +1073,19 @@ def runProcess(_, selectedProcess, inputValues, inputOns):
         if on["id"]["id"] == "allSubtitle":
             allSubtitle = on["value"]
 
-    if selectedProcess == "optimize":
+    # run process
+    if selectedProcess == VideoProcess.optimize.name:
         vs.optimize(videoQuality)
-    elif selectedProcess == "resize":
+    elif selectedProcess == VideoProcess.resize.name:
         vs.resize(videoWidth, videoHeight, videoQuality)
-    elif selectedProcess == "upscale":
+    elif selectedProcess == VideoProcess.upscale.name:
         vs.upscale(upscaleFactor, videoQuality)
-    elif selectedProcess == "interpolate":
+    elif selectedProcess == VideoProcess.interpolate.name:
         vs.interpolate(videoFPS, videoQuality)
-    elif selectedProcess == "merge":
+    elif selectedProcess == VideoProcess.merge.name:
         vs.merge(allVideo, allAudio, allSubtitle)
+    elif selectedProcess == VideoProcess.preview.name:
+        vs.preview(previewCol, previewRow)
     
     if vs.killed:
         print(f"Process {selectedProcess} STOP")
@@ -1053,10 +1107,10 @@ def stopProcess(_):
 
 class StdoutIntercept(object):
     def __init__(self):
-        self.stdoutW = sys.stdout.write
-        self.stderrW = sys.stderr.write
-        sys.stdout.write = self.write
-        sys.stderr.write = self.write
+        self.stdoutW = stdout.write
+        self.stderrW = stderr.write
+        stdout.write = self.write
+        stderr.write = self.write
         self.queue = []
         self.queueLimit = 1000
         self.carriage = False
@@ -1069,8 +1123,8 @@ class StdoutIntercept(object):
         ]
 
     def __del__(self):
-        sys.stdout.write = self.stdoutW
-        sys.stderr.write = self.stderrW
+        stdout.write = self.stdoutW
+        stderr.write = self.stderrW
 
     def write(self, msg:str):
         self.stdoutW(msg)
