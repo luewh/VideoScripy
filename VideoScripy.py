@@ -1240,7 +1240,11 @@ class VideoScripy():
             
             processTime = time()
 
-            chopTime = 0.233 * duration/(gridNb-1)
+            if gridNb != 1:
+                chopTime = 0.233 * duration/(gridNb-1)
+            else:
+                chopTime = 0.233 * duration
+                
             for imgNb in range(gridNb):
                 
                 if imgNb == 0:
