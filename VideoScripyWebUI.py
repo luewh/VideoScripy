@@ -799,7 +799,7 @@ def getVideoItem(video:VideoInfo, index:int, color:str, prefix:str=""):
     Output('list_videos', 'children'),
     Input('button_scanFiles', 'n_clicks'),
     running=[
-        (Output('list_videos', 'children'), "", ""),
+        (Output('list_videos', 'children'), None, None),
         (Output('interval_log', 'n_intervals'), 0, 0),
     ],
     prevent_initial_call=True,

@@ -1,7 +1,7 @@
 
 # <img src="./assets/favicon.ico" alt="drawing" width="20px"/> VideoScripy & WebUI 
 
-VideoScripy is a collection of video processes including video **Upscale** and video frame **Interpolation**, it uses Python to generate **FFmpeg**, **Real-ESRGAN** and **IFRNet** command line script and performes serial processing on scanned **mp4**/**mkv** videos.
+VideoScripy is a collection of video processes including video **Upscale** and video frame **Interpolation**, it uses Python to generate **FFmpeg**, **Real-ESRGAN** and **IFRNet** command line script and performes serial processing on scanned **mp4** videos with **hardware acceleration**.
 
 VideoScripyWebUI is a local web user interface developed with **Dash**, it has the goal of enhancing user experience.
 ![demo.gif](./doc/demo_upscale.gif)
@@ -12,22 +12,22 @@ VideoScripyWebUI is a local web user interface developed with **Dash**, it has t
 
 ## Table of contents
 
+- [Requirements](#requirements)
 - [Embedded version](#embedded-version)
-    * [Installation](#installation)
-    * [Usage](#usage)
-<!-- 
 - [Self setup version](#self-setup-version)
-    * [Installation](#installation-1)
-    * [Usage](#usage-1) -->
-
 - [Benchmarking](#benchmarking)
-
 - [Processes Description](#processes-description)
-
 - [Credits](#credits)
-<!-- 
-- [TODO list](#todo-list) -->
 
+
+
+## Requirements
+
+- Windows OS
+- NVIDIA GPU
+- Atleast 50 Go disk space free for Upscale process | 10 Go for Interpolate process
+- Python 3.10
+- [Tools](#installation-1)
 
 
 ## Embedded version
@@ -37,63 +37,68 @@ Advantage : **Beginner-friendly**
 
 ### Installation
 
-1. Download and extract the [Embedded release](https://github.com/luewh/Video-Script/releases/latest)
+Download and extract the [Embedded release](https://github.com/luewh/Video-Script/releases/latest)
 
 ### Usage
 
-- Run the `RUN.bat` to launch WebUI
+Run the `RUN.bat`
 
-<!-- 
+
 
 ## Self setup version
 
-Need to install Python dependencies, add tools to PATH manually.  
+Need to download the source codes,  
+install Python and its dependencies,  
+download tools and include them to tools folder or add them to PATH.    
 Advantage : **Freedom**
 
 ### Installation
 
-1. Download and extract the [SelfSetup release](https://github.com/luewh/Video-Script/releases/latest)
+1. Download the source code and extract.
 
-2. Download and install Python 3.10 if you dont have.
+1. Download and install Python 3.10 if you dont have.
 
-3. Install dependencies
-
+2. Install dependencies
     ```shell
     pip install -r requirements.txt
     ```
  
-4. Add tools to PATH
+3. Download tools
 
-    Below tools are included in self setup release :
-
-    [FFmpeg](https://www.gyan.dev/ffmpeg/builds/) full build for hardware acceleration.
-
-    [Real-ESRGAN-ncnn-vulkan](https://github.com/xinntao/Real-ESRGAN-ncnn-vulkan/releases) for video upscaling.
-    
+    [FFmpeg](https://www.gyan.dev/ffmpeg/builds/) full build for hardware acceleration.  
+    [Real-ESRGAN-ncnn-vulkan](https://github.com/xinntao/Real-ESRGAN-ncnn-vulkan/releases) for video upscaling.  
     [Ifrnet-ncnn-vulkan](https://github.com/nihui/ifrnet-ncnn-vulkan/releases) for video frame interpolation.  
+
+4. Include tools
     
-    <span style="color:orange">**Important**</span>  
+    Create a "tools" folder and place tools in like this:
+    ```
+    VideoScripy
+    │   ...
+    │   VideoScripyWebUI.py 
+    └───tools
+    │   └───ffmpeg-full_build
+    │   │   │   ...
+    │   │   └───bin
+    │   │       │   ffmpeg.exe
+    │   │       │   ffprobe.exe
+    │   └───Real-ESRGAN
+    │   │   │   ...
+    │   │   │   realesrgan-ncnn-vulkan.exe
+    │   └───Ifrnet
+    │   │   │   ...
+    │   │   │   ifrnet-ncnn-vulkan.exe
+    ```
 
-    Make sure to add  
-
+    Or add them in the environment variable *PATH*
     - `<pathTo>\ffmpeg-full_build\bin`
     - `<pathTo>\Real-ESRGAN`
     - `<pathTo>\Ifrnet`
 
-    in the environment variable *PATH* -->
-
-
-<!-- 
 ### Usage
 
-- VideoScripy.py
+Run the `VideoScripyWebUI.py`
 
-    Run the script on where videos are located and follow the command line indication
-
-- VideoScripyWebUI.py
-
-    Run the script, a web page should be opened automatically, select a process, select a path where videos are located, **SCAN** then **RUN**. The processed videos are under a folder of selected path example ./upscaled.
- -->
 
 
 ## Benchmarking
@@ -104,32 +109,45 @@ Advantage : **Freedom**
 
 
 
-
 ## Processes Description
 
-- optimize
-
+- optimize  
     Reduce the video biteRate in order to gain storage space.  
-    The processed videos will have a bitRate = width * height * quality, which quality=3 is generally the lowest value before appearance of artifacts (bad images, blurry...). In other words, humain wont notice the visual difference between video of quality 3 and 6.
+    <details>
+    <summary>expand more</summary>
+        The processed videos will have a bitRate = width * height * quality, quality=3 is generally the lowest value before appearance of artifacts (bad images, blurry...). In other words, humain wont notice the visual difference between video of quality 3 and 6.
+    </details>
 
-- resize
-
+- resize  
     Reduce the video width and height.
 
-- upscale
+- upscale  
+    Increase video size by factor of 2,3 or 4 with AI, enhance video quality.  
+    <details>
+    <summary>expand more</summary>
+        Begin with a transformation of video to image frames, then upscale each frames, finally reassemble to video.   
+        It has the ability to start from last upscal progress if the "_upscaledx?_frame" wasn't deleted.
+    </details>
 
-    Recover old video from 360p to 4K, enhance video quality.  
-    Begin with a transformation of video to image frames, then upscale each frames, finally reassemble to video.   
-    It has the ability to start from last upscal progress if the "_upscaled_frame" wasn't deleted.
+    From 266x200 to 1064x800
+    ![demo_upscale_s](./doc/demo_upscale_small.png)
+    ![demo_upscale_b](./doc/demo_upscale_big.png)
 
-- interpolate
+- interpolate  
+    Increase video frame rate (FPS), smooth video.  
+    <details>
+    <summary>expand more</summary>
+        Begin with a transformation of video to image frames, then interpolate between frames, finally reassemble to video.
+    </details>
 
-    Increase video frame rate (FPS), smooth video motions.  
-    Begin with a transformation of video to image frames, then interpolate between frames, finally reassemble to video.
+- merge  
+    Merge all videos, including each of its audio and subtitle by option.  
+    Then use media player as PotPlayer to switch between video/audio/subtitle.
 
-- merge
-
-    Merge all video, including each of its audio and subtitle by option, into mkv. Then use media player as PotPlayer to switch between video/audio/subtitle.
+- preview  
+    Generate a grid of images.  
+    3x2 grid of 2min countdown video :
+    ![demo_preview](./doc/demo_preview.png)
 
 
 
@@ -146,32 +164,4 @@ This project relies on the following software and projects :
 Sounds come from :
 - [Pixabay](https://pixabay.com/sound-effects/search/typewriter/)
 
-<!-- 
-## TODO list
-
-- ✅ stdout to Dash
-- ✅ alive-progress ANSI Escape Code "?25l" render problem
-- ✅ License
-- ✅ Favicon
-- ✅ Embed release
-- ✅ Stop upscale and interpolate process
-- ✅ Get video walk optimize
-- ✅ Arrange process select UI
-- ✅ Better row height
-- ✅ Select / Unselect all videos
-- ✅ Sort video by properties
-- ✅ Sort by name in WebUI and VS
-- ✅ Skip video if "&" present in video path and name
-- [N] Add FFmpeg visual quality metrics (PSNR, SSIM, VMAF)
-- ✅ Better encoders parameters
-- ✅ Remove empty folders
-- [ ] Catch process error, and stop frame watch thread appropriately
-- [ ] Check tools
-- ✅ framesToVideo()
-- [ ] Running disable all new button
-- [ ] Separate repository for WebUI
-- [ ] Better upscale recovery
-- [ ] Gif to explain processes, tooltip on process dropdown
-- [ ] Log ?
- -->
 
