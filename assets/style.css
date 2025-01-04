@@ -35,15 +35,27 @@
         background: #cdf2ff;
         border-radius: 5px;
     }
-    /* &::-webkit-scrollbar-button {
-        background: #ff5a99b4;
-        border-radius: 5px;
-        height: 15px;
+}
+
+.list_streams {
+    &::-webkit-scrollbar {
+        width: 5px;
+        background-color: transparent;
     }
-    &::-webkit-scrollbar-button:hover {
+    /* Track */
+    &::-webkit-scrollbar-track {
+        background-color: transparent;
+    }
+    /* Handle */
+    &::-webkit-scrollbar-thumb {
+        background: #5abdffb5;
+        border-radius: 1px;
+    }
+    /* Handle hover*/
+    &::-webkit-scrollbar-thumb:hover {
         background: #cdf2ff;
-        border-radius: 5px;
-    } */
+        border-radius: 1px;
+    }
 }
 
 

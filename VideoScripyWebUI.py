@@ -750,34 +750,117 @@ def getVideoItem(video:VideoInfo, index:int, color:str, prefix:str=""):
         f'{fileSize} |'
     )
 
+    streams = video["streams"]
+    streamInfo = {
+        "video": {"index": [], "name": []},
+        "audio": {"index": [], "name": []},
+        "subtitle": {"index": [], "name": []},
+        "other": {"index": [], "name": []},
+    }
+
+    for stream in streams:
+        try:
+            streamInfo[stream["codec_type"]]["index"].append(stream["index"])
+            streamInfo[stream["codec_type"]]["name"].append(stream["codec_name"])
+        except:
+            print("---", stream["codec_type"])
+            streamInfo["other"]["index"].append(stream["index"])
+            streamInfo["other"]["name"].append(stream["codec_name"])
+
+    def getStreamUI(sType:str, sIndex:list[int], sName:list[str]):
+        return dbc.Col([
+            html.Div(
+                sType,
+                style={
+                    "marginBottom":"-2px",
+                    "marginTop":"-2px",
+                    "font-size":"12px",
+                    "white-space":"pre",
+                    "font-family":"monospace",
+                    "overflow-x": "hidden",
+                },
+            ),
+            dbc.ListGroup(
+                [
+                    dbc.ListGroupItem(
+                        f"{str(index).rjust(2)} | {name}",
+                        action=True,
+                        color=color,
+                        style={
+                            "font-size":"10px",
+                            "border":"1px solid black",
+                            "padding":"0px 0px 0px 0px",
+                            "white-space":"pre",
+                            "font-family":"monospace",
+                            "border-radius":4,
+                        },
+                    ) for index, name in zip(sIndex, sName)
+                ],
+                class_name="list_streams",
+                style={
+                    "background":"rgba(0,0,0,0)",
+                    "overflow-x": "hidden",
+                    "overflow-y": "auto",
+                    "border-radius":4,
+                    "height":"45px",
+                },
+            ),
+        ])
+    
+    streamInfoUI = []
+    for sType, sValue in streamInfo.items():
+        streamInfoUI.append(getStreamUI(sType, sValue["index"], sValue["name"]))
+
+
     return dcc.Loading(
         dbc.ListGroupItem(
             children=[
-                html.H6(
-                    f'{prefix}{video["name"]}',
-                    className="uni_text",
-                ),
-                html.Hr(style={"marginTop":-15, "marginBottom":-0}),
-                html.Div(
-                    videoInfoText,
-                    style={
-                        "color":"grey",
-                        "font-size":"10px",
-                        "white-space":"pre",
-                        "font-family":"monospace",
-                    },
-                ),
-                dbc.Tooltip(
-                    [
-                        html.Div(f'{width}x{height}',className="uni_text"),
-                        html.Div(f'{frameRate}',className="uni_text"),
-                        html.Div(f'{duration}',className="uni_text"),
-                        html.Div(f'{bitRate}',className="uni_text"),
-                        html.Div(f'{fileSize}',className="uni_text"),
-                    ],
-                    target={"type":"video", "index":index},
-                    delay={"show": 1000, "hide": 0},
-                ),
+                dbc.Stack([
+
+                    # video info
+                    dbc.Col(
+                        children=[
+                            html.H6(
+                                f'{prefix}{video["name"]}',
+                                className="uni_text",
+                            ),
+                            html.Hr(style={"marginTop":-15, "marginBottom":-0}),
+                            html.Div(
+                                videoInfoText,
+                                style={
+                                    "color":"grey",
+                                    "font-size":"10px",
+                                    "white-space":"pre",
+                                    "font-family":"monospace",
+                                    "overflow-x": "hidden",
+                                },
+                            ),
+                            dbc.Tooltip(
+                                [
+                                    html.Div(f'{width}x{height}',className="uni_text"),
+                                    html.Div(f'{frameRate}',className="uni_text"),
+                                    html.Div(f'{duration}',className="uni_text"),
+                                    html.Div(f'{bitRate}',className="uni_text"),
+                                    html.Div(f'{fileSize}',className="uni_text"),
+                                ],
+                                target={"type":"video", "index":index},
+                                delay={"show": 1000, "hide": 0},
+                            ),
+                        ],
+                        width=7,
+                        style={"padding":"20px 20px 5px 30px"},
+                    ),
+                    
+                    # streams info
+                    dbc.Col(
+                        dbc.Stack(
+                            streamInfoUI,
+                            direction="horizontal",
+                        ),
+                        width=5,
+                    ),
+                
+                ],direction="horizontal")
             ],
             id={"type":"video", "index":index},
             action=True,
@@ -785,7 +868,7 @@ def getVideoItem(video:VideoInfo, index:int, color:str, prefix:str=""):
             style={
                 "border":"1px solid black",
                 "border-radius":8,
-                "padding":"15px 30px 0px 30px",
+                "padding":"0px 0px 0px 0px",
             },
         ),
         color="white",

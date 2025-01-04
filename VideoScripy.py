@@ -24,7 +24,7 @@ init()
 # from VideoScripy import *
 __all__ = [
     'VideoScripy',
-    'VideoInfo', 'VideoProcess', 'ProcAsyncReturn',
+    'VideoInfo', 'VideoProcess', 'ProcAsyncReturn', 'StreamInfo',
     'run',
 ]
 
@@ -32,6 +32,11 @@ __all__ = [
 class ProcAsyncReturn(TypedDict):
     returnCode : int
     stdout: str
+
+class StreamInfo(TypedDict):
+    index : int
+    codec_type : str
+    codec_name : str
 
 class VideoInfo(TypedDict):
     """
@@ -46,7 +51,7 @@ class VideoInfo(TypedDict):
     height: int
     fps: float
     nbFrames: int
-    streams : dict
+    streams : list[StreamInfo]
     fileSize : int
 
 class VideoProcess(Enum):
@@ -148,7 +153,7 @@ class VideoScripy():
         self.gpu = True
         self.setEncoder(h265=True, gpu=True)
 
-        self.proc = None
+        self.proc:subprocess.Popen = None
         self.killed = False
         self.stop_threads = False
         self.procAsync:list[subprocess.Popen] = []
@@ -340,7 +345,7 @@ class VideoScripy():
                     )
             
             except Exception as e:
-                printC(f'Unexpected erro "{e}"', "red")
+                printC(f'Unexpected erro "{e.with_traceback()}"', "red")
                 printC(f'Can not get video info of "{self.vList[videoIndex]["name"]}"', "red")
                 # delete errored video
                 self.vList.pop(videoIndex)
