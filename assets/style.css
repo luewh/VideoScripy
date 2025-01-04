@@ -37,7 +37,7 @@
     }
 }
 
-.list_streams {
+.list_streams_scrollbar {
     &::-webkit-scrollbar {
         width: 5px;
         background-color: transparent;
@@ -48,13 +48,13 @@
     }
     /* Handle */
     &::-webkit-scrollbar-thumb {
-        background: #5abdffb5;
-        border-radius: 1px;
+        background: #ff5a99b4;
+        border-radius: 4px;
     }
     /* Handle hover*/
     &::-webkit-scrollbar-thumb:hover {
         background: #cdf2ff;
-        border-radius: 1px;
+        border-radius: 4px;
     }
 }
 

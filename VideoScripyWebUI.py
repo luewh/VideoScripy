@@ -50,8 +50,8 @@ upscaleFactor = [2, 3, 4]
 
 
 videoItemColor = {
-    "select":"info",
-    "unselect":"dark",
+    True:"info",
+    False:"dark",
 }
 videoSortBy = [
     "name",
@@ -735,7 +735,7 @@ def setPath(_, enteredPath):
 
 
 def getVideoItem(video:VideoInfo, index:int, color:str, prefix:str=""):
-
+    
     width = str(video["width"]).rjust(6)
     height = str(video["height"]).ljust(6)
     frameRate = (str(video["fps"])+" fps").rjust(10)
@@ -752,28 +752,32 @@ def getVideoItem(video:VideoInfo, index:int, color:str, prefix:str=""):
 
     streams = video["streams"]
     streamInfo = {
-        "video": {"index": [], "name": []},
-        "audio": {"index": [], "name": []},
-        "subtitle": {"index": [], "name": []},
-        "other": {"index": [], "name": []},
+        "video": {"index": [], "name": [], "selected": []},
+        "audio": {"index": [], "name": [], "selected": []},
+        "subtitle": {"index": [], "name": [], "selected": []},
+        "other": {"index": [], "name": [], "selected": []},
     }
 
     for stream in streams:
         try:
             streamInfo[stream["codec_type"]]["index"].append(stream["index"])
             streamInfo[stream["codec_type"]]["name"].append(stream["codec_name"])
+            streamInfo[stream["codec_type"]]["selected"].append(stream["selected"])
         except:
             print("---", stream["codec_type"])
             streamInfo["other"]["index"].append(stream["index"])
             streamInfo["other"]["name"].append(stream["codec_name"])
+            streamInfo["other"]["selected"].append(stream["selected"])
 
-    def getStreamUI(sType:str, sIndex:list[int], sName:list[str]):
+    def getStreamUI(sType:str, sIndexes:list[int], sNames:list[str], sSels:list[bool]):
+        global videoItemColor
         return dbc.Col([
             html.Div(
-                sType,
+                children=sType,
                 style={
-                    "marginBottom":"-2px",
                     "marginTop":"-2px",
+                    "marginBottom":"-2px",
+                    "marginLeft":"2px",
                     "font-size":"12px",
                     "white-space":"pre",
                     "font-family":"monospace",
@@ -781,11 +785,15 @@ def getVideoItem(video:VideoInfo, index:int, color:str, prefix:str=""):
                 },
             ),
             dbc.ListGroup(
-                [
+                children=[
                     dbc.ListGroupItem(
-                        f"{str(index).rjust(2)} | {name}",
+                        f"{str(sIndex).rjust(2)} | {sName}",
+                        id={
+                            "indexVideo":index,
+                            "indexStream":sIndex
+                        },
                         action=True,
-                        color=color,
+                        color=videoItemColor[sSel],
                         style={
                             "font-size":"10px",
                             "border":"1px solid black",
@@ -794,31 +802,29 @@ def getVideoItem(video:VideoInfo, index:int, color:str, prefix:str=""):
                             "font-family":"monospace",
                             "border-radius":4,
                         },
-                    ) for index, name in zip(sIndex, sName)
+                    ) for sIndex, sName, sSel in zip(sIndexes, sNames, sSels)
                 ],
-                class_name="list_streams",
+                class_name="list_streams_scrollbar",
                 style={
                     "background":"rgba(0,0,0,0)",
                     "overflow-x": "hidden",
                     "overflow-y": "auto",
                     "border-radius":4,
-                    "height":"45px",
+                    "height":"38px",
                 },
             ),
         ])
     
     streamInfoUI = []
     for sType, sValue in streamInfo.items():
-        streamInfoUI.append(getStreamUI(sType, sValue["index"], sValue["name"]))
-
-
+        streamInfoUI.append(getStreamUI(sType, sValue["index"], sValue["name"], sValue["selected"]))
+    
     return dcc.Loading(
-        dbc.ListGroupItem(
-            children=[
-                dbc.Stack([
-
-                    # video info
-                    dbc.Col(
+        dbc.Stack(
+            [
+                # video info
+                dbc.Col(
+                    dbc.ListGroupItem(
                         children=[
                             html.H6(
                                 f'{prefix}{video["name"]}',
@@ -847,28 +853,34 @@ def getVideoItem(video:VideoInfo, index:int, color:str, prefix:str=""):
                                 delay={"show": 1000, "hide": 0},
                             ),
                         ],
-                        width=7,
-                        style={"padding":"20px 20px 5px 30px"},
+                        id={"type":"video", "index":index},
+                        action=True,
+                        color=color,
+                        style={"paddingBottom":0},
                     ),
-                    
-                    # streams info
-                    dbc.Col(
-                        dbc.Stack(
-                            streamInfoUI,
-                            direction="horizontal",
-                        ),
-                        width=5,
-                    ),
+                    width=7,
+                    style={"border-radius":8},
+                ),
                 
-                ],direction="horizontal")
+                # streams info
+                dbc.Col(
+                    dbc.Stack(
+                        streamInfoUI,
+                        direction="horizontal",
+                    ),
+                    width=5,
+                    style={
+                        "paddingLeft":"2px",
+                        "paddingRight":"2px",
+                        "border-radius":8,
+                    },
+                ),
+                
             ],
-            id={"type":"video", "index":index},
-            action=True,
-            color=color,
+            direction="horizontal",
             style={
                 "border":"1px solid black",
                 "border-radius":8,
-                "padding":"0px 0px 0px 0px",
             },
         ),
         color="white",
@@ -900,7 +912,7 @@ def scanFiles(_):
     # generate list of video items
     videoItems = []
     for index, video in enumerate(allVideoList):
-        videoItems.append(getVideoItem(video,index,videoItemColor["select"]))
+        videoItems.append(getVideoItem(video,index,videoItemColor[True]))
 
     return False, no_update, "Ready to RUN", videoItems
 
@@ -922,21 +934,44 @@ def switchVideoSelection(_, color, colorAll):
     for index, video in enumerate(allVideoList):
         # clicked
         if index == id:
-            if colorAll[index] == f"{videoItemColor['unselect']}":
+            if colorAll[index] == f"{videoItemColor[False]}":
                 vs.vList.append(video)
                 print(f'Select "{video["name"]}"')
             else:
                 print(f'Unselect "{video["name"]}"')
         # others
         else:
-            if colorAll[index] == f"{videoItemColor['select']}":
+            if colorAll[index] == f"{videoItemColor[True]}":
                 vs.vList.append(video)
 
     # invert color
-    if color == f"{videoItemColor['select']}":
-        return f"{videoItemColor['unselect']}"
+    if color == f"{videoItemColor[True]}":
+        return f"{videoItemColor[False]}"
     else:
-        return f"{videoItemColor['select']}"
+        return f"{videoItemColor[True]}"
+
+@callback(
+    Output({'indexVideo':MATCH, 'indexStream': MATCH}, 'color'),
+    Input({'indexVideo':MATCH, 'indexStream': MATCH}, 'n_clicks'),
+    State({'indexVideo':MATCH, 'indexStream': MATCH}, 'color'),
+    running=[(Output('interval_log', 'n_intervals'), 0, 0)],
+    prevent_initial_call=True,
+)
+def switchStreamSelection(_, color):
+    global allVideoList, videoItemColor
+
+    indexVideo = ctx.triggered_id['indexVideo']
+    indexStream = ctx.triggered_id['indexStream']
+
+    allVideoList[indexVideo]["streams"][indexStream]["selected"] = (
+        not allVideoList[indexVideo]["streams"][indexStream]["selected"]
+    )
+
+    # invert color
+    if color == f"{videoItemColor[True]}":
+        return f"{videoItemColor[False]}"
+    else:
+        return f"{videoItemColor[True]}"
 
 @callback(
     Output('list_videos', 'children', allow_duplicate=True),
@@ -955,7 +990,7 @@ def videoSelectionALL(_):
     # generate list of video items
     videoItems = []
     for index, video in enumerate(allVideoList):
-        videoItems.append(getVideoItem(video,index,videoItemColor["select"]))
+        videoItems.append(getVideoItem(video,index,videoItemColor[True]))
 
     print(f'Select all video')
 
@@ -978,7 +1013,7 @@ def videoSelectionNONE(_):
     # generate list of video items
     videoItems = []
     for index, video in enumerate(allVideoList):
-        videoItems.append(getVideoItem(video,index,videoItemColor["unselect"]))
+        videoItems.append(getVideoItem(video,index,videoItemColor[False]))
     
     print(f'Unselect all video')
 
@@ -1056,7 +1091,7 @@ def sortVideoList(sortBy, allColor):
     vs.vList = []
     for index, video in enumerate(allVideoList):
 
-        if allVideoList[index]["color"] == f"{videoItemColor['select']}":
+        if allVideoList[index]["color"] == f"{videoItemColor[True]}":
             vs.vList.append(video)
         
         videoItems.append(getVideoItem(video,index,allVideoList[index]["color"]))
@@ -1077,7 +1112,7 @@ def runSetVideoListPrefix(_, allColor):
     videoItems = []
     count = 0
     for index, video in enumerate(allVideoList):
-        if allColor[index] == videoItemColor["select"]:
+        if allColor[index] == videoItemColor[True]:
             count += 1
             prefix = f'{count}. '
         else:

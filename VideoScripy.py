@@ -37,6 +37,7 @@ class StreamInfo(TypedDict):
     index : int
     codec_type : str
     codec_name : str
+    selected : bool
 
 class VideoInfo(TypedDict):
     """
@@ -299,7 +300,7 @@ class VideoScripy():
         # get info
         for videoIndex in range(len(self.vList)-1,-1,-1):
             try:
-                streamInfo = []
+                streamInfo:list[StreamInfo] = []
                 videoStream = []
                 # get stream info
                 for stream in results[videoIndex]['streams']:
@@ -311,6 +312,7 @@ class VideoScripy():
                         "index": int(stream["index"]),
                         "codec_type": stream["codec_type"],
                         "codec_name": codecName,
+                        "selected": True,
                     })
                     if stream['codec_type'] == 'video':
                         videoStream.append(stream)
