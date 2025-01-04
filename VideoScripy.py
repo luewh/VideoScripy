@@ -502,11 +502,15 @@ class VideoScripy():
                     )
 
         elif process == VideoProcess.merge.name:
+            subtitleCopy = '-c:s mov_text'
+            if video["type"] == "mkv":
+                subtitleCopy = ''
             command = (
                 f' ffmpeg'
                 f' {video["commandInputs"]}'
                 f' {video["commandMap"]}'
                 f' -c copy'
+                f' {subtitleCopy}'
                 f' {video["commandMetadata"]}'
                 f' -y'
                 f' "{process}\\{videoName}"'
