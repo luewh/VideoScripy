@@ -151,7 +151,6 @@ class VideoScripy():
         self.proc = None
         self.killed = False
         self.stop_threads = False
-
         self.procAsync:list[subprocess.Popen] = []
 
         self.EXIT_CODE_FILE_NAME = "exitCode.txt"
@@ -518,17 +517,26 @@ class VideoScripy():
     # run process related
     def killProc(self) -> None:
         """
-        Kill and stop running video process,
-        Only set killed to True if no running video process.
+        Kill and stop running process of _runProc() and _runProcAsync(),
+        Set self.killed to True if correctly killed.
         
         Used attributes:
             killed
             proc
+            procAsync
         """
+        
         if self.proc != None:
             parent = psutil.Process(self.proc.pid)
             for child in parent.children(recursive=True):
                 child.kill()
+            self.killed = True
+        
+        if self.procAsync != []:
+            for procAsync in self.procAsync:
+                parent = psutil.Process(procAsync.pid)
+                for child in parent.children(recursive=True):
+                    child.kill()
             self.killed = True
 
     def _runProc(self, command:str, processName='', silence=False) -> bool:
@@ -611,6 +619,7 @@ class VideoScripy():
         Warning ! Output path must be absolute.\n
         Must call _runProcAsyncWait() to get its return code and content.
         """
+        self.killed = False
         self.procAsync.append(
             subprocess.Popen(
                 command,
@@ -801,7 +810,7 @@ class VideoScripy():
 
             # stop whole process if killProc() called
             if self.killed:
-                return
+                break
         
         removeEmptyFolder(outputFolder)
         noticeProcessEnd()
@@ -897,7 +906,7 @@ class VideoScripy():
 
             # stop whole process if killProc() called
             if self.killed:
-                return
+                break
         
         removeEmptyFolder(outputFolder)
         noticeProcessEnd()
@@ -955,7 +964,7 @@ class VideoScripy():
             
             # stop whole process if killProc() called
             if self.killed:
-                return
+                break
             
             # skip next steps if process not correctly ended
             if not result:
@@ -1006,7 +1015,7 @@ class VideoScripy():
 
             # stop whole process if killProc() called
             if self.killed:
-                return
+                break
             
             # skip next steps if process not correctly ended
             if not result:
@@ -1021,7 +1030,7 @@ class VideoScripy():
 
             # stop whole process if killProc() called
             if self.killed:
-                return
+                break
             
             # skip next steps if process not correctly ended
             if not result:
@@ -1095,7 +1104,7 @@ class VideoScripy():
 
             # stop whole process if killProc() called
             if self.killed:
-                return
+                break
             
             # skip next steps if process not correctly ended
             if not result:
@@ -1122,7 +1131,7 @@ class VideoScripy():
 
             # stop whole process if killProc() called
             if self.killed:
-                return
+                break
             
             # skip next steps if process not correctly ended
             if not result:
@@ -1137,7 +1146,7 @@ class VideoScripy():
 
             # stop whole process if killProc() called
             if self.killed:
-                return
+                break
             
             # skip next steps if process not correctly ended
             if not result:
@@ -1224,10 +1233,6 @@ class VideoScripy():
             video["commandMetadata"] = commandMetadata
             command = self._getCommand(video, process)
             self._runProc(command, process)
-
-            # stop whole process if killProc() called
-            if self.killed:
-                return
             
         removeEmptyFolder(outputFolder)
         noticeProcessEnd()
@@ -1282,6 +1287,10 @@ class VideoScripy():
                 )
                 self._runProcAsync(command)
             self._runProcAsyncWait()
+            
+            # stop whole process if killProc() called
+            if self.killed:
+                break
 
             newImageWidth = width*gridWidth
             newImageHeight = height*gridHeight
