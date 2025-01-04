@@ -5,7 +5,7 @@ from threading import Thread
 from pathlib import Path
 from datetime import timedelta
 from shutil import rmtree
-from os import walk, mkdir, remove, listdir, getcwd, rmdir
+from os import walk, mkdir, remove, listdir, getcwd, rmdir, rename
 from os.path import isdir, isfile
 from time import time, sleep
 from math import ceil, gcd
@@ -25,7 +25,7 @@ init()
 __all__ = [
     'VideoScripy',
     'VideoInfo', 'VideoProcess', 'ProcAsyncReturn',
-    'run'
+    'run',
 ]
 
 
@@ -554,6 +554,10 @@ class VideoScripy():
             proc
         """
 
+        processTime = time()
+
+        printC(f'Running process : {processName}', "green")
+
         commandWarped = (
             f' start "VideoScripy-{processName}" /I /min /wait /realtime'
             f' cmd /v:on /c " {self.path[0]}:'
@@ -561,8 +565,6 @@ class VideoScripy():
             f' & {command}'
             f' & echo ^!errorLevel^! > {self.EXIT_CODE_FILE_NAME}"'
         )
-        
-        processTime = time()
 
         self.killed = False
         self.proc = subprocess.Popen(
@@ -698,36 +700,42 @@ class VideoScripy():
         getFramesOutputPath = video["getFramesOutputPath"]
         # check if get frame is necessary
         if isdir(getFramesOutputPath):
-            # equal to what it should has
-            if len(listdir(getFramesOutputPath)) == video["nbFrames"]:
+
+            # get number of frames, 3rd round
+            if isdir(f'{getFramesOutputPath}\\processed'):
+                obtainedFrames = (
+                    len(listdir(getFramesOutputPath)) - 1
+                    + len(listdir(f'{getFramesOutputPath}\\processed'))
+                )
+            # get number of frames, less than 3rd round
+            else:
+                obtainedFrames = len(listdir(getFramesOutputPath))
+
+            # equal to what it should has, allow +- 1 frame difference
+            if abs(obtainedFrames - video["nbFrames"]) <= 1:
                 printC("No need to get frames", "yellow")
-                self.killed = False
                 return True
-            # less than what it should has
-            elif len(listdir(getFramesOutputPath)) < video["nbFrames"]:
+            else:
                 printC("Missing frames, regenerate frames needed", "yellow")
                 rmtree(getFramesOutputPath)
-            # more than what it should has
-            elif len(listdir(getFramesOutputPath)) > video["nbFrames"]:
-                printC("To much frames, regenerate frames needed", "yellow")
-                rmtree(getFramesOutputPath)
-            else:
-                printC("_getFrames() : ???", "red")
 
         # create new temporary frames folder
         mkdir(getFramesOutputPath)
 
-        printC(f'Getting Frames', "green")
         command = self._getCommand(video, process.name, substep=0)
         result = self._runProc(command, process.value[0])
 
         # check frames count
-        getedFrames = len(listdir(getFramesOutputPath))
-        if getedFrames != video["nbFrames"]:
-            printC(f'Waring, geted frames {getedFrames} != video frames {video["nbFrames"]}', "yellow")
-            # allow +- 1 frame difference
-            if abs(video["nbFrames"]-getedFrames) < 2:
-                video["nbFrames"] = getedFrames
+        obtainedFrames = len(listdir(getFramesOutputPath))
+        if obtainedFrames != video["nbFrames"]:
+            printC(
+                f'Warning, obtained frames {obtainedFrames}'
+                f'is not equal to video frames {video["nbFrames"]}',
+                "yellow"
+            )
+            # modify frame number if +- 1 frame difference
+            if abs(video["nbFrames"] - obtainedFrames) <= 1:
+                video["nbFrames"] = obtainedFrames
         
         return result
 
@@ -777,7 +785,7 @@ class VideoScripy():
             bitRate = video['bitRate']
 
             # show current optimizing video
-            print('--- {}/{} ---'.format(index+1,len(self.vList)))
+            print(f'{index+1}/{len(self.vList)}'.center(20, '-'))
             print(name)
             print('{}x{}'.format(width, height))
 
@@ -788,7 +796,6 @@ class VideoScripy():
                 printC('Skipped', "yellow")
                 continue
 
-            printC(f'Optimizing "{name}"', "green")
             command = self._getCommand(video, process)
             self._runProc(command, process)
 
@@ -833,7 +840,7 @@ class VideoScripy():
             height = video['height']
 
             # show current resizing video
-            print('--- {}/{} ---'.format(index+1,len(self.vList)))
+            print(f'{index+1}/{len(self.vList)}'.center(20, '-'))
             print(name)
 
             # compute setWidth and setHeight
@@ -885,7 +892,6 @@ class VideoScripy():
 
             self.pre_optimize(video, widthResize, heightResize, quality)
 
-            printC(f'Resizing "{name}"', "green")
             command = self._getCommand(video, process)
             self._runProc(command, process)
 
@@ -932,7 +938,7 @@ class VideoScripy():
             height = video['height']
 
             # show current upscaling video
-            print('--- {}/{} ---'.format(index+1,len(self.vList)))
+            print(f'{index+1}/{len(self.vList)}'.center(20, '-'))
             print(name)
 
             # save and show size change
@@ -942,7 +948,7 @@ class VideoScripy():
 
             self.pre_optimize(video, widthUpscale, heightUpscale, quality)
 
-            getFramesOutputPath = self.path+'\\{}_tmp_frames'.format(name)
+            getFramesOutputPath = self.path+f'\\{name}_tmp_frames'
             video["getFramesOutputPath"] = getFramesOutputPath
 
             result = self._getFrames(video, process)
@@ -956,20 +962,36 @@ class VideoScripy():
                 continue
 
             upscaleOutputPath = self.path+f'\\{name}_{process.name}x{upscaleFactor}_frames'
-            # create upscaled frames folder if not existing
+            # new upscaling
             if not isdir(upscaleOutputPath):
+                print(f'New upscaling')
                 mkdir(upscaleOutputPath)
-                printC(f'Upscaling "{name}"', "green")
-            # continue existing frames upscale
+            # continue upscaling
             else:
+                print(f'Continue upscaling')
                 for _, _, files in walk(upscaleOutputPath):
-                    # remove upscaled frame's origin frames except last two
+
+                    # create processed folder
+                    processedFolder = f'{getFramesOutputPath}\\processed'
+                    if not isdir(processedFolder):
+                        mkdir(processedFolder)
+
+                    # move frame to processed folder except last two
                     for framesUpscaled in files[:-2]:
-                        remove(getFramesOutputPath+'\\'+framesUpscaled)
+                        try:
+                            rename(
+                                f'{getFramesOutputPath}\\{framesUpscaled}',
+                                f'{processedFolder}\\{framesUpscaled}',
+                            )
+                        # do nothing to already moved
+                        except FileNotFoundError:
+                            pass
+
                     # remove last two upscaled frames
                     for lastTwoUpscaled in files[-2:]:
                         remove(upscaleOutputPath+'\\'+lastTwoUpscaled)
-                printC(f'Continue upscaling "{name}"', "green")
+
+                    break
 
             # frames watch
             self._frameWatchStart(upscaleOutputPath, video["nbFrames"])
@@ -994,7 +1016,6 @@ class VideoScripy():
             rmtree(getFramesOutputPath)
             
             # upscaled frames to video
-            printC(f'Upscaling frame to video "{name}"', "green")
             command = self._getCommand(video, process.name, substep=2)
             result = self._runProc(command, process.value[2])
 
@@ -1050,7 +1071,7 @@ class VideoScripy():
             duration = video['duration']
 
             # show current resizing video
-            print('--- {}/{} ---'.format(index+1,len(self.vList)))
+            print(f'{index+1}/{len(self.vList)}'.center(20, '-'))
             print(name)
 
             # check if interpolation needed
@@ -1093,7 +1114,6 @@ class VideoScripy():
             # frames watch
             self._frameWatchStart(interpolateOutputPath,interpolateFrame)
             
-            printC(f'Interpolating "{name}"', "green")
             command = self._getCommand(video, process.name, substep=1)
             result = self._runProc(command, process.value[1])
             
@@ -1112,7 +1132,6 @@ class VideoScripy():
             rmtree(getFramesOutputPath)
 
             # interpolate frames to video
-            printC(f'Interpolating frame to video "{name}"', "green")
             command = self._getCommand(video, process.name, substep=2)
             result = self._runProc(command, process.value[2])
 
@@ -1157,7 +1176,7 @@ class VideoScripy():
         if not isdir(outputFolder):
             mkdir(outputFolder)
 
-        print(f'---  {len(self.vList)}  ---')
+        print(f'{len(self.vList)}'.center(20, '-'))
 
         # check number of video
         if len(self.vList) <= 1:
@@ -1200,7 +1219,6 @@ class VideoScripy():
                         commandMap += f'-map {index}:s? '
                         commandMetadata += f'-metadata:s:s:{index} title="{name}" '
 
-            printC(f'Merging {len(self.vList)} videos', "green")
             video["commandInputs"] = commandInputs
             video["commandMap"] = commandMap
             video["commandMetadata"] = commandMetadata
@@ -1235,7 +1253,7 @@ class VideoScripy():
             outputName = video['name'].replace(f".{video['type']}",".png")
 
             # show current previewing video
-            print('--- {}/{} ---'.format(index+1,len(self.vList)))
+            print(f'{index+1}/{len(self.vList)}'.center(20, '-'))
             print(name)
             
             processTime = time()
