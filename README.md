@@ -1,4 +1,3 @@
-
 # <img src="./assets/favicon.ico" alt="drawing" width="20px"/> VideoScripy & WebUI 
 
 VideoScripy is a collection of video processes including video **Upscale** and video frame **Interpolation**, it uses Python to generate **FFmpeg**, **Real-ESRGAN** and **IFRNet** command line script and performes serial processing on scanned **mp4** videos with **hardware acceleration**.
@@ -15,8 +14,8 @@ VideoScripyWebUI is a local web user interface developed with **Dash**, it has t
 - [Requirements](#requirements)
 - [Embedded version](#embedded-version)
 - [Self setup version](#self-setup-version)
-- [Benchmarking](#benchmarking)
 - [Processes Description](#processes-description)
+- [Benchmarking](#benchmarking)
 - [Credits](#credits)
 
 
@@ -47,9 +46,7 @@ Run the `RUN.bat`
 
 ## Self setup version
 
-Need to download the source codes,  
-install Python and its dependencies,  
-download tools and include them to tools folder or add them to PATH.    
+Need to download the source codes, install Python and its dependencies, download tools and include them to tools folder or add them to PATH.    
 Advantage : **Freedom**
 
 ### Installation
@@ -101,14 +98,6 @@ Run the `VideoScripyWebUI.py`
 
 
 
-## Benchmarking
-
-- ### x3 Faster FFprobe by running it "asynchronously"
-![Fast FFprobe](./doc/faster_way_to_run_ffprobe.png)
-(ffprobe on 64 videos, ~2h long each)
-
-
-
 ## Processes Description
 
 - optimize  
@@ -129,7 +118,7 @@ Run the `VideoScripyWebUI.py`
         It has the ability to start from last upscal progress if the "_upscaledx?_frame" wasn't deleted.
     </details>
 
-    From 266x200 to 1064x800
+    From 266x200 to 1064x800  
     ![demo_upscale_s](./doc/demo_upscale_small.png)
     ![demo_upscale_b](./doc/demo_upscale_big.png)
 
@@ -148,6 +137,14 @@ Run the `VideoScripyWebUI.py`
     Generate a grid of images.  
     3x2 grid of 2min countdown video :
     ![demo_preview](./doc/demo_preview.png)
+
+
+
+## Benchmarking
+
+- ### x3 Faster FFprobe by running it "asynchronously"
+    ffprobe on 64 videos, ~2h long each  
+    ![Fast FFprobe](./doc/faster_way_to_run_ffprobe.png)
 
 
 
