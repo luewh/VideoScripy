@@ -30,7 +30,7 @@ ip = "localhost"
 port = "8848"
 
 vs = VideoScripy()
-allVideoList = []
+allVideoList:list[VideoInfo] = []
 
 processes = [p.name for p in VideoProcess]
 runningProcess = None
@@ -734,8 +734,8 @@ def setPath(_, enteredPath):
 
 
 
-def getVideoItem(video:VideoInfo, index:int, color:str, prefix:str=""):
-    
+def getVideoItem(video:VideoInfo, index:int, prefix:str=""):
+    global videoItemColor
     width = str(video["width"]).rjust(6)
     height = str(video["height"]).ljust(6)
     frameRate = (str(video["fps"])+" fps").rjust(10)
@@ -770,7 +770,6 @@ def getVideoItem(video:VideoInfo, index:int, color:str, prefix:str=""):
             streamInfo["other"]["selected"].append(stream["selected"])
 
     def getStreamUI(sType:str, sIndexes:list[int], sNames:list[str], sSels:list[bool]):
-        global videoItemColor
         return dbc.Col([
             html.Div(
                 children=sType,
@@ -855,7 +854,7 @@ def getVideoItem(video:VideoInfo, index:int, color:str, prefix:str=""):
                         ],
                         id={"type":"video", "index":index},
                         action=True,
-                        color=color,
+                        color=videoItemColor[video["selected"]],
                         style={"paddingBottom":0},
                     ),
                     width=7,
@@ -900,78 +899,69 @@ def getVideoItem(video:VideoInfo, index:int, color:str, prefix:str=""):
     prevent_initial_call=True,
 )
 def scanFiles(_):
-
-    global vs, allVideoList, videoItemColor
+    global vs, allVideoList
     
     vs.getVideo()
     vs.getVideoInfo()
 
-    # record scanned video, for video selection purpose
+    # record scanned video, for selection and sort purpose
     allVideoList = vs.vList
+
+    # add video select state
+    for video in allVideoList:
+        video["selected"] = True
 
     # generate list of video items
     videoItems = []
     for index, video in enumerate(allVideoList):
-        videoItems.append(getVideoItem(video,index,videoItemColor[True]))
+        videoItems.append(getVideoItem(video,index))
 
     return False, no_update, "Ready to RUN", videoItems
 
 @callback(
     Output({'type':'video', 'index': MATCH}, 'color'),
     Input({'type':'video', 'index': MATCH}, 'n_clicks'),
-    State({'type':'video', 'index': MATCH}, 'color'),
-    State({'type':'video', 'index': ALL}, 'color'),
     running=[(Output('interval_log', 'n_intervals'), 0, 0)],
     prevent_initial_call=True,
 )
-def switchVideoSelection(_, color, colorAll):
-    global vs, allVideoList, videoItemColor
+def switchVideoSelection(_):
+    global allVideoList, videoItemColor
 
+    # invert and record slection switch
     id = ctx.triggered_id['index']
+    allVideoList[id]['selected'] = not allVideoList[id]['selected']
 
-    # remove or add video
-    vs.vList = []
-    for index, video in enumerate(allVideoList):
-        # clicked
-        if index == id:
-            if colorAll[index] == f"{videoItemColor[False]}":
-                vs.vList.append(video)
-                print(f'Select "{video["name"]}"')
-            else:
-                print(f'Unselect "{video["name"]}"')
-        # others
-        else:
-            if colorAll[index] == f"{videoItemColor[True]}":
-                vs.vList.append(video)
-
-    # invert color
-    if color == f"{videoItemColor[True]}":
-        return f"{videoItemColor[False]}"
+    selectState = allVideoList[id]['selected']
+    if selectState:
+        print(f"Selected {allVideoList[id]['name']}")
     else:
-        return f"{videoItemColor[True]}"
+        print(f"Unselected {allVideoList[id]['name']}")
+
+    return f"{videoItemColor[selectState]}"
 
 @callback(
     Output({'indexVideo':MATCH, 'indexStream': MATCH}, 'color'),
     Input({'indexVideo':MATCH, 'indexStream': MATCH}, 'n_clicks'),
-    State({'indexVideo':MATCH, 'indexStream': MATCH}, 'color'),
     running=[(Output('interval_log', 'n_intervals'), 0, 0)],
     prevent_initial_call=True,
 )
-def switchStreamSelection(_, color):
+def switchStreamSelection(_):
     global allVideoList, videoItemColor
 
+    # invert and record slection switch
     indexVideo = ctx.triggered_id['indexVideo']
     indexStream = ctx.triggered_id['indexStream']
-
     allVideoList[indexVideo]["streams"][indexStream]["selected"] = (
         not allVideoList[indexVideo]["streams"][indexStream]["selected"]
     )
-
-    # invert color
-    if color == f"{videoItemColor[True]}":
-        return f"{videoItemColor[False]}"
+    
+    selectStream = allVideoList[indexVideo]["streams"][indexStream]
+    if selectStream["selected"]:
+        print(f"Selected {allVideoList[indexVideo]['name']}'s stream {indexStream} : {selectStream['codec_type']}")
     else:
-        return f"{videoItemColor[True]}"
+        print(f"Unselected {allVideoList[indexVideo]['name']}'s stream {indexStream} : {selectStream['codec_type']}")
+
+    return f"{videoItemColor[selectStream['selected']]}"
 
 @callback(
     Output('list_videos', 'children', allow_duplicate=True),
@@ -983,16 +973,17 @@ def switchStreamSelection(_, color):
     prevent_initial_call=True,
 )
 def videoSelectionALL(_):
-    global vs, allVideoList, videoItemColor
+    global allVideoList
 
-    vs.vList = allVideoList
+    print(f'Select all video')
 
+    for video in allVideoList:
+        video["selected"] = True
+    
     # generate list of video items
     videoItems = []
     for index, video in enumerate(allVideoList):
-        videoItems.append(getVideoItem(video,index,videoItemColor[True]))
-
-    print(f'Select all video')
+        videoItems.append(getVideoItem(video,index))
 
     return videoItems
 
@@ -1006,43 +997,39 @@ def videoSelectionALL(_):
     prevent_initial_call=True,
 )
 def videoSelectionNONE(_):
-    global vs, allVideoList, videoItemColor
+    global allVideoList
 
-    vs.vList = []
+    print(f'Unselect all video')
 
+    for video in allVideoList:
+        video["selected"] = False
+    
     # generate list of video items
     videoItems = []
     for index, video in enumerate(allVideoList):
-        videoItems.append(getVideoItem(video,index,videoItemColor[False]))
-    
-    print(f'Unselect all video')
+        videoItems.append(getVideoItem(video,index))
 
     return videoItems
 
 @callback(
     Output('list_videos', 'children', allow_duplicate=True),
     Input('button_lvideo_revert', 'n_clicks'),
-    State('list_videos', 'children'),
-    State({'type':'video', 'index': ALL}, 'color'),
     running=[
         (Output('interval_log', 'n_intervals'), 0, 0),
         (Output('button_lvideo_revert', 'disabled'), True, False)
     ],
     prevent_initial_call=True,
 )
-def reverseVideoList(_, listVideo, colorALL):
+def reverseVideoList(_):
+    global allVideoList
 
-    global vs, allVideoList
-
-    if listVideo is not None:
-        vs.vList = vs.vList[::-1]
+    if allVideoList != []:
         allVideoList = allVideoList[::-1]
-        colorALL = colorALL[::-1]
 
         # generate list of video items
         videoItems = []
         for index, video in enumerate(allVideoList):
-            videoItems.append(getVideoItem(video,index,colorALL[index]))
+            videoItems.append(getVideoItem(video,index))
 
         print("Reverse video list")
 
@@ -1055,25 +1042,19 @@ def reverseVideoList(_, listVideo, colorALL):
     Output('list_videos', 'children', allow_duplicate=True),
     Output('dropdown_lvideo_sort', 'value'),
     Input('dropdown_lvideo_sort', 'value'),
-    State({'type':'video', 'index': ALL}, 'color'),
     running=[
         (Output('interval_log', 'n_intervals'), 0, 0),
         (Output('dropdown_lvideo_sort', 'disabled'), True, False)
     ],
     prevent_initial_call=True,
 )
-def sortVideoList(sortBy, allColor):
-
-    global vs, allVideoList, videoItemColor, videoSortBy
+def sortVideoList(sortBy):
+    global allVideoList, videoSortBy
 
     # check dropdown validity
     if sortBy not in videoSortBy:
         print("Unknow sort selection")
         raise PreventUpdate
-    
-    # add color to allVideoList
-    for index in range(len(allVideoList)):
-        allVideoList[index]["color"] = allColor[index]
     
     # special sort
     if sortBy == "w x h":
@@ -1088,13 +1069,8 @@ def sortVideoList(sortBy, allColor):
         
     # re generate list of video items
     videoItems = []
-    vs.vList = []
     for index, video in enumerate(allVideoList):
-
-        if allVideoList[index]["color"] == f"{videoItemColor[True]}":
-            vs.vList.append(video)
-        
-        videoItems.append(getVideoItem(video,index,allVideoList[index]["color"]))
+        videoItems.append(getVideoItem(video,index))
     
     print(f'Sort by {sortBy}')
 
@@ -1103,29 +1079,21 @@ def sortVideoList(sortBy, allColor):
 @callback(
     Output('list_videos', 'children', allow_duplicate=True),
     Input('button_runProcess', 'n_clicks'),
-    State({'type':'video', 'index': ALL}, 'color'),
     prevent_initial_call=True,
 )
-def runSetVideoListPrefix(_, allColor):
-    global allVideoList, videoItemColor
+def runSetVideoListPrefix(_):
+    global allVideoList
     
     videoItems = []
     count = 0
     for index, video in enumerate(allVideoList):
-        if allColor[index] == videoItemColor[True]:
+        if video['selected']:
             count += 1
             prefix = f'{count}. '
         else:
             prefix = ""
 
-        videoItems.append(
-            getVideoItem(
-                video,
-                index,
-                allColor[index],
-                prefix=prefix
-            )
-        )
+        videoItems.append(getVideoItem(video,index,prefix=prefix))
     
     return videoItems
 
@@ -1162,8 +1130,14 @@ def runSetVideoListPrefix(_, allColor):
     prevent_initial_call=True,
 )
 def runProcess(_, selectedProcess, inputValues, inputOns):
-    global vs
+    global vs, allVideoList
     
+    # get selected video in order
+    vs.vList = []
+    for video in allVideoList:
+        if video['selected']:
+            vs.vList.append(video)
+
     values = ctx.states_list[1]
     ons = ctx.states_list[2]
 
