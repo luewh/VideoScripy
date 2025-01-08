@@ -38,6 +38,8 @@ class StreamInfo(TypedDict):
     codec_type : str
     codec_name : str
     selected : bool
+    language: str
+    title: str
 
 class VideoInfo(TypedDict):
     """
@@ -63,8 +65,8 @@ class VideoProcess(Enum):
     resize = "resize"
     upscale = ["getFrames", "upscale", "frameToVideo"]
     interpolate = ["getFrames", "interpolate", "frameToVideo"]
-    merge = "merge"
     preview = "preview"
+    stream = "stream"
 
 
 
@@ -304,15 +306,32 @@ class VideoScripy():
                 videoStream = []
                 # get stream info
                 for stream in results[videoIndex]['streams']:
+
+                    # some subtitle dont has codec_name
                     try :
                         codecName = stream["codec_name"]
                     except:
                         codecName = stream["codec_tag_string"]
+                    
+                    # mkv dont has language tags
+                    try :
+                        tagLanguage = stream["tags"]["language"]
+                    except:
+                        tagLanguage = "und"
+                        
+                    # mp4 can get stream title
+                    try :
+                        tagTitle = stream["tags"]["title"]
+                    except:
+                        tagTitle = ""
+
                     streamInfo.append({
                         "index": int(stream["index"]),
                         "codec_type": stream["codec_type"],
                         "codec_name": codecName,
                         "selected": True,
+                        "language": tagLanguage,
+                        "title": tagTitle,
                     })
                     if stream['codec_type'] == 'video':
                         videoStream.append(stream)
@@ -414,14 +433,14 @@ class VideoScripy():
         if self.gpu:
             haccel = ' -hwaccel cuda -hwaccel_output_format cuda'
 
-        if process != VideoProcess.merge.name:
-            communFFmpegOut = (
-                f' -c:v copy -c:a copy -c:s copy'
-                f' -c:v:0 {self.encoder} {video["optimizeBitRateParam"]}'
-                f' -r {videoFps}'
-                f' -y'
-                f' "{process}\\{videoName}"'
-            )
+        # set communFFmpegOut
+        communFFmpegOut = (
+            f' -c:v copy -c:a copy -c:s copy'
+            f' -c:v:0 {self.encoder} {video["optimizeBitRateParam"]}'
+            f' -r {videoFps}'
+            f' -y'
+            f' "{process}\\{videoName}"'
+        )
 
         if process == VideoProcess.optimize.name:
             command = (
@@ -503,21 +522,6 @@ class VideoScripy():
                         f' {communFFmpegOut}'
                     )
 
-        elif process == VideoProcess.merge.name:
-            subtitleCopy = '-c:s mov_text'
-            if video["type"] == "mkv":
-                subtitleCopy = ''
-            command = (
-                f' ffmpeg'
-                f' {video["commandInputs"]}'
-                f' {video["commandMap"]}'
-                f' -c copy'
-                f' {subtitleCopy}'
-                f' {video["commandMetadata"]}'
-                f' -y'
-                f' "{process}\\{videoName}"'
-            )
-        
         else:
             printC(f'Unknown video process "{process}"', "red")
             return None
@@ -1169,85 +1173,6 @@ class VideoScripy():
         removeEmptyFolder(outputFolder)
         noticeProcessEnd()
 
-    def merge(self, allVideo:bool=True, allAudio:bool=False, allSubtitle:bool=False) -> None:
-        """
-        Merge video0.mp4 video1.mp4 ... to video.mkv
-
-        Parameters:
-            allVideo (bool):
-                set to False to keep only the first video, default=True
-            
-            allAudio (bool):
-                set to True to keep all audio, default=False
-                
-            allSubtitle (bool):
-                set to True to keep all subtitle, default=False
-        
-        Used attributes:
-            path
-            vList
-        """
-        
-        noticeProcessBegin()
-        
-        process = VideoProcess.merge.name
-        # create output folder
-        outputFolder = self.path+f'\\{process}'
-        if not isdir(outputFolder):
-            mkdir(outputFolder)
-
-        print(f'{len(self.vList)}'.center(20, '-'))
-
-        # check number of video
-        if len(self.vList) <= 1:
-            printC("0 or 1 video is not enought to merge", "yellow")
-        else:
-            # check video length
-            duration = self.vList[0]['duration']
-            for video in self.vList:
-                if duration != video['duration']:
-                    printC(f'Warning, "{video["name"]}" has different duration', "yellow")
-            
-            commandInputs = ""
-            commandMap = ""
-            commandMetadata = ""
-            for index, video in enumerate(self.vList):
-
-                path = video['path']
-                name = video['name']
-                print(name)
-
-                if index == 0:
-                    commandInputs += f'-i "{path}" '
-                    commandMap += f'-map {index} '
-                    # remove time codec for mp4
-                    commandMap += f'-map -{index}:d '
-                    commandMetadata += f'-metadata:s:v:{index} title="{name}" '
-                    commandMetadata += f'-metadata:s:a:{index} title="{name}" '
-                    commandMetadata += f'-metadata:s:s:{index} title="{name}" '
-                else:
-                    commandInputs += f'-i "{path}" '
-                    # remove time codec for mp4
-                    commandMap += f'-map -{index}:d '
-                    if allVideo:
-                        commandMap += f'-map {index}:v? '
-                        commandMetadata += f'-metadata:s:v:{index} title="{name}" '
-                    if allAudio:
-                        commandMap += f'-map {index}:a? '
-                        commandMetadata += f'-metadata:s:a:{index} title="{name}" '
-                    if allSubtitle:
-                        commandMap += f'-map {index}:s? '
-                        commandMetadata += f'-metadata:s:s:{index} title="{name}" '
-
-            video["commandInputs"] = commandInputs
-            video["commandMap"] = commandMap
-            video["commandMetadata"] = commandMetadata
-            command = self._getCommand(video, process)
-            self._runProc(command, process)
-            
-        removeEmptyFolder(outputFolder)
-        noticeProcessEnd()
-
     def preview(self, gridWidth:int=3, gridHeight:int=2) -> None:
 
         process = VideoProcess.preview.name
@@ -1329,6 +1254,99 @@ class VideoScripy():
         noticeProcessEnd()
         removeEmptyFolder(outputFolder)
 
+    def stream(self) -> None:
+        """
+        Merge selected stream of multiple videos into one video.
+        And also modify metadata as tile and language.
+
+        
+        Used attributes:
+            path
+            vList
+        """
+        
+        noticeProcessBegin()
+
+        process = VideoProcess.stream.name
+        # create output folder
+        outputFolder = self.path+f'\\{process}'
+        if not isdir(outputFolder):
+            mkdir(outputFolder)
+
+        print(f'{len(self.vList)}'.center(20, '-'))
+
+        # end process if no video
+        if len(self.vList) == 0:
+            removeEmptyFolder(outputFolder)
+            noticeProcessEnd()
+            return
+        
+        # check video length
+        duration = self.vList[0]['duration']
+        for video in self.vList:
+            if duration != video['duration']:
+                printC(f'Warning, "{video["name"]}" has different duration', "yellow")
+                printC(f'{duration} -- {video["duration"]}', "yellow")
+        
+        videoType = self.vList[0]["type"]
+        videoName = self.vList[0]["name"]
+        subtitleCopy = '-c:s mov_text'
+        if videoType == "mkv":
+            subtitleCopy = ''
+
+        commandInputs = ""
+        commandMap = ""
+        commandMetadata = ""
+        for index, video in enumerate(self.vList):
+            print(video['name'])
+            
+            # order stream by video, audio, subtitle
+            orderedStreams = [[],[],[],[]]
+            for stream in video["streams"]:
+                if stream["codec_type"] == "video":
+                    orderedStreams[0].append(stream)
+                elif stream["codec_type"] == "audio":
+                    orderedStreams[1].append(stream)
+                elif stream["codec_type"] == "subtitle":
+                    orderedStreams[2].append(stream)
+                else:
+                    orderedStreams[3].append(stream)
+            # flatten
+            orderedStreams = [
+                stream 
+                for streamType in orderedStreams 
+                for stream in streamType
+            ]
+            commandInputs += f'-i "{video["path"]}" '
+
+            outputStreamCount = 0
+            for stream in orderedStreams:
+                if stream["selected"]:
+
+                    # remove time codec for mp4
+                    if videoType == "mp4":
+                        commandMap += f'-map -{index}:d? '
+                    
+                    commandMap += f'-map {index}:{stream["index"]} '
+                    if stream["title"] != "":
+                        commandMetadata += f'-metadata:s:{outputStreamCount} title="{stream["title"]}" '
+                    commandMetadata += f'-metadata:s:{outputStreamCount} language={stream["language"]} '
+                    outputStreamCount += 1
+        
+        command = (
+            f' ffmpeg'
+            f' {commandInputs}'
+            f' {commandMap}'
+            f' -c copy'
+            f' {subtitleCopy}'
+            f' {commandMetadata}'
+            f' -y'
+            f' "{process}\\{videoName}"'
+        )
+        self._runProc(command, process)
+            
+        removeEmptyFolder(outputFolder)
+        noticeProcessEnd()
 
 
 
@@ -1450,15 +1468,12 @@ def run():
         vs.interpolate(fps, quality)
 
     elif process == 5:
-        allVideo = getInputBool("All video",True)
-        allAudio = getInputBool("All audio",False)
-        allSubtitle = getInputBool("All subtitle",False)
-        vs.merge(allVideo, allAudio, allSubtitle)
-
-    elif process == 6:
         gridWidth = getInputInt("Width",3)
         gridHeight = getInputInt("Height",2)
         vs.preview(gridWidth, gridHeight)
+    
+    else:
+        print("Not implemented")
     
     input("Press enter to exit")
 

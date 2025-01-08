@@ -29,6 +29,10 @@ os.environ["PATH"] += os.pathsep.join(addPath)
 ip = "localhost"
 port = "8848"
 
+# extend VideoInfo
+class VideoInfo(VideoInfo):
+    selected: bool
+
 vs = VideoScripy()
 allVideoList:list[VideoInfo] = []
 
@@ -105,7 +109,7 @@ app.layout = html.Div(
                 delay={"show": 500, "hide": 0},
             ),
 
-            # region process select UI
+            # process select UI
             dbc.Col(
                 children=[
 
@@ -127,8 +131,9 @@ app.layout = html.Div(
                                 value=processes[0],
                                 placeholder="Select a process ...",
                                 id="dropdown_processes",
-                                optionHeight=30,
-                                searchable=False,
+                                maxHeight=233,
+                                optionHeight=28,
+                                searchable=True,
                                 clearable=False,
                                 style={
                                     "color": "black",
@@ -222,9 +227,8 @@ app.layout = html.Div(
                 },
                 className="column_left",
             ),
-            # endregion process select UI
 
-            # region get files UI
+            # video files UI
             dbc.Col(
                 children=[
                     
@@ -373,7 +377,6 @@ app.layout = html.Div(
                     "paddingLeft":"10px",
                 },
             )
-            # endregion get files UI
         
         ],
     ),
@@ -521,53 +524,6 @@ def interpolateInputUI():
         ),
     ]
 
-def mergeInputUI():
-    return [
-        dbc.Stack(
-            [
-                daq.BooleanSwitch(
-                    label="All video",
-                    labelPosition="top",
-                    vertical=True,
-                    id={"type": "input", "id": "allVideo"},
-                    on=True,
-                    persistence=True,
-                    className="column_left",
-                    style={
-                        "white-space":"nowrap",
-                        "width":"70px",
-                    },
-                ),
-                daq.BooleanSwitch(
-                    label="All audio",
-                    labelPosition="top",
-                    vertical=True,
-                    id={"type": "input", "id": "allAudio"},
-                    on=False,
-                    persistence=True,
-                    className="column_left",
-                    style={
-                        "white-space":"nowrap",
-                        "width":"68px",
-                    },
-                ),
-                daq.BooleanSwitch(
-                    label="All subtitle",
-                    labelPosition="top",
-                    vertical=True,
-                    id={"type": "input", "id": "allSubtitle"},
-                    on=False,
-                    persistence=True,
-                    style={
-                        "white-space":"nowrap",
-                        "width":"72px",
-                    },
-                ),
-            ],
-            direction="horizontal"
-        )
-    ]
-
 def previewInputUI():
     return [
         html.Div(
@@ -611,6 +567,85 @@ def previewInputUI():
         ),
     ]
 
+def streamInputUI():
+    global allVideoList
+
+    metaDataUI = []
+    # add refresh button
+    metaDataUI.append(dcc.Loading(
+        html.Button(
+            "REFRESH ⟳",
+            id={"type": "spec", "id": "button_refreshStream"},
+            style={
+                "overflow": "clip",
+                "width":"100%",
+                "height":"3vh",
+                "font-size":"12px",
+            },
+        ),
+        color="white",
+    ))
+
+    # return "No video" if
+    if allVideoList == []:
+        metaDataUI.append(html.Div(
+            "No video",
+            className="uni_text",
+            disable_n_clicks=True,
+        ))
+        return metaDataUI
+    
+    for index, video in enumerate(allVideoList):
+        if video["selected"]:
+            metaDataUI.append(html.Div(
+                video["name"],
+                className="uni_text",
+                disable_n_clicks=True,
+            ))
+            for stream in video["streams"]:
+                if not stream["selected"]:
+                    continue
+                metaDataUI.append(dbc.Stack(
+                    [
+                        dcc.Input(
+                            id={"type": "input", "id": f"{index} {stream['index']} title"},
+                            type="text",
+                            placeholder=stream["title"],
+                            minLength=3,
+                            maxLength=3,
+                            className="uni_width_height",
+                            style={
+                                "width":"280px",
+                                "height":"25px",
+                            },
+                        ),
+                        dcc.Input(
+                            id={"type": "input", "id": f"{index} {stream['index']} language"},
+                            type="text",
+                            placeholder=stream["language"],
+                            minLength=3,
+                            maxLength=3,
+                            className="uni_width_height",
+                            style={
+                                "width":"40px",
+                                "height":"25px",
+                            },
+                        ),
+                        html.Div(
+                            f" {str(stream['index']).rjust(2)} | {stream['codec_name']}",
+                            className="uni_text",
+                            disable_n_clicks=True,
+                            style={
+                                "white-space":"pre",
+                                "height":"25px",
+                                "font-family":"monospace",
+                            }
+                        ),
+                    ],
+                    direction="horizontal",
+                ))
+    return metaDataUI
+
 @callback(
     Output('div_processParamUI', 'children'),
     Input('dropdown_processes', 'value'),
@@ -647,20 +682,39 @@ def update_div_processParamUI(selectedProcess:str):
             *interpolateInputUI(),
             *qualityInputUI(),
         ])
-    elif selectedProcess == VideoProcess.merge.name:
-        processParamUI.extend([
-            *mergeInputUI(),
-        ])
     elif selectedProcess == VideoProcess.preview.name:
         processParamUI.extend([
             *previewInputUI(),
         ])
+    elif selectedProcess == VideoProcess.stream.name:
+        processParamUI.extend([
+            *streamInputUI(),
+        ])
     else:
-        print('Not configured process : "{}"')
+        print(f'Not configured process : "{selectedProcess}"')
         raise PreventUpdate
     
     return processParamUI
 
+@callback(
+    Output('div_processParamUI', 'children', allow_duplicate=True),
+    Input({"type": "spec", "id": "button_refreshStream"}, 'n_clicks'),
+    State('dropdown_processes', 'value'),
+    prevent_initial_call=True,
+)
+def refresh_stream_processParamUI(_, selectedProcess:str):
+    return [
+        html.H6(
+            f"{selectedProcess.capitalize()} parameters :",
+            disable_n_clicks=True,
+            className="uni_text",
+            style={
+                "height":"3vh",
+                "marginBottom":"0vh",
+            }
+        ),
+        *streamInputUI(),
+    ]
 
 
 @callback(
@@ -751,25 +805,70 @@ def getVideoItem(video:VideoInfo, index:int, prefix:str=""):
     )
 
     streams = video["streams"]
+    # sort by codec type
     streamInfo = {
-        "video": {"index": [], "name": [], "selected": []},
-        "audio": {"index": [], "name": [], "selected": []},
-        "subtitle": {"index": [], "name": [], "selected": []},
-        "other": {"index": [], "name": [], "selected": []},
+        "video": {key:[] for key in StreamInfo.__annotations__.keys()},
+        "audio": {key:[] for key in StreamInfo.__annotations__.keys()},
+        "subtitle": {key:[] for key in StreamInfo.__annotations__.keys()},
+        "other": {key:[] for key in StreamInfo.__annotations__.keys()},
     }
-
     for stream in streams:
-        try:
-            streamInfo[stream["codec_type"]]["index"].append(stream["index"])
-            streamInfo[stream["codec_type"]]["name"].append(stream["codec_name"])
-            streamInfo[stream["codec_type"]]["selected"].append(stream["selected"])
-        except:
-            print("---", stream["codec_type"])
-            streamInfo["other"]["index"].append(stream["index"])
-            streamInfo["other"]["name"].append(stream["codec_name"])
-            streamInfo["other"]["selected"].append(stream["selected"])
+        for info in StreamInfo.__annotations__.keys():
+            if info in ["codec_type"]:
+                continue
+            try:
+                streamInfo[stream["codec_type"]][info].append(stream[info])
+            except:
+                print("---", stream["codec_type"])
+                streamInfo["other"][info].append(stream[info])
 
-    def getStreamUI(sType:str, sIndexes:list[int], sNames:list[str], sSels:list[bool]):
+    # generate UI for each type
+    def getStreamUI(sType:str, stream:StreamInfo):
+
+        listGroupItem = []
+        for indexStream, name, sel, lang, title in zip(
+            stream["index"], stream["codec_name"],
+            stream["selected"], stream["language"],
+            stream["title"]
+        ):
+            listGroupItem.append(dbc.ListGroupItem(
+                f" {str(indexStream).rjust(2)} | {name}",
+                id={
+                    "indexVideo":index,
+                    "indexStream":indexStream
+                },
+                action=True,
+                color=videoItemColor[sel],
+                style={
+                    "font-size":"10px",
+                    "border":"1px solid black",
+                    "padding":"0px 0px 0px 0px",
+                    "white-space":"pre",
+                    "font-family":"monospace",
+                    "border-radius":4,
+                },
+            ))
+
+            listGroupItem.append(dbc.Tooltip(
+                [
+                    html.Div(
+                        f'title: {title}',
+                        className="uni_text",
+                        style={"text-align": "left"},
+                    ),
+                    html.Div(
+                        f'lang: {lang}',
+                        className="uni_text",
+                        style={"text-align": "left"},
+                    ),
+                ],
+                target={
+                    "indexVideo":index,
+                    "indexStream":indexStream
+                },
+                delay={"show": 1000, "hide": 0},
+            ))
+
         return dbc.Col([
             html.Div(
                 children=sType,
@@ -784,25 +883,7 @@ def getVideoItem(video:VideoInfo, index:int, prefix:str=""):
                 },
             ),
             dbc.ListGroup(
-                children=[
-                    dbc.ListGroupItem(
-                        f"{str(sIndex).rjust(2)} | {sName}",
-                        id={
-                            "indexVideo":index,
-                            "indexStream":sIndex
-                        },
-                        action=True,
-                        color=videoItemColor[sSel],
-                        style={
-                            "font-size":"10px",
-                            "border":"1px solid black",
-                            "padding":"0px 0px 0px 0px",
-                            "white-space":"pre",
-                            "font-family":"monospace",
-                            "border-radius":4,
-                        },
-                    ) for sIndex, sName, sSel in zip(sIndexes, sNames, sSels)
-                ],
+                children=listGroupItem,
                 class_name="list_streams_scrollbar",
                 style={
                     "background":"rgba(0,0,0,0)",
@@ -816,7 +897,7 @@ def getVideoItem(video:VideoInfo, index:int, prefix:str=""):
     
     streamInfoUI = []
     for sType, sValue in streamInfo.items():
-        streamInfoUI.append(getStreamUI(sType, sValue["index"], sValue["name"], sValue["selected"]))
+        streamInfoUI.append(getStreamUI(sType, sValue))
     
     return dcc.Loading(
         dbc.Stack(
@@ -842,11 +923,11 @@ def getVideoItem(video:VideoInfo, index:int, prefix:str=""):
                             ),
                             dbc.Tooltip(
                                 [
-                                    html.Div(f'{width}x{height}',className="uni_text"),
-                                    html.Div(f'{frameRate}',className="uni_text"),
-                                    html.Div(f'{duration}',className="uni_text"),
-                                    html.Div(f'{bitRate}',className="uni_text"),
-                                    html.Div(f'{fileSize}',className="uni_text"),
+                                    html.Div(f'{width}x{height}',className="uni_text",style={"text-align": "right"}),
+                                    html.Div(f'{frameRate}',className="uni_text",style={"text-align": "right"}),
+                                    html.Div(f'{duration}',className="uni_text",style={"text-align": "right"}),
+                                    html.Div(f'{bitRate}',className="uni_text",style={"text-align": "right"}),
+                                    html.Div(f'{fileSize}',className="uni_text",style={"text-align": "right"}),
                                 ],
                                 target={"type":"video", "index":index},
                                 delay={"show": 1000, "hide": 0},
@@ -878,7 +959,7 @@ def getVideoItem(video:VideoInfo, index:int, prefix:str=""):
             ],
             direction="horizontal",
             style={
-                "border":"1px solid black",
+                "border":"1px solid rgba(255, 255, 255, 0.25)",
                 "border-radius":8,
             },
         ),
@@ -1105,7 +1186,6 @@ def runSetVideoListPrefix(_):
     Input('button_runProcess', 'n_clicks'),
     State('dropdown_processes', 'value'),
     State({'type':'input','id': ALL}, 'value'),
-    State({'type':'input','id': ALL}, 'on'),
     running=[
         (Output('button_stopProcess', 'disabled'), False, True),
 
@@ -1129,7 +1209,7 @@ def runSetVideoListPrefix(_):
     ],
     prevent_initial_call=True,
 )
-def runProcess(_, selectedProcess, inputValues, inputOns):
+def runProcess(_, selectedProcess, inputValues):
     global vs, allVideoList
     
     # get selected video in order
@@ -1139,31 +1219,35 @@ def runProcess(_, selectedProcess, inputValues, inputOns):
             vs.vList.append(video)
 
     values = ctx.states_list[1]
-    ons = ctx.states_list[2]
 
     # get inputs values
     for value in values:
         if value["id"]["id"] == "videoQuality":
             videoQuality = value["value"]
-        if value["id"]["id"] == "videoWidth":
+        elif value["id"]["id"] == "videoWidth":
             videoWidth = value["value"]
-        if value["id"]["id"] == "videoHeight":
+        elif value["id"]["id"] == "videoHeight":
             videoHeight = value["value"]
-        if value["id"]["id"] == "upscaleFactor":
+        elif value["id"]["id"] == "upscaleFactor":
             upscaleFactor = value["value"]
-        if value["id"]["id"] == "videoFPS":
+        elif value["id"]["id"] == "videoFPS":
             videoFPS = value["value"]
-        if value["id"]["id"] == "previewCol":
+        elif value["id"]["id"] == "previewCol":
             previewCol = value["value"]
-        if value["id"]["id"] == "previewRow":
+        elif value["id"]["id"] == "previewRow":
             previewRow = value["value"]
-    for on in ons:
-        if on["id"]["id"] == "allVideo":
-            allVideo = on["value"]
-        if on["id"]["id"] == "allAudio":
-            allAudio = on["value"]
-        if on["id"]["id"] == "allSubtitle":
-            allSubtitle = on["value"]
+        # set stream metadata for stream process
+        elif len(value["id"]["id"].split(" ")) == 3:
+            [vIndex, sIndex, metaData] = value["id"]["id"].split(" ")
+            vIndex = int(vIndex)
+            sIndex = int(sIndex)
+            for stream in  allVideoList[vIndex]["streams"]:
+                if stream["index"] == sIndex:
+                    # set if has value
+                    try:
+                        stream[metaData] = value["value"]
+                    except:
+                        pass
 
     # run process
     if selectedProcess == VideoProcess.optimize.name:
@@ -1174,11 +1258,14 @@ def runProcess(_, selectedProcess, inputValues, inputOns):
         vs.upscale(upscaleFactor, videoQuality)
     elif selectedProcess == VideoProcess.interpolate.name:
         vs.interpolate(videoFPS, videoQuality)
-    elif selectedProcess == VideoProcess.merge.name:
-        vs.merge(allVideo, allAudio, allSubtitle)
     elif selectedProcess == VideoProcess.preview.name:
         vs.preview(previewCol, previewRow)
-    
+    elif selectedProcess == VideoProcess.stream.name:
+        vs.stream()
+    else:
+        print(f'Not configured process : "{selectedProcess}"')
+        raise PreventUpdate
+
     if vs.killed:
         print(f"Process {selectedProcess} STOP")
     else:
