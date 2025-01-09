@@ -321,6 +321,15 @@ app.layout = html.Div(
                             ),
                             dbc.Col(
                                 html.Button(
+                                    "INVERT",
+                                    id="button_lvideo_invert",
+                                    className="uni_width_height",
+                                    style={"overflow": "clip"},
+                                ),
+                                width=1,
+                            ),
+                            dbc.Col(
+                                html.Button(
                                     "↑↓",
                                     id="button_lvideo_revert",
                                     className="uni_width_height",
@@ -1063,6 +1072,30 @@ def videoSelectionNONE(_):
 
     for video in allVideoList:
         video["selected"] = False
+    
+    # generate list of video items
+    videoItems = []
+    for index, video in enumerate(allVideoList):
+        videoItems.append(getVideoItem(video,index))
+
+    return videoItems
+
+@callback(
+    Output('list_videos', 'children', allow_duplicate=True),
+    Input('button_lvideo_invert', 'n_clicks'),
+    running=[
+        (Output('interval_log', 'n_intervals'), 0, 0),
+        (Input('button_lvideo_invert', 'disabled'), True, False),
+    ],
+    prevent_initial_call=True,
+)
+def videoSelectionInvert(_):
+    global allVideoList
+
+    print(f'Invert the selection of all video')
+
+    for video in allVideoList:
+        video["selected"] = not video["selected"]
     
     # generate list of video items
     videoItems = []
