@@ -1211,16 +1211,9 @@ def runSetVideoListPrefix(_):
 )
 def runProcess(_, selectedProcess, inputValues):
     global vs, allVideoList
-    
-    # get selected video in order
-    vs.vList = []
-    for video in allVideoList:
-        if video['selected']:
-            vs.vList.append(video)
-
-    values = ctx.states_list[1]
 
     # get inputs values
+    values = ctx.states_list[1]
     for value in values:
         if value["id"]["id"] == "videoQuality":
             videoQuality = value["value"]
@@ -1241,14 +1234,18 @@ def runProcess(_, selectedProcess, inputValues):
             [vIndex, sIndex, metaData] = value["id"]["id"].split(" ")
             vIndex = int(vIndex)
             sIndex = int(sIndex)
-            for stream in  allVideoList[vIndex]["streams"]:
-                if stream["index"] == sIndex:
-                    # set if has value
-                    try:
-                        stream[metaData] = value["value"]
-                    except:
-                        pass
-
+            # set if has value
+            try:
+                allVideoList[vIndex]["streams"][sIndex][metaData] = value["value"]
+            except:
+                pass
+            
+    # get selected video in order
+    vs.vList = []
+    for video in allVideoList:
+        if video['selected']:
+            vs.vList.append(video)
+    
     # run process
     if selectedProcess == VideoProcess.optimize.name:
         vs.optimize(videoQuality)

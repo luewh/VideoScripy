@@ -1297,6 +1297,7 @@ class VideoScripy():
         commandInputs = ""
         commandMap = ""
         commandMetadata = ""
+        outputStreamCount = 0
         for index, video in enumerate(self.vList):
             print(video['name'])
             
@@ -1319,7 +1320,6 @@ class VideoScripy():
             ]
             commandInputs += f'-i "{video["path"]}" '
 
-            outputStreamCount = 0
             for stream in orderedStreams:
                 if stream["selected"]:
 
@@ -1332,7 +1332,7 @@ class VideoScripy():
                         commandMetadata += f'-metadata:s:{outputStreamCount} title="{stream["title"]}" '
                     commandMetadata += f'-metadata:s:{outputStreamCount} language={stream["language"]} '
                     outputStreamCount += 1
-        
+                    
         command = (
             f' ffmpeg'
             f' {commandInputs}'
