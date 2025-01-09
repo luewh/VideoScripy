@@ -154,7 +154,7 @@ app.layout = html.Div(
                         disable_n_clicks=True,
                         style={
                             "width":"100%",
-                            "height":"23vh",
+                            "height":"27vh",
                             "overflow-x": "hidden",
                         },
                     ),
@@ -188,7 +188,7 @@ app.layout = html.Div(
                         style={
                             "height":"7vh",
                             "paddingTop":"1vh",
-                            "paddingBottom":"1vh",
+                            "paddingBottom":"0vh",
                         },
                     ),
                     
@@ -197,7 +197,7 @@ app.layout = html.Div(
                         disable_n_clicks=True,
                         style={
                             "width":"100%",
-                            "height":"54vh",
+                            "height":"50vh",
                             "white-space":"pre-wrap",
                             "overflow":"auto",
                             "display":"flex",
