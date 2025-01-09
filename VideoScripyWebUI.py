@@ -35,10 +35,7 @@ class VideoInfo(VideoInfo):
 
 vs = VideoScripy()
 allVideoList:list[VideoInfo] = []
-
 processes = [p.name for p in VideoProcess]
-runningProcess = None
-
 videoSizesDict = [
     # {"label":"240p/SD", "width":426, "height":240},
     # {"label":"360p/SD", "width":640, "height":360},
@@ -49,10 +46,7 @@ videoSizesDict = [
     {"label":"2160p/4K", "width":3840, "height":2160},
     {"label":"4320p/8K", "width":7680, "height":4320},
 ]
-
 upscaleFactor = [2, 3, 4]
-
-
 videoItemColor = {
     True:"info",
     False:"dark",
@@ -567,83 +561,106 @@ def previewInputUI():
         ),
     ]
 
+def getStreamParam(defaultTitle=False):
+    global allVideoList
+
+    if allVideoList == []:
+        return "No video"
+    else:
+        streamParam = []
+        for index, video in enumerate(allVideoList):
+            if video["selected"]:
+                streamParam.append(html.Div(
+                    video["name"],
+                    className="uni_text",
+                    disable_n_clicks=True,
+                ))
+                for stream in video["streams"]:
+                    if not stream["selected"]:
+                        continue
+                    streamParam.append(dbc.Stack(
+                        [
+                            dcc.Input(
+                                id={"type": "input", "id": f"{index} {stream['index']} title"},
+                                type="text",
+                                value=video["name"] if defaultTitle else "",
+                                placeholder=stream["title"],
+                                minLength=3,
+                                maxLength=3,
+                                # persistence=True,
+                                className="stream_input_title",
+                            ),
+                            dcc.Input(
+                                id={"type": "input", "id": f"{index} {stream['index']} language"},
+                                type="text",
+                                placeholder=stream["language"],
+                                minLength=3,
+                                maxLength=3,
+                                persistence=True,
+                                className="stream_input_lang",
+                            ),
+                            html.Div(
+                                f" {str(stream['index']).rjust(2)} | {stream['codec_name']}",
+                                className="stream_input_txt",
+                                disable_n_clicks=True,
+                            ),
+                        ],
+                        direction="horizontal",
+                    ))
+        return streamParam
+
 def streamInputUI():
     global allVideoList
 
     metaDataUI = []
     # add refresh button
+    metaDataUI.append(dbc.Stack(
+        [
+            html.Button(
+                "REFRESH ⟳",
+                id={"type": "spec", "id": "button_refreshStream"},
+                className="stream_button",
+            ),
+            html.Button(
+                "DEFAULT TITLE",
+                id={"type": "spec", "id": "button_defaultTitleStream"},
+                className="stream_button",
+            ),
+        ],
+        direction="horizontal",
+    ))
+    # add sel/unsel all stream button
+    metaDataUI.append(dbc.Stack(
+        [
+            html.Button(
+                "VIDEO INVERT",
+                id={"type": "spec", "id": "button_allVideoStream"},
+                className="stream_button",
+            ),
+            html.Button(
+                "AUDIO INVERT",
+                id={"type": "spec", "id": "button_allAudioStream"},
+                className="stream_button",
+            ),
+            html.Button(
+                "SUB INVERT",
+                id={"type": "spec", "id": "button_allSubtitleStream"},
+                className="stream_button",
+            ),
+        ],
+        direction="horizontal",
+    ))
+    # add stream param
     metaDataUI.append(dcc.Loading(
-        html.Button(
-            "REFRESH ⟳",
-            id={"type": "spec", "id": "button_refreshStream"},
-            style={
-                "overflow": "clip",
-                "width":"100%",
-                "height":"3vh",
-                "font-size":"12px",
-            },
+        html.Div(
+            getStreamParam(),
+            id="div_streamParamUI",
+            disable_n_clicks=True,
         ),
         color="white",
+        overlay_style={"visibility":"visible","opacity":0.5},
     ))
 
-    # return "No video" if
-    if allVideoList == []:
-        metaDataUI.append(html.Div(
-            "No video",
-            className="uni_text",
-            disable_n_clicks=True,
-        ))
-        return metaDataUI
-    
-    for index, video in enumerate(allVideoList):
-        if video["selected"]:
-            metaDataUI.append(html.Div(
-                video["name"],
-                className="uni_text",
-                disable_n_clicks=True,
-            ))
-            for stream in video["streams"]:
-                if not stream["selected"]:
-                    continue
-                metaDataUI.append(dbc.Stack(
-                    [
-                        dcc.Input(
-                            id={"type": "input", "id": f"{index} {stream['index']} title"},
-                            type="text",
-                            placeholder=stream["title"],
-                            minLength=3,
-                            maxLength=3,
-                            className="uni_width_height",
-                            style={
-                                "width":"280px",
-                                "height":"25px",
-                            },
-                        ),
-                        dcc.Input(
-                            id={"type": "input", "id": f"{index} {stream['index']} language"},
-                            type="text",
-                            placeholder=stream["language"],
-                            minLength=3,
-                            maxLength=3,
-                            className="uni_width_height",
-                            style={
-                                "width":"40px",
-                                "height":"25px",
-                            },
-                        ),
-                        html.Div(
-                            f" {str(stream['index']).rjust(2)} | {stream['codec_name']}",
-                            className="uni_text",
-                            disable_n_clicks=True,
-                            style={
-                                "white-space":"pre",
-                                "height":"25px",
-                                "font-family":"monospace",
-                            }
-                        ),
-                    ],
-                    direction="horizontal",
-                ))
     return metaDataUI
 
 @callback(
@@ -687,9 +704,7 @@ def update_div_processParamUI(selectedProcess:str):
             *previewInputUI(),
         ])
     elif selectedProcess == VideoProcess.stream.name:
-        processParamUI.extend([
-            *streamInputUI(),
-        ])
+        processParamUI = streamInputUI()
     else:
         print(f'Not configured process : "{selectedProcess}"')
         raise PreventUpdate
@@ -697,24 +712,13 @@ def update_div_processParamUI(selectedProcess:str):
     return processParamUI
 
 @callback(
-    Output('div_processParamUI', 'children', allow_duplicate=True),
+    Output('div_streamParamUI', 'children'),
     Input({"type": "spec", "id": "button_refreshStream"}, 'n_clicks'),
-    State('dropdown_processes', 'value'),
     prevent_initial_call=True,
 )
-def refresh_stream_processParamUI(_, selectedProcess:str):
-    return [
-        html.H6(
-            f"{selectedProcess.capitalize()} parameters :",
-            disable_n_clicks=True,
-            className="uni_text",
-            style={
-                "height":"3vh",
-                "marginBottom":"0vh",
-            }
-        ),
-        *streamInputUI(),
-    ]
+def update_div_streamParamUI(_):
+    return getStreamParam()
+
 
 
 @callback(
@@ -819,7 +823,6 @@ def getVideoItem(video:VideoInfo, index:int, prefix:str=""):
             try:
                 streamInfo[stream["codec_type"]][info].append(stream[info])
             except:
-                print("---", stream["codec_type"])
                 streamInfo["other"][info].append(stream[info])
 
     # generate UI for each type
@@ -1021,30 +1024,6 @@ def switchVideoSelection(_):
     return f"{videoItemColor[selectState]}"
 
 @callback(
-    Output({'indexVideo':MATCH, 'indexStream': MATCH}, 'color'),
-    Input({'indexVideo':MATCH, 'indexStream': MATCH}, 'n_clicks'),
-    running=[(Output('interval_log', 'n_intervals'), 0, 0)],
-    prevent_initial_call=True,
-)
-def switchStreamSelection(_):
-    global allVideoList, videoItemColor
-
-    # invert and record slection switch
-    indexVideo = ctx.triggered_id['indexVideo']
-    indexStream = ctx.triggered_id['indexStream']
-    allVideoList[indexVideo]["streams"][indexStream]["selected"] = (
-        not allVideoList[indexVideo]["streams"][indexStream]["selected"]
-    )
-    
-    selectStream = allVideoList[indexVideo]["streams"][indexStream]
-    if selectStream["selected"]:
-        print(f"Selected {allVideoList[indexVideo]['name']}'s stream {indexStream} : {selectStream['codec_type']}")
-    else:
-        print(f"Unselected {allVideoList[indexVideo]['name']}'s stream {indexStream} : {selectStream['codec_type']}")
-
-    return f"{videoItemColor[selectStream['selected']]}"
-
-@callback(
     Output('list_videos', 'children', allow_duplicate=True),
     Input('button_lvideo_all', 'n_clicks'),
     running=[
@@ -1177,6 +1156,120 @@ def runSetVideoListPrefix(_):
         videoItems.append(getVideoItem(video,index,prefix=prefix))
     
     return videoItems
+
+
+
+@callback(
+    Output({'indexVideo':MATCH, 'indexStream': MATCH}, 'color'),
+    Input({'indexVideo':MATCH, 'indexStream': MATCH}, 'n_clicks'),
+    running=[
+        (Output({"type": "spec", "id": "button_refreshStream"}, 'n_clicks'), 0, 0),
+    ],
+    prevent_initial_call=True,
+)
+def switchStreamSelection(_):
+    global allVideoList, videoItemColor
+
+    # invert and record slection switch
+    indexVideo = ctx.triggered_id['indexVideo']
+    indexStream = ctx.triggered_id['indexStream']
+    allVideoList[indexVideo]["streams"][indexStream]["selected"] = (
+        not allVideoList[indexVideo]["streams"][indexStream]["selected"]
+    )
+    
+    selectStream = allVideoList[indexVideo]["streams"][indexStream]
+    if selectStream["selected"]:
+        print(f"Selected {allVideoList[indexVideo]['name']}'s stream {indexStream} : {selectStream['codec_type']}")
+    else:
+        print(f"Unselected {allVideoList[indexVideo]['name']}'s stream {indexStream} : {selectStream['codec_type']}")
+
+    return f"{videoItemColor[selectStream['selected']]}"
+
+@callback(
+    Output('list_videos', 'children', allow_duplicate=True),
+    Output({"type": "spec", "id": "button_refreshStream"}, 'n_clicks', allow_duplicate=True),
+    Input({"type": "spec", "id": "button_allVideoStream"}, 'n_clicks'),
+    running=[
+        (Output({"type": "spec", "id": "button_allVideoStream"}, 'disabled'), True, False)
+    ],
+    prevent_initial_call=True,
+)
+def videoStreamInvert(_):
+    global allVideoList
+
+    for video in allVideoList:
+        for stream in video["streams"]:
+            if stream["codec_type"] == "video":
+                stream["selected"] = not stream["selected"]
+    
+    # generate list of video items
+    videoItems = []
+    for index, video in enumerate(allVideoList):
+        videoItems.append(getVideoItem(video,index))
+
+    return videoItems, 0
+
+@callback(
+    Output('list_videos', 'children', allow_duplicate=True),
+    Output({"type": "spec", "id": "button_refreshStream"}, 'n_clicks', allow_duplicate=True),
+    Input({"type": "spec", "id": "button_allAudioStream"}, 'n_clicks'),
+    running=[
+        (Output({"type": "spec", "id": "button_allAudioStream"}, 'disabled'), True, False)
+    ],
+    prevent_initial_call=True,
+)
+def audioStreamInvert(_):
+    global allVideoList
+
+    for video in allVideoList:
+        for stream in video["streams"]:
+            if stream["codec_type"] == "audio":
+                stream["selected"] = not stream["selected"]
+    
+    # generate list of video items
+    videoItems = []
+    for index, video in enumerate(allVideoList):
+        videoItems.append(getVideoItem(video,index))
+
+    return videoItems, 0
+
+@callback(
+    Output('list_videos', 'children', allow_duplicate=True),
+    Output({"type": "spec", "id": "button_refreshStream"}, 'n_clicks', allow_duplicate=True),
+    Input({"type": "spec", "id": "button_allSubtitleStream"}, 'n_clicks'),
+    running=[
+        (Output({"type": "spec", "id": "button_allSubtitleStream"}, 'disabled'), True, False)
+    ],
+    prevent_initial_call=True,
+)
+def subtitleStreamInvert(_):
+    global allVideoList
+
+    for video in allVideoList:
+        for stream in video["streams"]:
+            if stream["codec_type"] == "subtitle":
+                stream["selected"] = not stream["selected"]
+    
+    # generate list of video items
+    videoItems = []
+    for index, video in enumerate(allVideoList):
+        videoItems.append(getVideoItem(video,index))
+
+    return videoItems, 0
+
+@callback(
+    Output('div_streamParamUI', 'children', allow_duplicate=True),
+    Input({"type": "spec", "id": "button_defaultTitleStream"}, 'n_clicks'),
+    running=[
+        (Output({"type": "spec", "id": "button_defaultTitleStream"}, 'disabled'), True, False)
+    ],
+    prevent_initial_call=True,
+)
+def setTitleToDefault(n_clicks):
+    if n_clicks%2 != 0:
+        return getStreamParam(defaultTitle=True)
+    else:
+        return getStreamParam(defaultTitle=False)
 
 
 
@@ -1359,6 +1452,7 @@ stdout = StdoutIntercept()
 def logConsole(_):
     global stdout
     return ''.join(stdout.queue)
+
 
 
 if __name__ == '__main__':
