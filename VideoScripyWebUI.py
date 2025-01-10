@@ -335,7 +335,7 @@ app.layout = html.Div(
                                     className="uni_width_height",
                                     style={"overflow": "clip"},
                                 ),
-                                width={"size": 1, "offset": 7},
+                                width={"size": 1, "offset": 6},
                             ),
                             dbc.Col(
                                 dcc.Dropdown(
