@@ -79,7 +79,7 @@ app = Dash(
 app.layout = html.Div(
     dbc.Row(
         children=[
-            
+            # hidden component
             html.Button(
                 id="button_clientClose",
                 hidden=True,
@@ -102,24 +102,16 @@ app.layout = html.Div(
                 target="input_path",
                 delay={"show": 500, "hide": 0},
             ),
-
             # process select UI
             dbc.Col(
                 children=[
-
+                    # header
                     html.Div(
                         [
-
                             html.H6(
                                 "Process :",
-                                disable_n_clicks=True,
-                                className="uni_text",
-                                style={
-                                    "height":"3vh",
-                                    "marginBottom":"0vh",
-                                }
+                                className="ch_h6_title",
                             ),
-                            
                             dcc.Dropdown(
                                 processes,
                                 value=processes[0],
@@ -129,36 +121,18 @@ app.layout = html.Div(
                                 optionHeight=28,
                                 searchable=True,
                                 clearable=False,
-                                style={
-                                    "color": "black",
-                                    "height":"5vh",
-                                },
+                                className="dcc_dropdown",
                             ),
-
-                            html.Hr(
-                                disable_n_clicks=True,
-                                style={
-                                    "marginTop":"2vh",
-                                    "marginBottom":"2vh",
-                                },
-                            ),
-
+                            html.Hr(className="ch_hr"),
                         ],
-                        style={
-                            "height":"12vh"
-                        },
+                        className="ch_div_header"
                     ),
-                    
+                    # param
                     html.Div(
                         id="div_processParamUI",
-                        disable_n_clicks=True,
-                        style={
-                            "width":"100%",
-                            "height":"27vh",
-                            "overflow-x": "hidden",
-                        },
+                        className="psu_div_param"
                     ),
-                    
+                    # process buttons
                     dbc.Stack(
                         [
                             dbc.Col(
@@ -168,7 +142,7 @@ app.layout = html.Div(
                                         id="button_runProcess",
                                         n_clicks=0,
                                         disabled=True,
-                                        className="uni_width_height uni_text",
+                                        className="html_button_big",
                                     ),
                                     color="white",
                                 ),
@@ -179,66 +153,35 @@ app.layout = html.Div(
                                     id="button_stopProcess",
                                     n_clicks=0,
                                     disabled=True,
-                                    className="uni_width_height uni_text",
+                                    className="html_button_big",
                                 ),
                             ),
                         ],
                         direction="horizontal",
-                        gap=1,
-                        style={
-                            "height":"7vh",
-                            "paddingTop":"1vh",
-                            "paddingBottom":"0vh",
-                        },
+                        className="psu_stack_process_buttons",
                     ),
-                    
+                    # terminal
                     html.Div(
                         id="div_processRunning",
                         disable_n_clicks=True,
-                        style={
-                            "width":"100%",
-                            "height":"50vh",
-                            "white-space":"pre-wrap",
-                            "overflow":"auto",
-                            "display":"flex",
-                            "flex-direction": "column-reverse",
-                            "background":"black",
-                            "padding":"5px",
-                            "font-size":"10px",
-                            "font-family":"monospace",
-                            "border-radius": "3px",
-                        },
+                        className="psu_div_terminal",
                     ),
-                    
                 ],
                 width=5,
                 # md=5,
-                style={
-                    "paddingTop":"2vh",
-                    "paddingRight":"10px",
-                    "paddingBottom":"2vh",
-                    "paddingLeft":"25px",
-                },
-                className="column_left",
+                className="psu",
             ),
-
-            # video files UI
+            # video select UI
             dbc.Col(
                 children=[
-                    
+                    # header
                     html.Div(
                         [
-
                             html.H6(
                                 "Path :",
                                 disable_n_clicks=True,
-                                className="uni_text",
-                                style={
-                                    "height":"3vh",
-                                    "marginBottom":"0vh",
-                                }
+                                className="ch_h6_title",
                             ),
-
                             dbc.Stack(
                                 [
                                     dbc.Col(
@@ -246,8 +189,7 @@ app.layout = html.Div(
                                             html.Button(
                                                 "SCAN",
                                                 id="button_scanFiles",
-                                                className="uni_width_height",
-                                                style={"overflow": "clip"},
+                                                className="html_button_big",
                                             ),
                                             color="white",
                                         ),
@@ -261,7 +203,7 @@ app.layout = html.Div(
                                             persistence=True,
                                             disabled=True,
                                             n_submit=0,
-                                            className="uni_width_height",
+                                            className="dcc_input",
                                         ),
                                         width=8,
                                     ),
@@ -269,7 +211,7 @@ app.layout = html.Div(
                                         html.Button(
                                             "EDIT",
                                             id="button_editPath",
-                                            className="uni_width_height",
+                                            className="html_button_big",
                                         ),
                                         width=1,
                                     ),
@@ -277,36 +219,25 @@ app.layout = html.Div(
                                         html.Button(
                                             "SELCT DIRECTORY",
                                             id="button_selectDir",
-                                            className="uni_width_height uni_text",
+                                            className="html_button_big",
                                         ),
                                         width=2,
                                     ),
                                 ],
                                 direction="horizontal",
                             ),
-                            
-                            html.Hr(
-                                disable_n_clicks=True,
-                                style={
-                                    "marginTop":"2vh",
-                                    "marginBottom":"2vh",
-                                },
-                            ),
-
+                            html.Hr(className="ch_hr"),
                         ],
-                        style={
-                            "height":"12vh",
-                        },
+                        className="ch_div_header"
                     ),
-
+                    # select & sort button
                     dbc.Stack(
                         [
                             dbc.Col(
                                 html.Button(
                                     "ALL",
                                     id="button_lvideo_all",
-                                    className="uni_width_height",
-                                    style={"overflow": "clip"},
+                                    className="html_button_big",
                                 ),
                                 width=1
                             ),
@@ -314,8 +245,7 @@ app.layout = html.Div(
                                 html.Button(
                                     "NONE",
                                     id="button_lvideo_none",
-                                    className="uni_width_height",
-                                    style={"overflow": "clip"},
+                                    className="html_button_big",
                                 ),
                                 width=1,
                             ),
@@ -323,8 +253,7 @@ app.layout = html.Div(
                                 html.Button(
                                     "INVERT",
                                     id="button_lvideo_invert",
-                                    className="uni_width_height",
-                                    style={"overflow": "clip"},
+                                    className="html_button_big",
                                 ),
                                 width=1,
                             ),
@@ -332,8 +261,7 @@ app.layout = html.Div(
                                 html.Button(
                                     "↑↓",
                                     id="button_lvideo_revert",
-                                    className="uni_width_height",
-                                    style={"overflow": "clip"},
+                                    className="html_button_big",
                                 ),
                                 width={"size": 1, "offset": 6},
                             ),
@@ -342,50 +270,32 @@ app.layout = html.Div(
                                     videoSortBy,
                                     placeholder="SORT",
                                     id="dropdown_lvideo_sort",
+                                    maxHeight=233,
+                                    optionHeight=28,
                                     searchable=False,
                                     clearable=False,
-                                    style={
-                                        "color": "black",
-                                        "height":"5vh",
-                                    },
+                                    className="dcc_dropdown",
                                 ),
                                 width=2,
                             ),
                         ],
                         direction="horizontal",
-                        style={
-                            "marginTop":"1vh",
-                            "height":"5vh",
-                        },
+                        className="vsu_stack_buttons",
 
                     ),
-
+                    # video item list
                     dbc.ListGroup(
                         id="list_videos",
-                        style={
-                            "background":"rgba(0,0,0,0)",
-                            "overflow-x": "hidden",
-                            "overflow-y": "auto",
-                            "height":"78vh",
-                        },
+                        className="vsu_list_group"
                     ),
-
                 ],
                 width=7,
                 # md=7,
-                style={
-                    "paddingTop":"2vh",
-                    "paddingRight":"25px",
-                    "paddingBottom":"2vh",
-                    "paddingLeft":"10px",
-                },
+                className="vsu",
             )
-        
         ],
     ),
-    style={
-        "overflow-x": "hidden",
-    },
+    className="hp_div",
 )
 
 
@@ -409,8 +319,7 @@ def qualityInputUI():
     return [
         html.Div(
             "video quality",
-            className="uni_text",
-            disable_n_clicks=True,
+            # className="div_text_simple",
         ),
         dcc.Input(
             id={"type": "input", "id": "videoQuality"},
@@ -420,7 +329,7 @@ def qualityInputUI():
             max=9.9,
             step=0.1,
             persistence=True,
-            className="uni_width_height",
+            className="dcc_input",
             style={"width":"50px"},
         ),
     ]
@@ -430,7 +339,7 @@ def resizeInputUI():
     return [
         html.Div(
             "width x height",
-            className="uni_text",
+            className="div_text_simple",
             disable_n_clicks=True,
         ),
         dbc.Stack(
@@ -443,14 +352,14 @@ def resizeInputUI():
                     min=-1,
                     max=8192,
                     step=1,
-                    className="uni_width_height",
+                    className="dcc_input",
                     style={"width":"65px"},
                 ),
                 html.Button(
                     "X",
                     id={"type": "spec", "id": "button_sizeSwitch"},
                     n_clicks=0,
-                    className="uni_width_height",
+                    className="html_button_big",
                     style={"width":"5vh"},
                 ),
                 dcc.Input(
@@ -461,7 +370,7 @@ def resizeInputUI():
                     min=-1,
                     max=8192,
                     step=1,
-                    className="uni_width_height",
+                    className="dcc_input",
                     style={"width":"65px"},
                 ),
                 dcc.Dropdown(
@@ -470,14 +379,10 @@ def resizeInputUI():
                     id={"type": "spec", "id": "dropdown_videoSize"},
                     searchable=False,
                     clearable=False,
-                    maxHeight=80,
-                    optionHeight=20,
-                    className="uni_width_height",
-                    style={
-                        "color": "black",
-                        "height":"5vh",
-                        "width":"140px",
-                    },
+                    maxHeight=120,
+                    optionHeight=19,
+                    className="dcc_dropdown",
+                    style={"width":"140px"},
                 ),
             ],
             direction="horizontal",
@@ -489,7 +394,7 @@ def upscaleInputUI():
     return [
         html.Div(
             "upscale factor",
-            className="uni_text",
+            className="div_text_simple",
             disable_n_clicks=True,
         ),
         dcc.Dropdown(
@@ -499,12 +404,9 @@ def upscaleInputUI():
             persistence=True,
             searchable=False,
             clearable=False,
-            optionHeight=20,
-            className="uni_width_height",
-            style={
-                "color": "black",
-                "width":"50px",
-            },
+            optionHeight=19,
+            className="dcc_dropdown",
+            style={"width":"50px"},
         ),
     ]
 
@@ -512,7 +414,7 @@ def interpolateInputUI():
     return [
         html.Div(
             "video FPS",
-            className="uni_text",
+            className="div_text_simple",
             disable_n_clicks=True,
         ),
         dcc.Input(
@@ -522,7 +424,7 @@ def interpolateInputUI():
             min=1.0,
             max=240.0,
             persistence=True,
-            className="uni_width_height",
+            className="dcc_input",
             style={"width":"65px"},
         ),
     ]
@@ -531,7 +433,7 @@ def previewInputUI():
     return [
         html.Div(
             "column x row",
-            className="uni_text",
+            className="div_text_simple",
             disable_n_clicks=True,
         ),
         dbc.Stack(
@@ -544,14 +446,13 @@ def previewInputUI():
                     min=1,
                     max=10,
                     step=1,
-                    className="uni_width_height",
+                    className="dcc_input",
                     style={"width":"45px"},
                 ),
                 html.Button(
                     "X",
-                    id={"type": "spec", "id": "button_sizeSwitch"},
-                    disabled=True,
-                    className="uni_width_height",
+                    id={"type": "spec", "id": "button_previewSwitch"},
+                    className="html_button_big",
                     style={"width":"5vh"},
                 ),
                 dcc.Input(
@@ -562,7 +463,7 @@ def previewInputUI():
                     min=1,
                     max=10,
                     step=1,
-                    className="uni_width_height",
+                    className="dcc_input",
                     style={"width":"45px"},
                 ),
             ],
@@ -581,7 +482,7 @@ def getStreamParam(defaultTitle=False):
             if video["selected"]:
                 streamParam.append(html.Div(
                     video["name"],
-                    className="uni_text",
+                    className="div_text_simple",
                     disable_n_clicks=True,
                 ))
                 for stream in video["streams"]:
@@ -597,7 +498,7 @@ def getStreamParam(defaultTitle=False):
                                 minLength=3,
                                 maxLength=3,
                                 # persistence=True,
-                                className="stream_input_title",
+                                className="psu_stream_input_title",
                             ),
                             dcc.Input(
                                 id={"type": "input", "id": f"{index} {stream['index']} language"},
@@ -605,13 +506,12 @@ def getStreamParam(defaultTitle=False):
                                 placeholder=stream["language"],
                                 minLength=3,
                                 maxLength=3,
-                                persistence=True,
-                                className="stream_input_lang",
+                                # persistence=True,
+                                className="psu_stream_input_lang",
                             ),
                             html.Div(
                                 f" {str(stream['index']).rjust(2)} | {stream['codec_name']}",
-                                className="stream_input_txt",
-                                disable_n_clicks=True,
+                                className="psu_stream_input_txt",
                             ),
                         ],
                         direction="horizontal",
@@ -628,12 +528,12 @@ def streamInputUI():
             html.Button(
                 "REFRESH ⟳",
                 id={"type": "spec", "id": "button_refreshStream"},
-                className="stream_button",
+                className="psu_stream_button",
             ),
             html.Button(
                 "DEFAULT TITLE",
                 id={"type": "spec", "id": "button_defaultTitleStream"},
-                className="stream_button",
+                className="psu_stream_button",
             ),
         ],
         direction="horizontal",
@@ -644,17 +544,17 @@ def streamInputUI():
             html.Button(
                 "VIDEO INVERT",
                 id={"type": "spec", "id": "button_allVideoStream"},
-                className="stream_button",
+                className="psu_stream_button",
             ),
             html.Button(
                 "AUDIO INVERT",
                 id={"type": "spec", "id": "button_allAudioStream"},
-                className="stream_button",
+                className="psu_stream_button",
             ),
             html.Button(
                 "SUB INVERT",
                 id={"type": "spec", "id": "button_allSubtitleStream"},
-                className="stream_button",
+                className="psu_stream_button",
             ),
         ],
         direction="horizontal",
@@ -682,11 +582,7 @@ def update_div_processParamUI(selectedProcess:str):
         html.H6(
             f"{selectedProcess.capitalize()} parameters :",
             disable_n_clicks=True,
-            className="uni_text",
-            style={
-                "height":"3vh",
-                "marginBottom":"0vh",
-            }
+            className="ch_h6_title",
         ),
     ]
     if selectedProcess == VideoProcess.optimize.name:
@@ -755,6 +651,18 @@ def setVideoSize(selectedVideoSize):
 def switchVideoSize(_, width, height):
     return height, width
 
+
+
+@callback(
+    Output({"type": "input", "id": "previewCol"}, 'value'),
+    Output({"type": "input", "id": "previewRow"}, 'value'),
+    Input({"type": "spec", "id": "button_previewSwitch"}, 'n_clicks'),
+    State({"type": "input", "id": "previewCol"}, 'value'),
+    State({"type": "input", "id": "previewRow"}, 'value'),
+    prevent_initial_call=True,
+)
+def switchPreviewColRow(_, col, row):
+    return row, col
 
 
 @callback(
@@ -851,59 +759,35 @@ def getVideoItem(video:VideoInfo, index:int, prefix:str=""):
                 },
                 action=True,
                 color=videoItemColor[sel],
-                style={
-                    "font-size":"10px",
-                    "border":"1px solid black",
-                    "padding":"0px 0px 0px 0px",
-                    "white-space":"pre",
-                    "font-family":"monospace",
-                    "border-radius":4,
-                },
+                className="ssu_list_group_item",
             ))
 
             listGroupItem.append(dbc.Tooltip(
                 [
                     html.Div(
                         f'title: {title}',
-                        className="uni_text",
-                        style={"text-align": "left"},
+                        className="ssu_list_group_item_tooltip",
                     ),
                     html.Div(
                         f'lang: {lang}',
-                        className="uni_text",
-                        style={"text-align": "left"},
+                        className="ssu_list_group_item_tooltip",
                     ),
                 ],
                 target={
                     "indexVideo":index,
                     "indexStream":indexStream
                 },
-                delay={"show": 1000, "hide": 0},
+                delay={"show": 500, "hide": 0},
             ))
 
         return dbc.Col([
             html.Div(
                 children=sType,
-                style={
-                    "marginTop":"-2px",
-                    "marginBottom":"-2px",
-                    "marginLeft":"2px",
-                    "font-size":"12px",
-                    "white-space":"pre",
-                    "font-family":"monospace",
-                    "overflow-x": "hidden",
-                },
+                className="ssu_list_group_name",
             ),
             dbc.ListGroup(
                 children=listGroupItem,
-                class_name="list_streams_scrollbar",
-                style={
-                    "background":"rgba(0,0,0,0)",
-                    "overflow-x": "hidden",
-                    "overflow-y": "auto",
-                    "border-radius":4,
-                    "height":"38px",
-                },
+                class_name="ssu_list_group",
             ),
         ])
     
@@ -920,26 +804,20 @@ def getVideoItem(video:VideoInfo, index:int, prefix:str=""):
                         children=[
                             html.H6(
                                 f'{prefix}{video["name"]}',
-                                className="uni_text",
+                                className="vsu_list_group_item_name",
                             ),
-                            html.Hr(style={"marginTop":-15, "marginBottom":-0}),
+                            html.Hr(className="vsu_list_group_item_hr"),
                             html.Div(
                                 videoInfoText,
-                                style={
-                                    "color":"grey",
-                                    "font-size":"10px",
-                                    "white-space":"pre",
-                                    "font-family":"monospace",
-                                    "overflow-x": "hidden",
-                                },
+                                className="vsu_list_group_item_info",
                             ),
                             dbc.Tooltip(
                                 [
-                                    html.Div(f'{width}x{height}',className="uni_text",style={"text-align": "right"}),
-                                    html.Div(f'{frameRate}',className="uni_text",style={"text-align": "right"}),
-                                    html.Div(f'{duration}',className="uni_text",style={"text-align": "right"}),
-                                    html.Div(f'{bitRate}',className="uni_text",style={"text-align": "right"}),
-                                    html.Div(f'{fileSize}',className="uni_text",style={"text-align": "right"}),
+                                    html.Div(f'{width}x{height}',className="vsu_list_group_item_tooltip"),
+                                    html.Div(f'{frameRate}',className="vsu_list_group_item_tooltip"),
+                                    html.Div(f'{duration}',className="vsu_list_group_item_tooltip"),
+                                    html.Div(f'{bitRate}',className="vsu_list_group_item_tooltip"),
+                                    html.Div(f'{fileSize}',className="vsu_list_group_item_tooltip"),
                                 ],
                                 target={"type":"video", "index":index},
                                 delay={"show": 1000, "hide": 0},
@@ -948,10 +826,10 @@ def getVideoItem(video:VideoInfo, index:int, prefix:str=""):
                         id={"type":"video", "index":index},
                         action=True,
                         color=videoItemColor[video["selected"]],
-                        style={"paddingBottom":0},
+                        className="vsu_list_group_item_video",
                     ),
                     width=7,
-                    style={"border-radius":8},
+                    className="vsu_list_group_item_video",
                 ),
                 
                 # streams info
@@ -961,19 +839,12 @@ def getVideoItem(video:VideoInfo, index:int, prefix:str=""):
                         direction="horizontal",
                     ),
                     width=5,
-                    style={
-                        "paddingLeft":"2px",
-                        "paddingRight":"2px",
-                        "border-radius":8,
-                    },
+                    className="vsu_list_group_item_stream",
                 ),
                 
             ],
             direction="horizontal",
-            style={
-                "border":"1px solid rgba(255, 255, 255, 0.25)",
-                "border-radius":8,
-            },
+            className="vsu_list_group_item",
         ),
         color="white",
         overlay_style={"visibility":"visible","opacity":0.5},
@@ -1327,6 +1198,7 @@ def setTitleToDefault(n_clicks):
 
         (Output('button_lvideo_all', 'disabled'), True, False),
         (Output('button_lvideo_none', 'disabled'), True, False),
+        (Output('button_lvideo_invert', 'disabled'), True, False),
         (Output('button_lvideo_revert', 'disabled'), True, False),
         (Output('dropdown_lvideo_sort', 'disabled'), True, False),
 

@@ -129,14 +129,15 @@ Run the `VideoScripyWebUI.py`
         Begin with a transformation of video to image frames, then interpolate between frames, finally reassemble to video.
     </details>
 
-- merge  
-    Merge all videos, including each of its audio and subtitle by option.  
-    Then use media player as PotPlayer to switch between video/audio/subtitle.
-
 - preview  
     Generate a grid of images.  
     3x2 grid of 2min countdown video :
     ![demo_preview](./doc/demo_preview.png)
+
+- stream  
+    Merge selected stream of multiple videos into one video.  
+    And also modify metadata as tile and language.  
+    Then use media player as PotPlayer to switch between video/audio/subtitle.
 
 
 

@@ -1,86 +1,213 @@
-.column_left {
-    border-right: 1px solid rgba(255, 255, 255, 0.25);
-}
-
-.uni_width_height {
-    width: 100%;
-    height: 5vh;
-}
-
-.uni_text {
+/* Commun Header */
+.ch_h6_title {
+    height: 3vh;
+    margin-bottom: 0vh;
     white-space: nowrap;
     overflow: clip;
 }
-
-.add_border {
-    border: 2px solid black
+/* 5vh component */
+.ch_hr {
+    margin-top: 2vh;
+    margin-bottom: 2vh;
+}
+.ch_div_header {
+    height: 12vh;
 }
 
-.stream_button {
+/* Process Select UI */
+.psu_div_param {
+    height: 28vh;
+    overflow-x: hidden;
+}
+.psu_stream_button {
     overflow: clip;
     width: 100%;
     height: 3vh;
     font-size: 12px;
+    white-space: nowrap;
+    border-radius: 3px;
+    border: 1px solid rgb(255, 255, 255);
+    background: linear-gradient(rgb(255, 255, 255),rgb(207, 207, 207));
 }
-
-.stream_input_title {
+.psu_stream_input_title {
     width: 280px;
     height: 25px;
 }
-
-.stream_input_lang {
+.psu_stream_input_lang {
     width: 40px;
     height: 25px;
 }
-
-.stream_input_txt {
+.psu_stream_input_txt {
     white-space: pre;
     height: 25px;
     font-family: monospace;
     overflow: clip;
 }
+.psu_stack_process_buttons {
+    height: 6vh;
+    padding-top: 1vh;
+    padding-bottom: 2px;
+}
+.psu_div_terminal{
+    height: 50vh;
+    width: 100%;
+    padding: 5px;
+    font-size: 10px;
+    border-radius: 3px;
+    background: black;
+    white-space: pre-wrap;
+    font-family: monospace;
+    overflow: auto;
+    display: flex;
+    flex-direction: column-reverse;
+}
+.psu{
+    padding-top:2vh;
+    padding-right:10px;
+    padding-bottom:2vh;
+    padding-left:25px;
+    border-right: 1px solid rgba(255, 255, 255, 0.25);
+}
 
-#list_videos {
+/* Video Select UI */
+.vsu_stack_buttons {
+    height: 5vh;
+}
+.vsu_list_group {
+    height: 79vh;
+    background:rgba(0,0,0,0);
+    overflow-x: hidden;
+    overflow-y: auto;
     &::-webkit-scrollbar {
         width: 10px;
         background-color: transparent;
     }
-    /* Track */
-    &::-webkit-scrollbar-track {
-        background-color: transparent;
-    }
-    /* Handle */
     &::-webkit-scrollbar-thumb {
         background: #ff5a99b4;
         border-radius: 5px;
     }
-    /* Handle hover*/
     &::-webkit-scrollbar-thumb:hover {
         background: #cdf2ff;
         border-radius: 5px;
     }
 }
+.vsu_list_group_item_name {
+    white-space: nowrap;
+    overflow: clip;
+}
+.vsu_list_group_item_hr {
+    margin-top: -15px;
+    margin-bottom: 0px;
+}
+.vsu_list_group_item_info {
+    color: grey;
+    font-size: 10px;
+    white-space: pre;
+    font-family: monospace;
+    overflow-x: hidden;
+}
+.vsu_list_group_item_tooltip {
+    white-space: nowrap;
+    overflow: clip;
+    text-align: right;
+}
+.vsu_list_group_item_video {
+    padding-bottom: 0px;
+    border-radius: 8px;
+}
+.vsu_list_group_item_stream {
+    padding-left: 2px;
+    padding-right: 2px;
+    border-radius: 8px;
+}
+.vsu_list_group_item {
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 8px;
+}
+.vsu {
+    padding-top: 2vh;
+    padding-right: 25px;
+    padding-bottom: 2vh;
+    padding-left: 10px;
+}
 
-.list_streams_scrollbar {
+/* Stream Select UI */
+.ssu_list_group {
+    height: 38px;
+    background: transparent;
+    overflow-x: hidden;
+    overflow-y: auto;
+    border-radius: 4px;
     &::-webkit-scrollbar {
         width: 5px;
         background-color: transparent;
     }
-    /* Track */
-    &::-webkit-scrollbar-track {
-        background-color: transparent;
-    }
-    /* Handle */
     &::-webkit-scrollbar-thumb {
         background: #ff5a99b4;
-        border-radius: 4px;
+        border-radius: 2px;
     }
-    /* Handle hover*/
     &::-webkit-scrollbar-thumb:hover {
         background: #cdf2ff;
-        border-radius: 4px;
+        border-radius: 2px;
     }
 }
+.ssu_list_group_name {
+    margin-top: -2px;
+    margin-bottom: -2px;
+    margin-left: 2px;
+    font-size: 12px;
+    white-space: pre;
+    font-family: monospace;
+    overflow-x: hidden;
+}
+.ssu_list_group_item {
+    font-size: 10px;
+    border: 1px solid black;
+    padding: 0px 0px 0px 0px;
+    white-space: pre;
+    font-family: monospace;
+    border-radius: 4px;
+}
+.ssu_list_group_item_tooltip {
+    white-space: nowrap;
+    overflow: clip;
+    text-align: left;
+}
+
+/* hole page div */
+.hp_div {
+    overflow-x: hidden;
+}
+
+
+
+.html_button_big {
+    height: 5vh;
+    width: 100%;
+    /* color: white; */
+    font: large;
+    overflow: clip;
+    white-space: nowrap;
+    border-radius: 5px;
+    border: 3px solid rgb(255, 255, 255);
+    background: linear-gradient(rgb(255, 255, 255),rgb(207, 207, 207));
+}
+.dcc_input {
+    width: 100%;
+    height: 5vh;
+    border-radius: 5px;
+    border: 3px solid rgba(255, 255, 255, 0.25);
+}
+.dcc_dropdown {
+    height: 5vh;
+    color: black;
+}
+
+.div_text_simple {
+    white-space: nowrap;
+    overflow: clip;
+}
+
 
 
 
