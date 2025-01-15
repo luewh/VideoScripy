@@ -17,14 +17,16 @@ from alive_progress import alive_bar
 from playsound import playsound
 from PIL import Image
 import psutil
-from colorama import init, Fore, Style
+from colorama import init
 init()
 
 
 # from VideoScripy import *
 __all__ = [
     'VideoScripy',
-    'VideoInfo', 'VideoProcess', 'ProcAsyncReturn', 'StreamInfo',
+    'VideoInfo', 'ProcAsyncReturn', 'StreamInfo',
+    'VideoProcess',
+    'colorAnsi',
     'run',
 ]
 
@@ -69,22 +71,24 @@ class VideoProcess(Enum):
     stream = "stream"
 
 
-
+colorAnsi = {
+    "reset"  : "\x1b[0m",
+    "red"    : "\x1b[31m",
+    "green"  : "\x1b[32m",
+    "yellow" : "\x1b[33m",
+    "blue"   : "\x1b[34m",
+}
 def printC(text, color:str=None):
     """
     print with color : red green blue yellow
     """
-    if color == "red":
-        print(Fore.RED, end='')
-    elif color == "green":
-        print(Fore.GREEN, end='')
-    elif color == "blue":
-        print(Fore.BLUE, end='')
-    elif color == "yellow":
-        print(Fore.YELLOW, end='')
-    else:
-        pass
-    print(text + Style.RESET_ALL)
+    global colorAnsi
+    try:
+        print(colorAnsi[color], end='')
+    except:
+        print(f'"{color}" not avalable', end='')
+
+    print(text + colorAnsi["reset"])
 
 def removeEmptyFolder(folderName:str):
     try:
@@ -579,7 +583,7 @@ class VideoScripy():
 
         processTime = time()
 
-        printC(f'Running process : {processName}', "green")
+        printC(f'Running process : {processName}', "blue")
 
         commandWarped = (
             f' start "VideoScripy-{processName}" /I /min /wait /realtime'
@@ -672,7 +676,8 @@ class VideoScripy():
                 when to stop
         """
         self.stop_threads = False
-        
+        # wait 1s to avoid print overlap with "Running process"
+        sleep(1)
         alreadyProgressed = len(listdir(outDir))
         restToProgress = total - alreadyProgressed
         print(f"Already progressed : {alreadyProgressed}/{total}")

@@ -1237,7 +1237,7 @@ def runProcess(_, selectedProcess, inputValues):
                 allVideoList[vIndex]["streams"][sIndex][metaData] = value["value"]
             except:
                 pass
-            
+    
     # get selected video in order
     vs.vList = []
     for video in allVideoList:
@@ -1286,15 +1286,8 @@ class StdoutIntercept(object):
         stdout.write = self.write
         stderr.write = self.write
         self.queue = []
-        self.queueLimit = 1000
+        self.QUEUE_LIMIT = 1000
         self.carriage = False
-        self.ansiColor = [
-            "\x1b[0m", # reset
-            "\x1b[31m", # red
-            "\x1b[32m", # green
-            "\x1b[33m", # yellow
-            "\x1b[34m", # red
-        ]
 
     def __del__(self):
         stdout.write = self.stdoutW
@@ -1302,11 +1295,9 @@ class StdoutIntercept(object):
 
     def write(self, msg:str):
         self.stdoutW(msg)
-
-        # remove ansi color
-        for ansiColor in self.ansiColor:
-            if ansiColor in msg:
-                msg = msg.replace(ansiColor, "")
+        
+        if "\x1b[2K\x1b[J" in msg:
+            msg.replace("\x1b[2K\x1b[J", "")
 
         if msg == "\r":
             # init carriage line
@@ -1347,16 +1338,40 @@ class StdoutIntercept(object):
             self.queue.append(msg)
         
         # limit queue size
-        if len(self.queue) > self.queueLimit:
-            self.queue = self.queue[-self.queueLimit:]
+        if len(self.queue) > self.QUEUE_LIMIT:
+            self.queue = self.queue[-self.QUEUE_LIMIT:]
 stdout = StdoutIntercept()
 @callback(
     Output('div_processRunning', 'children'),
     Input('interval_log', 'n_intervals'),
 )
 def logConsole(_):
-    global stdout
-    return ''.join(stdout.queue)
+    global stdout, colorAnsi
+
+    # skip if not stdout
+    if stdout.queue == []:
+        raise PreventUpdate
+    
+    msgs = ''.join(stdout.queue).split("\n")
+    children = []
+    for msg in msgs[::-1]:
+        hasAnsiColor = False
+        # check if has ansi color code
+        for color, ansi in colorAnsi.items():
+            if ansi in msg:
+                hasAnsiColor = True
+                # remove ansi color code
+                msg = msg.replace(ansi, "")
+                if color != "reset":
+                    children.append(html.Span(
+                        msg,
+                        style={"color":color}
+                    ))
+        # no color append
+        if not hasAnsiColor:
+            children.append(html.Span(msg))
+
+    return children
 
 
 
