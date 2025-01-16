@@ -743,6 +743,7 @@ class VideoScripy():
             # equal to what it should has, allow +- 1 frame difference
             if abs(obtainedFrames - video["nbFrames"]) <= 1:
                 printC("No need to get frames", "yellow")
+                self.killed = False
                 return True
             else:
                 printC("Missing frames, regenerate frames needed", "yellow")
