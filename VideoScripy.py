@@ -1292,25 +1292,30 @@ class VideoScripy():
 
         print(f'{len(self.vList)}'.center(20, '-'))
 
-        # end process if no video
-        if len(self.vList) == 0:
-            removeEmptyFolder(outputFolder)
-            noticeProcessEnd()
-            return
-        
-        # check video length
-        duration = self.vList[0]['duration']
-        for video in self.vList:
-            if duration != video['duration']:
-                printC(f'Warning, "{video["name"]}" has different duration', "yellow")
-                printC(f'{duration} -- {video["duration"]}', "yellow")
-        
-        # get video as output type
+        # get first video name and type
+        hasVideo = False
         for video in self.vList:
             if video["type"] in ["mp4","mkv"]:
                 videoType = video["type"]
                 videoName = video["name"]
+                videoDuration = video["duration"]
+                hasVideo = True
+                break
+        # end process if no video
+        if hasVideo:
+            removeEmptyFolder(outputFolder)
+            noticeProcessEnd()
+            return
         
+        # warn different video duration
+        for video in self.vList:
+            if (video["type"] in ["mp4","mkv"]
+                and videoDuration != video['duration']
+            ):
+                printC(f'Warning, "{video["name"]}" has different duration', "yellow")
+                printC(f'{videoDuration} -- {video["duration"]}', "yellow")
+        
+        # subtitle copy param
         subtitleCopy = '-c:s mov_text'
         if videoType == "mkv":
             subtitleCopy = ''
