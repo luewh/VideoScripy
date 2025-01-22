@@ -550,13 +550,14 @@ def streamInputUI():
     global allVideoList
 
     metaDataUI = []
-    # add refresh button
+    # add refresh and default button
     metaDataUI.append(dbc.Stack(
         [
             html.Button(
                 "REFRESH ⟳",
                 id={"type": "spec", "id": "button_refreshStream"},
                 className="psu_stream_button",
+                hidden=True,
             ),
             html.Button(
                 "DEFAULT TITLE",
