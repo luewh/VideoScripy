@@ -18,6 +18,18 @@
 .psu_div_param {
     height: 28vh;
     overflow-x: hidden;
+    &::-webkit-scrollbar {
+        width: 10px;
+        background-color: transparent;
+    }
+    &::-webkit-scrollbar-thumb {
+        background: #2ba4e5b4;
+        border-radius: 5px;
+    }
+    &::-webkit-scrollbar-thumb:hover {
+        background: #ebebeb;
+        border-radius: 5px;
+    }
 }
 .psu_stream_button {
     overflow: clip;
@@ -33,10 +45,29 @@
     width: 280px;
     height: 25px;
 }
-.psu_stream_input_lang {
-    width: 40px;
-    height: 25px;
+.psu_stream_dropdown_lang {
+    width: 160px;
+    font-size: 10px;
+    color: black;
 }
+.psu_stream_dropdown_lang > .Select-control {
+    height: 25px;
+    width: 100%;
+    display: flex;
+}
+.psu_stream_dropdown_lang > .Select-control .Select-multi-value-wrapper {
+    flex-grow: 1;
+}
+.psu_stream_dropdown_lang > .Select-control .Select-arrow-zone {
+    padding-top: 6px;
+}
+.psu_stream_dropdown_lang > .Select-control .Select-value {
+    line-height: 25px;
+}
+.psu_stream_dropdown_lang > .Select-control .Select-placeholder {
+    line-height: 25px;
+}
+
 .psu_stream_input_txt {
     white-space: pre;
     height: 25px;
@@ -199,9 +230,21 @@
     border: 3px solid rgba(255, 255, 255, 0.25);
 }
 .dcc_dropdown {
-    height: 5vh;
     color: black;
 }
+.dcc_dropdown > .Select-control {
+    height: 5vh;
+    width: 100%;
+    display: flex;
+}
+.dcc_dropdown > .Select-control .Select-multi-value-wrapper {
+    flex-grow: 1;
+}
+.dcc_dropdown > .Select-control .Select-arrow-zone {
+    padding-top: 0.6vh;
+}
+
+
 
 .div_text_simple {
     white-space: nowrap;

@@ -59,6 +59,36 @@ videoSortBy = [
     "bitRate",
     "fileSize"
 ]
+langDict = [
+    {"label": "Undifined | undifined",
+     "value": "und"},
+    {"label": "English | english",
+     "value": "eng"},
+    {"label": "Chinese | 中文",
+     "value": "zho"}, #chi
+    {"label": "Japanese | 日本語",
+     "value": "jpn"},
+    {"label": "Korean | 한국어",
+     "value": "kor"},
+    {"label": "Hindi | हिन्दी",
+     "value": "hin"},
+    {"label": "Spanish | español",
+     "value": "spa"},
+    {"label": "French | français",
+     "value": "fra"}, #fre
+    {"label": "Arabic | العربية",
+     "value": "ara"},
+    {"label": "Bengali | বাংলা",
+     "value": "ben"},
+    {"label": "Portuguese | português",
+     "value": "por"},
+    {"label": "Urdu | اُردُو",
+     "value": "urd"},
+    {"label": "Dutch | nederlands",
+     "value": "nld"}, #dut
+    {"label": "German | deutsch",
+     "value": "deu"}, #ger
+]
 
 
 
@@ -114,7 +144,7 @@ app.layout = html.Div(
                             ),
                             dcc.Dropdown(
                                 processes,
-                                value=processes[0],
+                                value=processes[-1],
                                 placeholder="Select a process ...",
                                 id="dropdown_processes",
                                 maxHeight=233,
@@ -495,19 +525,17 @@ def getStreamParam(defaultTitle=False):
                                 type="text",
                                 value=video["name"] if defaultTitle else "",
                                 placeholder=stream["title"],
-                                minLength=3,
-                                maxLength=3,
-                                # persistence=True,
                                 className="psu_stream_input_title",
                             ),
-                            dcc.Input(
-                                id={"type": "input", "id": f"{index} {stream['index']} language"},
-                                type="text",
+                            dcc.Dropdown(
+                                langDict,
                                 placeholder=stream["language"],
-                                minLength=3,
-                                maxLength=3,
-                                # persistence=True,
-                                className="psu_stream_input_lang",
+                                optionHeight=15,
+                                maxHeight=100,
+                                clearable=True,
+                                searchable=True,
+                                className="psu_stream_dropdown_lang",
+                                id={"type": "input", "id": f"{index} {stream['index']} language"},
                             ),
                             html.Div(
                                 f" {str(stream['index']).rjust(2)} | {stream['codec_name']}",
@@ -663,6 +691,7 @@ def switchVideoSize(_, width, height):
 )
 def switchPreviewColRow(_, col, row):
     return row, col
+
 
 
 @callback(
@@ -859,6 +888,8 @@ def getVideoItem(video:VideoInfo, index:int, prefix:str=""):
     running=[
         (Output('list_videos', 'children'), None, None),
         (Output('interval_log', 'n_intervals'), 0, 0),
+
+        (Output({"type": "spec", "id": "button_refreshStream"}, 'n_clicks'), 0, 0),
     ],
     prevent_initial_call=True,
 )
@@ -885,7 +916,11 @@ def scanFiles(_):
 @callback(
     Output({'type':'video', 'index': MATCH}, 'color'),
     Input({'type':'video', 'index': MATCH}, 'n_clicks'),
-    running=[(Output('interval_log', 'n_intervals'), 0, 0)],
+    running=[
+        (Output('interval_log', 'n_intervals'), 0, 0),
+
+        (Output({"type": "spec", "id": "button_refreshStream"}, 'n_clicks'), 0, 0),
+    ],
     prevent_initial_call=True,
 )
 def switchVideoSelection(_):
@@ -909,6 +944,8 @@ def switchVideoSelection(_):
     running=[
         (Output('interval_log', 'n_intervals'), 0, 0),
         (Input('button_lvideo_all', 'disabled'), True, False),
+
+        (Output({"type": "spec", "id": "button_refreshStream"}, 'n_clicks'), 0, 0),
     ],
     prevent_initial_call=True,
 )
@@ -933,6 +970,8 @@ def videoSelectionALL(_):
     running=[
         (Output('interval_log', 'n_intervals'), 0, 0),
         (Input('button_lvideo_none', 'disabled'), True, False),
+
+        (Output({"type": "spec", "id": "button_refreshStream"}, 'n_clicks'), 0, 0),
     ],
     prevent_initial_call=True,
 )
@@ -957,6 +996,8 @@ def videoSelectionNONE(_):
     running=[
         (Output('interval_log', 'n_intervals'), 0, 0),
         (Input('button_lvideo_invert', 'disabled'), True, False),
+
+        (Output({"type": "spec", "id": "button_refreshStream"}, 'n_clicks'), 0, 0),
     ],
     prevent_initial_call=True,
 )
@@ -980,7 +1021,9 @@ def videoSelectionInvert(_):
     Input('button_lvideo_revert', 'n_clicks'),
     running=[
         (Output('interval_log', 'n_intervals'), 0, 0),
-        (Output('button_lvideo_revert', 'disabled'), True, False)
+        (Output('button_lvideo_revert', 'disabled'), True, False),
+
+        (Output({"type": "spec", "id": "button_refreshStream"}, 'n_clicks'), 0, 0),
     ],
     prevent_initial_call=True,
 )
@@ -1008,7 +1051,9 @@ def reverseVideoList(_):
     Input('dropdown_lvideo_sort', 'value'),
     running=[
         (Output('interval_log', 'n_intervals'), 0, 0),
-        (Output('dropdown_lvideo_sort', 'disabled'), True, False)
+        (Output('dropdown_lvideo_sort', 'disabled'), True, False),
+
+        (Output({"type": "spec", "id": "button_refreshStream"}, 'n_clicks'), 0, 0),
     ],
     prevent_initial_call=True,
 )
