@@ -152,7 +152,7 @@ class VideoScripy():
         self.path = getcwd()
         
         self.vList:list[VideoInfo] = []
-        self.vType = ["mp4","mkv"]
+        self.vType = ["mp4","mkv","smi"]
         self.folderSkip = [p.name for p in VideoProcess]
         self.OPTIMIZE_TOLERENCE = 1.15
         
@@ -339,38 +339,49 @@ class VideoScripy():
                     })
                     if stream['codec_type'] == 'video':
                         videoStream.append(stream)
-
-                # warn more than video stream
-                if len(videoStream) > 1:
-                    printC(
-                        f'More than 1 video stream found in "{self.vList[videoIndex]["name"]}", '
-                        f'only the first will be processed', "yellow"
-                    )
-                videoStream = videoStream[0]
-
+                
                 # write info
                 self.vList[videoIndex]['streams'] = streamInfo
                 self.vList[videoIndex]['fileSize'] = int(results[videoIndex]['format']['size'])
-                self.vList[videoIndex]['width'] = int(videoStream['width'])
-                self.vList[videoIndex]['height'] = int(videoStream['height'])
-                num, denom = videoStream['r_frame_rate'].split('/')
-                self.vList[videoIndex]['fps'] = round(float(num)/float(denom),2)
+                # video
+                if self.vList[videoIndex]["type"] in ["mp4","mkv"]:
+                    # warn more than 1 video stream
+                    if len(videoStream) > 1:
+                        printC(
+                            f'More than 1 video stream found in "{self.vList[videoIndex]["name"]}", '
+                            f'only the first will be processed', "yellow"
+                        )
+                    videoStream = videoStream[0]
+                    self.vList[videoIndex]['width'] = int(videoStream['width'])
+                    self.vList[videoIndex]['height'] = int(videoStream['height'])
+                    num, denom = videoStream['r_frame_rate'].split('/')
+                    self.vList[videoIndex]['fps'] = round(float(num)/float(denom),2)
                 # mp4
-                try:
+                if self.vList[videoIndex]["type"] == "mp4":
                     self.vList[videoIndex]['duration'] = timedelta(seconds=float(videoStream['duration']))
                     self.vList[videoIndex]['bitRate'] = int(videoStream['bit_rate'])
                     self.vList[videoIndex]['nbFrames'] = int(videoStream['nb_frames'])
                 # mkv
-                except KeyError:
+                elif self.vList[videoIndex]["type"] == "mkv":
                     self.vList[videoIndex]['duration'] = timedelta(seconds=float(results[videoIndex]['format']['duration']))
                     self.vList[videoIndex]['bitRate'] = int(results[videoIndex]['format']['bit_rate'])
                     self.vList[videoIndex]['nbFrames'] = ceil(
                         self.vList[videoIndex]['fps'] 
                         * self.vList[videoIndex]['duration'].total_seconds()
                     )
+                # smi
+                elif self.vList[videoIndex]["type"] in ["smi"]:
+                    self.vList[videoIndex]['duration'] = timedelta(seconds=0)
+                    self.vList[videoIndex]['bitRate'] = 0
+                    self.vList[videoIndex]['nbFrames'] = 0
+                    self.vList[videoIndex]['width'] = 0
+                    self.vList[videoIndex]['height'] = 0
+                    self.vList[videoIndex]['fps'] = 0
+
+                
             
             except Exception as e:
-                printC(f'Unexpected erro "{e.with_traceback()}"', "red")
+                printC(f'Unexpected erro "{e.with_traceback(None)}"', "red")
                 printC(f'Can not get video info of "{self.vList[videoIndex]["name"]}"', "red")
                 # delete errored video
                 self.vList.pop(videoIndex)
@@ -1294,8 +1305,12 @@ class VideoScripy():
                 printC(f'Warning, "{video["name"]}" has different duration', "yellow")
                 printC(f'{duration} -- {video["duration"]}', "yellow")
         
-        videoType = self.vList[0]["type"]
-        videoName = self.vList[0]["name"]
+        # get video as output type
+        for video in self.vList:
+            if video["type"] in ["mp4","mkv"]:
+                videoType = video["type"]
+                videoName = video["name"]
+        
         subtitleCopy = '-c:s mov_text'
         if videoType == "mkv":
             subtitleCopy = ''
