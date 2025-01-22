@@ -1302,7 +1302,7 @@ class VideoScripy():
                 hasVideo = True
                 break
         # end process if no video
-        if hasVideo:
+        if not hasVideo:
             removeEmptyFolder(outputFolder)
             noticeProcessEnd()
             return
