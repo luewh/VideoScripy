@@ -23,7 +23,7 @@
         background-color: transparent;
     }
     &::-webkit-scrollbar-thumb {
-        background: #2ba4e5b4;
+        background: #6988d4;
         border-radius: 5px;
     }
     &::-webkit-scrollbar-thumb:hover {
@@ -40,6 +40,9 @@
     border-radius: 3px;
     border: 1px solid rgb(255, 255, 255);
     background: linear-gradient(rgb(255, 255, 255),rgb(207, 207, 207));
+}
+.psu_stream_button:hover:enabled {
+    background: rgb(255, 255, 255);
 }
 .psu_stream_input_title {
     width: 280px;
@@ -142,14 +145,33 @@
     overflow: clip;
     text-align: right;
 }
+.vsu_list_group_item_updown_button {
+    height: 26px;
+    width: 100%;
+    overflow: clip;
+    border-radius: 8px;
+    border: 0px solid rgb(255, 255, 255);
+    background: #d7f5fe;
+}
+.vsu_list_group_item_updown_button:hover:enabled {
+    background: #b0eafd;
+}
+.vsu_list_group_item_updown {
+    font-size: 8px;
+    width: 2.5%;
+}
 .vsu_list_group_item_video {
+    padding-left: 20px;
+    padding-right: 20px;
     padding-bottom: 0px;
     border-radius: 8px;
+    width: 51.8%;
 }
 .vsu_list_group_item_stream {
     padding-left: 2px;
     padding-right: 2px;
     border-radius: 8px;
+    width: 45.7%;
 }
 .vsu_list_group_item {
     border: 1px solid rgba(255, 255, 255, 0.25);
@@ -211,17 +233,18 @@
 }
 
 
-
 .html_button_big {
     height: 5vh;
     width: 100%;
-    /* color: white; */
     font: large;
     overflow: clip;
     white-space: nowrap;
     border-radius: 5px;
     border: 3px solid rgb(255, 255, 255);
     background: linear-gradient(rgb(255, 255, 255),rgb(207, 207, 207));
+}
+.html_button_big:hover:enabled {
+    background: rgb(255, 255, 255);
 }
 .dcc_input {
     width: 100%;

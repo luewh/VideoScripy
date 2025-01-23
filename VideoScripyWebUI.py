@@ -144,7 +144,7 @@ app.layout = html.Div(
                             ),
                             dcc.Dropdown(
                                 processes,
-                                value=processes[-1],
+                                value=processes[0],
                                 placeholder="Select a process ...",
                                 id="dropdown_processes",
                                 maxHeight=233,
@@ -260,7 +260,7 @@ app.layout = html.Div(
                         ],
                         className="ch_div_header"
                     ),
-                    # select & sort button
+                    # select & sort buttons
                     dbc.Stack(
                         [
                             dbc.Col(
@@ -311,7 +311,6 @@ app.layout = html.Div(
                         ],
                         direction="horizontal",
                         className="vsu_stack_buttons",
-
                     ),
                     # video item list
                     dbc.ListGroup(
@@ -650,7 +649,12 @@ def update_div_processParamUI(selectedProcess:str):
     Input({"type": "spec", "id": "button_refreshStream"}, 'n_clicks'),
     prevent_initial_call=True,
 )
-def update_div_streamParamUI(_):
+def update_div_streamParamUI(clicks):
+
+    # avoid dynamic button creation click : None/[]
+    if clicks is None:
+        raise PreventUpdate
+    
     return getStreamParam()
 
 
@@ -828,50 +832,58 @@ def getVideoItem(video:VideoInfo, index:int, prefix:str=""):
     return dcc.Loading(
         dbc.Stack(
             [
+                # up down button
+                dbc.Stack(
+                    [
+                        html.Button(
+                            "▲",
+                            id={"type":"button_up", "index":index},
+                            className="vsu_list_group_item_updown_button",
+                        ),
+                        html.Button(
+                            "▼",
+                            id={"type":"button_down", "index":index},
+                            className="vsu_list_group_item_updown_button",
+                        ),
+                    ],
+                    className="vsu_list_group_item_updown",
+                ),
                 # video info
-                dbc.Col(
-                    dbc.ListGroupItem(
-                        children=[
-                            html.H6(
-                                f'{prefix}{video["name"]}',
-                                className="vsu_list_group_item_name",
-                            ),
-                            html.Hr(className="vsu_list_group_item_hr"),
-                            html.Div(
-                                videoInfoText,
-                                className="vsu_list_group_item_info",
-                            ),
-                            dbc.Tooltip(
-                                [
-                                    html.Div(f'{width}x{height}',className="vsu_list_group_item_tooltip"),
-                                    html.Div(f'{frameRate}',className="vsu_list_group_item_tooltip"),
-                                    html.Div(f'{duration}',className="vsu_list_group_item_tooltip"),
-                                    html.Div(f'{bitRate}',className="vsu_list_group_item_tooltip"),
-                                    html.Div(f'{fileSize}',className="vsu_list_group_item_tooltip"),
-                                ],
-                                target={"type":"video", "index":index},
-                                delay={"show": 1000, "hide": 0},
-                            ),
-                        ],
-                        id={"type":"video", "index":index},
-                        action=True,
-                        color=videoItemColor[video["selected"]],
-                        className="vsu_list_group_item_video",
-                    ),
-                    width=7,
+                dbc.ListGroupItem(
+                    children=[
+                        html.H6(
+                            f'{prefix}{video["name"]}',
+                            className="vsu_list_group_item_name",
+                        ),
+                        html.Hr(className="vsu_list_group_item_hr"),
+                        html.Div(
+                            videoInfoText,
+                            className="vsu_list_group_item_info",
+                        ),
+                        dbc.Tooltip(
+                            [
+                                html.Div(f'{width}x{height}',className="vsu_list_group_item_tooltip"),
+                                html.Div(f'{frameRate}',className="vsu_list_group_item_tooltip"),
+                                html.Div(f'{duration}',className="vsu_list_group_item_tooltip"),
+                                html.Div(f'{bitRate}',className="vsu_list_group_item_tooltip"),
+                                html.Div(f'{fileSize}',className="vsu_list_group_item_tooltip"),
+                            ],
+                            target={"type":"video", "index":index},
+                            delay={"show": 1000, "hide": 0},
+                        ),
+                    ],
+                    id={"type":"video", "index":index},
+                    action=True,
+                    color=videoItemColor[video["selected"]],
                     className="vsu_list_group_item_video",
                 ),
                 
                 # streams info
-                dbc.Col(
-                    dbc.Stack(
-                        streamInfoUI,
-                        direction="horizontal",
-                    ),
-                    width=5,
+                dbc.Stack(
+                    streamInfoUI,
+                    direction="horizontal",
                     className="vsu_list_group_item_stream",
                 ),
-                
             ],
             direction="horizontal",
             className="vsu_list_group_item",
@@ -1110,6 +1122,80 @@ def runSetVideoListPrefix(_):
 
 
 @callback(
+    Output('list_videos', 'children', allow_duplicate=True),
+    Input({'type':'button_up', 'index': ALL}, 'n_clicks'),
+    running=[
+        (Output('interval_log', 'n_intervals'), 0, 0),
+
+        (Output({"type": "spec", "id": "button_refreshStream"}, 'n_clicks'), 0, 0),
+    ],
+    prevent_initial_call=True,
+)
+def moveUpVideo(clicks):
+    global allVideoList
+
+    # avoid dynamic button creation click : None/[]
+    if not any(clicks):
+        raise PreventUpdate
+
+    # get triggered id
+    id = ctx.triggered_id['index']
+
+    # if can not move up
+    if id == 0:
+        print(f'Can not move up "{allVideoList[id]["name"]}"')
+        raise PreventUpdate
+    
+    # do move up
+    print(f'Move up "{allVideoList[id]["name"]}"')
+    allVideoList[id], allVideoList[id-1] = allVideoList[id-1], allVideoList[id]
+
+    # generate list of video items
+    videoItems = []
+    for index, video in enumerate(allVideoList):
+        videoItems.append(getVideoItem(video,index))
+
+    return videoItems
+
+@callback(
+    Output('list_videos', 'children', allow_duplicate=True),
+    Input({'type':'button_down', 'index': ALL}, 'n_clicks'),
+    running=[
+        (Output('interval_log', 'n_intervals'), 0, 0),
+
+        (Output({"type": "spec", "id": "button_refreshStream"}, 'n_clicks'), 0, 0),
+    ],
+    prevent_initial_call=True,
+)
+def moveDownVideo(clicks):
+    global allVideoList
+
+    # avoid dynamic button creation click : None/[]
+    if not any(clicks):
+        raise PreventUpdate
+
+    # get triggered id
+    id = ctx.triggered_id['index']
+
+    # if can not move down
+    if id == (len(allVideoList)-1):
+        print(f'Can not move up "{allVideoList[id]["name"]}"')
+        raise PreventUpdate
+    
+    # do move up
+    print(f'Move down "{allVideoList[id]["name"]}"')
+    allVideoList[id], allVideoList[id+1] = allVideoList[id+1], allVideoList[id]
+
+    # generate list of video items
+    videoItems = []
+    for index, video in enumerate(allVideoList):
+        videoItems.append(getVideoItem(video,index))
+
+    return videoItems
+
+
+
+@callback(
     Output({'indexVideo':MATCH, 'indexStream': MATCH}, 'color'),
     Input({'indexVideo':MATCH, 'indexStream': MATCH}, 'n_clicks'),
     running=[
@@ -1144,8 +1230,12 @@ def switchStreamSelection(_):
     ],
     prevent_initial_call=True,
 )
-def videoStreamInvert(_):
+def videoStreamInvert(clicks):
     global allVideoList
+
+    # avoid dynamic button creation click : None/[]
+    if clicks is None:
+        raise PreventUpdate
 
     for video in allVideoList:
         for stream in video["streams"]:
@@ -1168,8 +1258,12 @@ def videoStreamInvert(_):
     ],
     prevent_initial_call=True,
 )
-def audioStreamInvert(_):
+def audioStreamInvert(clicks):
     global allVideoList
+
+    # avoid dynamic button creation click : None/[]
+    if clicks is None:
+        raise PreventUpdate
 
     for video in allVideoList:
         for stream in video["streams"]:
@@ -1192,8 +1286,12 @@ def audioStreamInvert(_):
     ],
     prevent_initial_call=True,
 )
-def subtitleStreamInvert(_):
+def subtitleStreamInvert(clicks):
     global allVideoList
+
+    # avoid dynamic button creation click : None/[]
+    if clicks is None:
+        raise PreventUpdate
 
     for video in allVideoList:
         for stream in video["streams"]:
@@ -1216,6 +1314,11 @@ def subtitleStreamInvert(_):
     prevent_initial_call=True,
 )
 def setTitleToDefault(n_clicks):
+
+    # avoid dynamic button creation click : None/[]
+    if n_clicks is None:
+        raise PreventUpdate
+    
     if n_clicks%2 != 0:
         return getStreamParam(defaultTitle=True)
     else:
