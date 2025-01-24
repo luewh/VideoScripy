@@ -536,7 +536,7 @@ def getStreamParam(defaultTitle=False):
                             dcc.Input(
                                 id={"type": "input", "id": f"{index} {stream['index']} title"},
                                 type="text",
-                                value=video["name"] if defaultTitle else "",
+                                value=video["name"].replace(f'.{video["type"]}',"") if defaultTitle else "",
                                 placeholder=stream["title"],
                                 className="psu_stream_input_title",
                             ),

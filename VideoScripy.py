@@ -146,13 +146,18 @@ class VideoScripy():
 
     def __init__(self) -> None:
         """
-        Initialise attributes
+        Initialise attributes\n
+        setEncoder()\n
+        checkTools()
         """
 
         self.path = getcwd()
         
         self.vList:list[VideoInfo] = []
-        self.vType = ["mp4","mkv","smi"]
+        self.vType = ["mp4","mkv"]
+        self.aType = []
+        self.sType = ["smi"]
+        self.scanType = self.vType + self.aType + self.sType
         self.folderSkip = [p.name for p in VideoProcess]
         self.OPTIMIZE_TOLERENCE = 1.15
         
@@ -170,6 +175,10 @@ class VideoScripy():
         self.checkTools()
         
     def checkTools(self) -> None:
+        """
+        Check all tools by running -version or -h zith cmd.exe asynchronously.\n
+        Tool found if returned code is 0 or 4_294_967_295
+        """
         tools = {
             "FFmpeg": "ffmpeg -version",
             "FFprobe": "ffprobe -version",
@@ -194,10 +203,7 @@ class VideoScripy():
 
         Parameters:
             path (str):
-                set to "" will use getcwd() as default path
-        
-        Used attributes:
-            path
+                set to empty "" will use os.getcwd() as default path
         """
         if path == "":
             self.path = getcwd()
@@ -214,17 +220,11 @@ class VideoScripy():
     
     def getVideo(self, folderDepthLimit:int=0) -> None:
         """
-        Set attributes vList's path and name by file scan
+        Set attributes vList's path and name by os.walk()
 
         Parameters:
             folderDepthLimit (int):
                 limit the scan depth
-        
-        Used attributes:
-            path
-            vList
-            vType
-            folderSkip
         """
         # empty video list
         self.vList = []
@@ -250,7 +250,7 @@ class VideoScripy():
             for file in files:
                 # skip not supported type
                 fileFormat = file.split(".")[-1].lower()
-                if fileFormat not in self.vType:
+                if fileFormat not in self.scanType:
                     continue
                 # check &
                 if "&" in root+"\\"+file:
@@ -272,10 +272,7 @@ class VideoScripy():
     
     def getVideoInfo(self) -> None:
         """
-        Set attributes vList's video properties with ffprobe
-        
-        Used attributes:
-            vList
+        Set attributes vList's stream and video properties with ffprobe asynchronously
         """
     
         # run probe
@@ -323,7 +320,7 @@ class VideoScripy():
                     except:
                         tagLanguage = "und"
                         
-                    # mp4 can get stream title
+                    # mp4 can not get stream title
                     try :
                         tagTitle = stream["tags"]["title"]
                     except:
@@ -337,6 +334,7 @@ class VideoScripy():
                         "language": tagLanguage,
                         "title": tagTitle,
                     })
+
                     if stream['codec_type'] == 'video':
                         videoStream.append(stream)
                 
@@ -344,7 +342,7 @@ class VideoScripy():
                 self.vList[videoIndex]['streams'] = streamInfo
                 self.vList[videoIndex]['fileSize'] = int(results[videoIndex]['format']['size'])
                 # video
-                if self.vList[videoIndex]["type"] in ["mp4","mkv"]:
+                if self.vList[videoIndex]["type"] in self.vType:
                     # warn more than 1 video stream
                     if len(videoStream) > 1:
                         printC(
@@ -376,9 +374,7 @@ class VideoScripy():
                     self.vList[videoIndex]['nbFrames'] = 0
                     self.vList[videoIndex]['width'] = 0
                     self.vList[videoIndex]['height'] = 0
-                    self.vList[videoIndex]['fps'] = 0
-
-                
+                    self.vList[videoIndex]['fps'] = 0.0                
             
             except Exception as e:
                 printC(f'Unexpected erro "{e.with_traceback(None)}"', "red")
@@ -390,7 +386,7 @@ class VideoScripy():
 
 
     # ffmpeg encoder related
-    def setEncoder(self, h265=True, gpu=True):
+    def setEncoder(self, h265=True, gpu=True) -> None:
         """
         Set encoder parameters according h265 and GPU usage
 
@@ -400,11 +396,6 @@ class VideoScripy():
 
             gpu (bool):
                 _
-        
-        Used attributes:
-            h265
-            gpu
-            encoder
         """
         self.h265 = h265
         self.gpu = gpu
@@ -436,7 +427,17 @@ class VideoScripy():
             )
 
     def _getCommand(self, video:VideoInfo, process:str, substep='') -> str:
+        """
+        Return shell script according to videoInfo and process.\n
+        Grouped in one function to handle ffmpeg command together.
         
+        Parameters:
+            video (VideoInfo):
+                element of vList
+
+            process (str):
+                VideoProcess.[process].name
+        """
         videoPath = video['path']
         videoName = video['name']
 
@@ -547,13 +548,8 @@ class VideoScripy():
     # run process related
     def killProc(self) -> None:
         """
-        Kill and stop running process of _runProc() and _runProcAsync(),
+        Kill and stop running process of _runProc() and _runProcAsync().\n
         Set self.killed to True if correctly killed.
-        
-        Used attributes:
-            killed
-            proc
-            procAsync
         """
         
         if self.proc != None:
@@ -584,12 +580,6 @@ class VideoScripy():
 
             silence (str):
                 don't print time took and exit code check
-        
-        Used attributes:
-            path
-            EXIT_CODE_FILE_NAME
-            killed
-            proc
         """
 
         processTime = time()
@@ -622,6 +612,15 @@ class VideoScripy():
         return self._checkExitCode(silence)
 
     def _checkExitCode(self, silence=False) -> bool:
+        """
+        Open EXIT_CODE_FILE_NAME file to get process returned code.\n
+        Return True if 0 or -1, else False.
+
+        Parameters:
+            silence (str):
+                don't print exit code check
+        """
+
         filePath = self.path+f'\\{self.EXIT_CODE_FILE_NAME}'
 
         if not isfile(filePath):
@@ -648,6 +647,10 @@ class VideoScripy():
         Run shell script in a hidden "cmd.exe".\n
         Warning ! Output path must be absolute.\n
         Must call _runProcAsyncWait() to get its return code and content.
+        
+        Parameters:
+            command (str):
+                shell script command, _getCommand return command
         """
         self.killed = False
         self.procAsync.append(
@@ -676,8 +679,8 @@ class VideoScripy():
 
     def _frameWatch(self, outDir:str, total:int) -> None:
         """
-        Track video frame process with progress bar,
-        Set global variable stop_threads to True to stop.
+        Track video frame process with progress bar in while loop,
+        Set attribute self.stop_threads to True to stop.
 
         Parameters:
             outDir (str):
@@ -712,6 +715,16 @@ class VideoScripy():
             progressedPrev = progressed
 
     def _frameWatchStart(self, outDir:str, total:int) -> None:
+        """
+        Run _frameWatch() in a thread.
+
+        Parameters:
+            outDir (str):
+                process output directory, where progress increase
+            
+            total (int):
+                when to stop
+        """
         self.watch = Thread(
             target=self._frameWatch,
             args=(outDir, total)
@@ -719,6 +732,9 @@ class VideoScripy():
         self.watch.start()
 
     def _frameWatchStop(self) -> None:
+        """
+        Stop the _frameWatch() thread by setting attribute self.stop_threads to True.
+        """
         self.stop_threads = True
         while self.watch.is_alive():
             pass
@@ -730,12 +746,8 @@ class VideoScripy():
         Transform video to frames
 
         Parameters:
-            video (dict):
-                info of one video. path, name, fps are used
-        
-        Used attributes:
-            path
-            proc
+            video (VideoInfo):
+                element of vList
         """
         getFramesOutputPath = video["getFramesOutputPath"]
         # check if get frame is necessary
@@ -781,7 +793,23 @@ class VideoScripy():
         return result
 
     def pre_optimize(self, video:VideoInfo, width:int, height:int, quality:float) -> None:
+        """
+        Compute optimizeBitRate and optimizeBitRateParam, to limit video bit rate.
+        
+        Parameters:
+            video (VideoInfo):
+                element of vList
 
+            width (int):
+                video width
+
+            height (int):
+                video height
+
+            quality (float):
+                video bit rate = width x height x quality
+        
+        """
         # compute optimization bit rate
         optimizeBitRate = width * height * quality
 
@@ -801,14 +829,6 @@ class VideoScripy():
         Parameters:
             quality (float):
                 video bit rate = width x height x quality
-        
-        Used attributes:
-            path
-            vList
-            OPTIMIZE_TOLERENCE
-            highQualityParam
-            killed
-            proc
         """
         
         process = VideoProcess.optimize.name
@@ -819,6 +839,11 @@ class VideoScripy():
         
         for index, video in enumerate(self.vList):
             noticeProcessBegin()
+
+            # skip not video type
+            if video["type"] not in self.vType:
+                printC('Skipped', "yellow")
+                continue
 
             name = video['name']
             width = video['width']
@@ -860,11 +885,6 @@ class VideoScripy():
 
             quality (float):
                 video bit rate = width x height x quality
-        
-        Used attributes:
-            path
-            vList
-            highQualityParam
         """
         
         process = VideoProcess.resize.name
@@ -876,6 +896,11 @@ class VideoScripy():
         for index, video in enumerate(self.vList):
             noticeProcessBegin()
             
+            # skip not video type
+            if video["type"] not in self.vType:
+                printC('Skipped', "yellow")
+                continue
+
             name = video['name']
             width = video['width']
             height = video['height']
@@ -953,16 +978,6 @@ class VideoScripy():
             
             quality (float):
                 video bit rate = width x height x quality
-        
-        Used attributes:
-            path
-            vList
-            highQualityParam
-        
-        Used functions/methodes:
-            _getFrames()
-            frameWatch()
-        
         """
 
         process = VideoProcess.upscale
@@ -973,6 +988,11 @@ class VideoScripy():
 
         for index, video in enumerate(self.vList):
             noticeProcessBegin()
+            
+            # skip not video type
+            if video["type"] not in self.vType:
+                printC('Skipped', "yellow")
+                continue
             
             name = video['name']
             width = video['width']
@@ -1084,16 +1104,6 @@ class VideoScripy():
 
             quality (float):
                 video bit rate = width x height x quality
-        
-        Used attributes:
-            path
-            vList
-            highQualityParam
-        
-        Used functions/methodes:
-            _getFrames()
-            frameWatch()
-        
         """
         
         process = VideoProcess.interpolate
@@ -1104,6 +1114,11 @@ class VideoScripy():
 
         for index, video in enumerate(self.vList):
             noticeProcessBegin()
+            
+            # skip not video type
+            if video["type"] not in self.vType:
+                printC('Skipped', "yellow")
+                continue
 
             name = video['name']
             width = video['width']
@@ -1191,6 +1206,16 @@ class VideoScripy():
         noticeProcessEnd()
 
     def preview(self, gridWidth:int=3, gridHeight:int=2) -> None:
+        """
+        Generate a grid of images
+
+        Parameters:
+            gridWidth (int):
+                number of column
+
+            gridHeight (int):
+                number of row
+        """
 
         process = VideoProcess.preview.name
         # create output folder
@@ -1202,6 +1227,11 @@ class VideoScripy():
         
         for index, video in enumerate(self.vList):
             noticeProcessBegin()
+            
+            # skip not video type
+            if video["type"] not in self.vType:
+                printC('Skipped', "yellow")
+                continue
 
             name = video['name']
             duration = video['duration'].total_seconds()
@@ -1274,12 +1304,7 @@ class VideoScripy():
     def stream(self) -> None:
         """
         Merge selected stream of multiple videos into one video.
-        And also modify metadata as tile and language.
-
-        
-        Used attributes:
-            path
-            vList
+        And also modify metadata (title language).
         """
         
         noticeProcessBegin()
@@ -1295,7 +1320,7 @@ class VideoScripy():
         # get first video name and type
         hasVideo = False
         for video in self.vList:
-            if video["type"] in ["mp4","mkv"]:
+            if video["type"] in self.vType:
                 videoType = video["type"]
                 videoName = video["name"]
                 videoDuration = video["duration"]
@@ -1309,7 +1334,7 @@ class VideoScripy():
         
         # warn different video duration
         for video in self.vList:
-            if (video["type"] in ["mp4","mkv"]
+            if (video["type"] in self.vType
                 and videoDuration != video['duration']
             ):
                 printC(f'Warning, "{video["name"]}" has different duration', "yellow")
