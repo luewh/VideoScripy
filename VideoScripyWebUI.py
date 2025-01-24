@@ -247,11 +247,19 @@ app.layout = html.Div(
                                     ),
                                     dbc.Col(
                                         html.Button(
-                                            "SELCT DIRECTORY",
+                                            "SELCT",
                                             id="button_selectDir",
                                             className="html_button_big",
                                         ),
-                                        width=2,
+                                        width=1,
+                                    ),
+                                    dbc.Col(
+                                        html.Button(
+                                            "OPEN",
+                                            id="button_openDir",
+                                            className="html_button_big",
+                                        ),
+                                        width=1,
                                     ),
                                 ],
                                 direction="horizontal",
@@ -503,7 +511,13 @@ def previewInputUI():
 def getStreamParam(defaultTitle=False):
     global allVideoList
 
-    if allVideoList == []:
+    hasVideo = False
+    for index, video in enumerate(allVideoList):
+        if video["selected"]:
+            hasVideo = True
+            break
+    
+    if not hasVideo:
         return "No video"
     else:
         streamParam = []
@@ -724,6 +738,15 @@ def selectDir(_):
     return selectedPath, 0
 
 @callback(
+    Input('button_openDir', 'n_clicks'),
+    running=[(Output('button_openDir', 'disabled'), True, False)],
+    prevent_initial_call=True,
+)
+def openDir(_):
+    global vs
+    os.startfile(vs.path)
+
+@callback(
     Output('input_path', 'disabled', allow_duplicate=True),
     Output('input_path', 'value', allow_duplicate=True),
     Output('button_editPath', 'disabled', allow_duplicate=True),
@@ -793,18 +816,18 @@ def getVideoItem(video:VideoInfo, index:int, prefix:str=""):
                 },
                 action=True,
                 color=videoItemColor[sel],
-                className="ssu_list_group_item",
+                className="vsu_list_group_item_stream_list_group_item",
             ))
 
             listGroupItem.append(dbc.Tooltip(
                 [
                     html.Div(
                         f'title: {title}',
-                        className="ssu_list_group_item_tooltip",
+                        className="vsu_list_group_item_stream_list_group_item_tooltip",
                     ),
                     html.Div(
                         f'lang: {lang}',
-                        className="ssu_list_group_item_tooltip",
+                        className="vsu_list_group_item_stream_list_group_item_tooltip",
                     ),
                 ],
                 target={
@@ -817,11 +840,11 @@ def getVideoItem(video:VideoInfo, index:int, prefix:str=""):
         return dbc.Col([
             html.Div(
                 children=sType,
-                className="ssu_list_group_name",
+                className="vsu_list_group_item_stream_name",
             ),
             dbc.ListGroup(
                 children=listGroupItem,
-                class_name="ssu_list_group",
+                class_name="vsu_list_group_item_stream_list_group",
             ),
         ])
     
@@ -853,20 +876,20 @@ def getVideoItem(video:VideoInfo, index:int, prefix:str=""):
                     children=[
                         html.H6(
                             f'{prefix}{video["name"]}',
-                            className="vsu_list_group_item_name",
+                            className="vsu_list_group_item_video_name",
                         ),
-                        html.Hr(className="vsu_list_group_item_hr"),
+                        html.Hr(className="vsu_list_group_item_video_hr"),
                         html.Div(
                             videoInfoText,
-                            className="vsu_list_group_item_info",
+                            className="vsu_list_group_item_video_info",
                         ),
                         dbc.Tooltip(
                             [
-                                html.Div(f'{width}x{height}',className="vsu_list_group_item_tooltip"),
-                                html.Div(f'{frameRate}',className="vsu_list_group_item_tooltip"),
-                                html.Div(f'{duration}',className="vsu_list_group_item_tooltip"),
-                                html.Div(f'{bitRate}',className="vsu_list_group_item_tooltip"),
-                                html.Div(f'{fileSize}',className="vsu_list_group_item_tooltip"),
+                                html.Div(f'{width}x{height}',className="vsu_list_group_item_video_tooltip"),
+                                html.Div(f'{frameRate}',className="vsu_list_group_item_video_tooltip"),
+                                html.Div(f'{duration}',className="vsu_list_group_item_video_tooltip"),
+                                html.Div(f'{bitRate}',className="vsu_list_group_item_video_tooltip"),
+                                html.Div(f'{fileSize}',className="vsu_list_group_item_video_tooltip"),
                             ],
                             target={"type":"video", "index":index},
                             delay={"show": 1000, "hide": 0},
@@ -1341,9 +1364,10 @@ def setTitleToDefault(n_clicks):
         (Output({'type':'spec','id': ALL}, 'disabled'), True, False),
 
         (Output('button_scanFiles', 'disabled'), True, False),
+        (Output('input_path', 'disabled'), True, True),
         (Output('button_editPath', 'disabled'), True, False),
         (Output('button_selectDir', 'disabled'), True, False),
-        (Output('input_path', 'disabled'), True, True),
+        (Output('button_openDir', 'disabled'), True, False),
 
         (Output('button_lvideo_all', 'disabled'), True, False),
         (Output('button_lvideo_none', 'disabled'), True, False),
