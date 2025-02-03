@@ -792,9 +792,10 @@ class VideoScripy():
         
         return result
 
-    def pre_optimize(self, video:VideoInfo, width:int, height:int, quality:float) -> None:
+    def pre_optimize(self, video:VideoInfo, width:int, height:int, quality:float) -> bool:
         """
-        Compute optimizeBitRate and optimizeBitRateParam, to limit video bit rate.
+        Compute optimizeBitRate and optimizeBitRateParam, to limit video bit rate\n
+        Return True if optimization needed else False
         
         Parameters:
             video (VideoInfo):
@@ -820,6 +821,12 @@ class VideoScripy():
             f' -maxrate:v {optimizeBitRate}'
             f' -bufsize:v {optimizeBitRate*2} '
         )
+
+        # check if optimization needed
+        if video["optimizeBitRate"] * self.OPTIMIZE_TOLERENCE > video['bitRate']:
+            return False
+        else:
+            return True
 
 
     def _serial(func):
@@ -869,7 +876,8 @@ class VideoScripy():
     @_serial
     def optimize(self, video:VideoInfo, quality:float=3.0) -> str:
         """
-        Reduce video bit rate
+        Reduce video bit rate\n
+        Return "end", "err", "skip" or "stop"
 
         Parameters:
             quality (float):
@@ -893,9 +901,8 @@ class VideoScripy():
         # show current process changing info
         print('{}x{}'.format(width, height))
 
-        self.pre_optimize(video, width, height, quality)
-        # check if optimization needed
-        if video["optimizeBitRate"] * self.OPTIMIZE_TOLERENCE > video['bitRate']:
+        optimizeNeed = self.pre_optimize(video, width, height, quality)
+        if not optimizeNeed:
             printC('Skipped', "yellow")
             return "skip"
 
@@ -916,7 +923,8 @@ class VideoScripy():
     @_serial
     def resize(self, video:VideoInfo, setWidth:int, setHeight:int, quality:float=3.0) -> str:
         """
-        Resize video
+        Resize video\n
+        Return "end", "err", "skip" or "stop"
 
         Parameters:
             setWidth (int):
@@ -1010,7 +1018,8 @@ class VideoScripy():
     @_serial
     def upscale(self, video:VideoInfo, upscaleFactor:int=2, quality:float=3) -> str:
         """
-        Upscale video
+        Upscale video\n
+        Return "end", "err", "skip" or "stop"
 
         Parameters:
             upscaleFactor (int):
@@ -1130,7 +1139,8 @@ class VideoScripy():
     @_serial
     def interpolate(self, video:VideoInfo, fpsInterp:float=30.0, quality:float=3) -> str:
         """
-        Interpolate video to increase fps
+        Interpolate video to increase fps\n
+        Return "end", "err", "skip" or "stop"
 
         Parameters:
             fps (float):
@@ -1235,7 +1245,8 @@ class VideoScripy():
     @_serial
     def preview(self, video:VideoInfo, gridWidth:int=3, gridHeight:int=2) -> str:
         """
-        Generate a grid of images
+        Generate a grid of images\n
+        Return "end", "err", "skip" or "stop"
 
         Parameters:
             gridWidth (int):
