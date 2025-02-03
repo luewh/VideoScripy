@@ -1415,6 +1415,7 @@ def runProcess(_, selectedProcess, inputValues):
             # set if has value
             try:
                 if value["value"] != "":
+                    value["value"] = value["value"].strip()
                     allVideoList[vIndex]["streams"][sIndex][metaData] = value["value"]
             except:
                 pass
