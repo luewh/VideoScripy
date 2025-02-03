@@ -117,7 +117,7 @@ app.layout = html.Div(
             ),
             dcc.Interval(
                 id="interval_log",
-                interval=0.5 * 1000,
+                interval=1.0 * 1000,
                 n_intervals=0,
                 disabled=True,
             ),

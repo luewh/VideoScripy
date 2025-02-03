@@ -290,7 +290,7 @@ class VideoScripy():
         results = self._runProcAsyncWait()
         for index in range(len(results)-1,-1,-1):
             if results[index]['returnCode'] != 0:
-                print(f'FFprobe error, remove {self.vList[index]["name"]}')
+                printC(f'FFprobe error, remove {self.vList[index]["name"]}', "red")
                 # delete errored video
                 self.vList.pop(index)
                 results.pop(index)
@@ -607,7 +607,7 @@ class VideoScripy():
         if not silence:
             processTime = time() - processTime
             processTime = timedelta(seconds=processTime)
-            print(f"Took :{str(processTime)[:-3]}")
+            print(f"Took : {str(processTime)[:-3]}")
 
         return self._checkExitCode(silence)
 
@@ -822,7 +822,52 @@ class VideoScripy():
         )
 
 
-    def optimize(self, quality:float=3.0) -> None:
+    def _serial(func):
+        """
+        Decorator performes serial processing\n
+        Append video:videoInfo on [1]th argument
+        """
+        def wrapper(*args, **kwargs):
+            results:list[str] = []
+
+            # pre append video argument
+            args = list(args)
+            args.insert(1, None)
+
+            # args[0] == self
+            for index, video in enumerate(args[0].vList):
+                noticeProcessBegin()
+                # show current video
+                print(f'{index+1}/{len(args[0].vList)}'.center(20, '-'))
+                print(video["name"])
+
+                # set video argument
+                args[1] = video
+                result = func(*args, **kwargs)
+                results.append(result)
+                if result == "stop":
+                    break
+
+            noticeProcessEnd()
+
+            # complete results if stopped
+            if len(results) < len(args[0].vList):
+                results += ["x"]*(len(args[0].vList)-len(results))
+            # complete results to multiple of 5
+            results += [" "]*(5-len(results)%5)
+            # show SUMMARY
+            print("SUMMARY :", end='')
+            for index, result in enumerate(results):
+                if index%5 == 0:
+                    print("\n"+"-"*36)
+                    print("|", end='')
+                print(result.center(6,' ')+"|", end='')
+            print("\n"+"-"*36)
+                
+        return wrapper
+
+    @_serial
+    def optimize(self, video:VideoInfo, quality:float=3.0) -> str:
         """
         Reduce video bit rate
 
@@ -836,43 +881,40 @@ class VideoScripy():
         outputFolder = self.path+f'\\{process}'
         if not isdir(outputFolder):
             mkdir(outputFolder)
+
+        # skip not video type
+        if video["type"] not in self.vType:
+            printC('Skipped', "yellow")
+            return "skip"
+
+        width = video['width']
+        height = video['height']
+
+        # show current process changing info
+        print('{}x{}'.format(width, height))
+
+        self.pre_optimize(video, width, height, quality)
+        # check if optimization needed
+        if video["optimizeBitRate"] * self.OPTIMIZE_TOLERENCE > video['bitRate']:
+            printC('Skipped', "yellow")
+            return "skip"
+
+        command = self._getCommand(video, process)
+        result = self._runProc(command, process)
+
+        # stop whole process if killProc() called
+        if self.killed:
+            return "stop"
         
-        for index, video in enumerate(self.vList):
-            noticeProcessBegin()
-
-            # skip not video type
-            if video["type"] not in self.vType:
-                printC('Skipped', "yellow")
-                continue
-
-            name = video['name']
-            width = video['width']
-            height = video['height']
-            bitRate = video['bitRate']
-
-            # show current optimizing video
-            print(f'{index+1}/{len(self.vList)}'.center(20, '-'))
-            print(name)
-            print('{}x{}'.format(width, height))
-
-            self.pre_optimize(video, width, height, quality)
-
-            # check if optimization needed
-            if video["optimizeBitRate"] * self.OPTIMIZE_TOLERENCE > bitRate:
-                printC('Skipped', "yellow")
-                continue
-
-            command = self._getCommand(video, process)
-            self._runProc(command, process)
-
-            # stop whole process if killProc() called
-            if self.killed:
-                break
-        
-        removeEmptyFolder(outputFolder)
-        noticeProcessEnd()
+        # skip next steps if process not correctly ended
+        if not result:
+            return "err"
     
-    def resize(self, setWidth:int, setHeight:int, quality:float=3.0) -> None:
+        removeEmptyFolder(outputFolder)
+        return "end"
+
+    @_serial
+    def resize(self, video:VideoInfo, setWidth:int, setHeight:int, quality:float=3.0) -> str:
         """
         Resize video
 
@@ -892,83 +934,81 @@ class VideoScripy():
         outputFolder = self.path+f'\\{process}'
         if not isdir(outputFolder):
             mkdir(outputFolder)
+            
+        # skip not video type
+        if video["type"] not in self.vType:
+            printC('Skipped', "yellow")
+            return "skip"
+
+        width = video['width']
+        height = video['height']
+
+        # compute setWidth and setHeight
+        if setWidth == -1 and setHeight == -1:
+            widthResize = width
+            heightResize = height
+        elif setWidth == -1:
+            widthResize = ceil(width * setHeight/height)
+            heightResize = setHeight
+        elif setHeight == -1:
+            widthResize = setWidth
+            heightResize = ceil(height * setWidth/width)
+        else:
+            widthResize = setWidth
+            heightResize = setHeight
         
-        for index, video in enumerate(self.vList):
-            noticeProcessBegin()
-            
-            # skip not video type
-            if video["type"] not in self.vType:
-                printC('Skipped', "yellow")
-                continue
+        # to positive size
+        widthResize = abs(widthResize)
+        heightResize = abs(heightResize)
 
-            name = video['name']
-            width = video['width']
-            height = video['height']
+        # even size
+        if widthResize%2 != 0:
+            widthResize += 1
+        if heightResize%2 != 0:
+            heightResize += 1
 
-            # show current resizing video
-            print(f'{index+1}/{len(self.vList)}'.center(20, '-'))
-            print(name)
+        # show current process changing info
+        print(f'{width}x{height} --> {widthResize}x{heightResize}')
 
-            # compute setWidth and setHeight
-            if setWidth == -1 and setHeight == -1:
-                widthResize = width
-                heightResize = height
-            elif setWidth == -1:
-                widthResize = ceil(width * setHeight/height)
-                heightResize = setHeight
-            elif setHeight == -1:
-                widthResize = setWidth
-                heightResize = ceil(height * setWidth/width)
-            else:
-                widthResize = setWidth
-                heightResize = setHeight
-            
-            # to positive size
-            widthResize = abs(widthResize)
-            heightResize = abs(heightResize)
+        # ratio warning
+        if width/height != widthResize/heightResize:
+            sizeGCD = gcd(width, height)
+            newSizeGCD = gcd(widthResize, heightResize)
+            printC('Warning, rize ratio will be changed', "yellow")
+            printC(
+                f'{int(width/sizeGCD)}:{int(height/sizeGCD)} --> '
+                f'{int(widthResize/newSizeGCD)}:{int(heightResize/newSizeGCD)}',
+                "yellow"
+            )
+        
+        # skip if same size
+        # skip if bigger size
+        if ((widthResize == width and heightResize == height)
+            or (widthResize > width and heightResize > height)):
+            printC("Skipped", "yellow")
+            return "skip"
+        
+        video["resizeWidth"] = widthResize
+        video["resizeHeight"] = heightResize
 
-            # even size
-            if widthResize%2 != 0:
-                widthResize += 1
-            if heightResize%2 != 0:
-                heightResize += 1
+        self.pre_optimize(video, widthResize, heightResize, quality)
 
-            print(f'{width}x{height} --> {widthResize}x{heightResize}')
+        command = self._getCommand(video, process)
+        result = self._runProc(command, process)
 
-            # ratio warning
-            if width/height != widthResize/heightResize:
-                sizeGCD = gcd(width, height)
-                newSizeGCD = gcd(widthResize, heightResize)
-                printC('Warning, rize ratio will be changed', "yellow")
-                printC(
-                    f'{int(width/sizeGCD)}:{int(height/sizeGCD)} --> '
-                    f'{int(widthResize/newSizeGCD)}:{int(heightResize/newSizeGCD)}',
-                    "yellow"
-                )
-            
-            # skip if same size
-            # skip if bigger size
-            if ((widthResize == width and heightResize == height)
-                or (widthResize > width and heightResize > height)):
-                printC("Skipped", "yellow")
-                continue
-            
-            video["resizeWidth"] = widthResize
-            video["resizeHeight"] = heightResize
-
-            self.pre_optimize(video, widthResize, heightResize, quality)
-
-            command = self._getCommand(video, process)
-            self._runProc(command, process)
-
-            # stop whole process if killProc() called
-            if self.killed:
-                break
+        # stop whole process if killProc() called
+        if self.killed:
+            return "stop"
+        
+        # skip next steps if process not correctly ended
+        if not result:
+            return "err"
         
         removeEmptyFolder(outputFolder)
-        noticeProcessEnd()
+        return "end"
 
-    def upscale(self, upscaleFactor:int=2, quality:float=3) -> None:
+    @_serial
+    def upscale(self, video:VideoInfo, upscaleFactor:int=2, quality:float=3) -> str:
         """
         Upscale video
 
@@ -985,116 +1025,110 @@ class VideoScripy():
         outputFolder = self.path+f'\\{process.name}'
         if not isdir(outputFolder):
             mkdir(outputFolder)
-
-        for index, video in enumerate(self.vList):
-            noticeProcessBegin()
             
-            # skip not video type
-            if video["type"] not in self.vType:
-                printC('Skipped', "yellow")
-                continue
-            
-            name = video['name']
-            width = video['width']
-            height = video['height']
+        # skip not video type
+        if video["type"] not in self.vType:
+            printC('Skipped', "yellow")
+            return "skip"
+        
+        name = video['name']
+        width = video['width']
+        height = video['height']
 
-            # show current upscaling video
-            print(f'{index+1}/{len(self.vList)}'.center(20, '-'))
-            print(name)
+        # save and show size change
+        widthUpscale = width * upscaleFactor
+        heightUpscale = height * upscaleFactor
+        print(f'{width}x{height} --> {widthUpscale}x{heightUpscale}')
 
-            # save and show size change
-            widthUpscale = width * upscaleFactor
-            heightUpscale = height * upscaleFactor
-            print(f'{width}x{height} --> {widthUpscale}x{heightUpscale}')
+        self.pre_optimize(video, widthUpscale, heightUpscale, quality)
 
-            self.pre_optimize(video, widthUpscale, heightUpscale, quality)
+        getFramesOutputPath = self.path+f'\\{name}_tmp_frames'
+        video["getFramesOutputPath"] = getFramesOutputPath
 
-            getFramesOutputPath = self.path+f'\\{name}_tmp_frames'
-            video["getFramesOutputPath"] = getFramesOutputPath
+        result = self._getFrames(video, process)
+        
+        # stop whole process if killProc() called
+        if self.killed:
+            return "stop"
+        
+        # skip next steps if process not correctly ended
+        if not result:
+            return "err"
 
-            result = self._getFrames(video, process)
-            
-            # stop whole process if killProc() called
-            if self.killed:
+        upscaleOutputPath = self.path+f'\\{name}_{process.name}x{upscaleFactor}_frames'
+        # new upscaling
+        if not isdir(upscaleOutputPath):
+            print(f'New upscaling')
+            mkdir(upscaleOutputPath)
+        # continue upscaling
+        else:
+            print(f'Continue upscaling')
+            for _, _, files in walk(upscaleOutputPath):
+
+                # create processed folder
+                processedFolder = f'{getFramesOutputPath}\\processed'
+                if not isdir(processedFolder):
+                    mkdir(processedFolder)
+
+                # move frame to processed folder except last two
+                for framesUpscaled in files[:-2]:
+                    try:
+                        rename(
+                            f'{getFramesOutputPath}\\{framesUpscaled}',
+                            f'{processedFolder}\\{framesUpscaled}',
+                        )
+                    # do nothing to already moved
+                    except FileNotFoundError:
+                        pass
+
+                # remove last two upscaled frames
+                for lastTwoUpscaled in files[-2:]:
+                    remove(upscaleOutputPath+'\\'+lastTwoUpscaled)
+
                 break
-            
-            # skip next steps if process not correctly ended
-            if not result:
-                continue
 
-            upscaleOutputPath = self.path+f'\\{name}_{process.name}x{upscaleFactor}_frames'
-            # new upscaling
-            if not isdir(upscaleOutputPath):
-                print(f'New upscaling')
-                mkdir(upscaleOutputPath)
-            # continue upscaling
-            else:
-                print(f'Continue upscaling')
-                for _, _, files in walk(upscaleOutputPath):
+        # frames watch
+        self._frameWatchStart(upscaleOutputPath, video["nbFrames"])
 
-                    # create processed folder
-                    processedFolder = f'{getFramesOutputPath}\\processed'
-                    if not isdir(processedFolder):
-                        mkdir(processedFolder)
+        video["upscaleOutputPath"] = upscaleOutputPath
+        video["upscaleFactor"] = upscaleFactor
+        command = self._getCommand(video, process.name, substep=1)
+        result = self._runProc(command, process.value[1])
+        
+        # frames watch end
+        self._frameWatchStop()
 
-                    # move frame to processed folder except last two
-                    for framesUpscaled in files[:-2]:
-                        try:
-                            rename(
-                                f'{getFramesOutputPath}\\{framesUpscaled}',
-                                f'{processedFolder}\\{framesUpscaled}',
-                            )
-                        # do nothing to already moved
-                        except FileNotFoundError:
-                            pass
+        # stop whole process if killProc() called
+        if self.killed:
+            return "stop"
+        
+        # skip next steps if process not correctly ended
+        if not result:
+            return "err"
 
-                    # remove last two upscaled frames
-                    for lastTwoUpscaled in files[-2:]:
-                        remove(upscaleOutputPath+'\\'+lastTwoUpscaled)
+        # remove frames
+        rmtree(getFramesOutputPath)
+        
+        # upscaled frames to video
+        command = self._getCommand(video, process.name, substep=2)
+        result = self._runProc(command, process.value[2])
 
-                    break
-
-            # frames watch
-            self._frameWatchStart(upscaleOutputPath, video["nbFrames"])
-
-            video["upscaleOutputPath"] = upscaleOutputPath
-            video["upscaleFactor"] = upscaleFactor
-            command = self._getCommand(video, process.name, substep=1)
-            result = self._runProc(command, process.value[1])
-            
-            # frames watch end
-            self._frameWatchStop()
-
-            # stop whole process if killProc() called
-            if self.killed:
-                break
-            
-            # skip next steps if process not correctly ended
-            if not result:
-                continue
-
-            # remove frames
-            rmtree(getFramesOutputPath)
-            
-            # upscaled frames to video
-            command = self._getCommand(video, process.name, substep=2)
-            result = self._runProc(command, process.value[2])
-
-            # stop whole process if killProc() called
-            if self.killed:
-                break
-            
-            # skip next steps if process not correctly ended
-            if not result:
-                continue
-            
-            # remove upscaled frames
-            rmtree(upscaleOutputPath)
+        # stop whole process if killProc() called
+        if self.killed:
+            return "stop"
+        
+        # skip next steps if process not correctly ended
+        if not result:
+            return "err"
+        
+        # remove upscaled frames
+        rmtree(upscaleOutputPath)
 
         removeEmptyFolder(outputFolder)
-        noticeProcessEnd()
+        return "end"
 
-    def interpolate(self, fpsInterp:float=30.0, quality:float=3) -> None:
+    @_serial
+    def interpolate(self, video:VideoInfo, fpsInterp:float=30.0, quality:float=3) -> str:
         """
         Interpolate video to increase fps
 
@@ -1111,101 +1145,95 @@ class VideoScripy():
         outputFolder = self.path+f'\\{process.name}'
         if not isdir(outputFolder):
             mkdir(outputFolder)
-
-        for index, video in enumerate(self.vList):
-            noticeProcessBegin()
             
-            # skip not video type
-            if video["type"] not in self.vType:
-                printC('Skipped', "yellow")
-                continue
+        # skip not video type
+        if video["type"] not in self.vType:
+            printC('Skipped', "yellow")
+            return "skip"
 
-            name = video['name']
-            width = video['width']
-            height = video['height']
-            fps = video['fps']
-            duration = video['duration']
+        name = video['name']
+        width = video['width']
+        height = video['height']
+        fps = video['fps']
+        duration = video['duration']
 
-            # show current resizing video
-            print(f'{index+1}/{len(self.vList)}'.center(20, '-'))
-            print(name)
+        # check if interpolation needed
+        if fpsInterp < fps:
+            print(fpsInterp, '<', fps)
+            printC("Skipped", "yellow")
+            return "skip"
 
-            # check if interpolation needed
-            if fpsInterp < fps:
-                print(fpsInterp, '<', fps)
-                printC("Skipped", "yellow")
-                continue
+        # save and show interpolate change
+        interpolateFrame = ceil(duration.total_seconds() * fpsInterp)
+        video["interpolateFrame"] = interpolateFrame
 
-            # save and show interpolate change
-            interpolateFrame = ceil(duration.total_seconds() * fpsInterp)
-            video["interpolateFrame"] = interpolateFrame
+        print(f'{fps}fps --> {fpsInterp}fps')
 
-            print(f'{fps}fps --> {fpsInterp}fps')
+        self.pre_optimize(video, width, height, quality)
+        
+        getFramesOutputPath = self.path+'\\{}_tmp_frames'.format(name)
+        video["getFramesOutputPath"] = getFramesOutputPath
+        video['interpolateFps'] = fpsInterp
+        result = self._getFrames(video, process)
 
-            self.pre_optimize(video, width, height, quality)
-            
-            getFramesOutputPath = self.path+'\\{}_tmp_frames'.format(name)
-            video["getFramesOutputPath"] = getFramesOutputPath
-            video['interpolateFps'] = fpsInterp
-            result = self._getFrames(video, process)
+        # stop whole process if killProc() called
+        if self.killed:
+            return "stop"
+        
+        # skip next steps if process not correctly ended
+        if not result:
+            return "err"
 
-            # stop whole process if killProc() called
-            if self.killed:
-                break
-            
-            # skip next steps if process not correctly ended
-            if not result:
-                continue
+        interpolateOutputPath = self.path+f'\\{name}_{process.name}_frames'
+        video["interpolateOutputPath"] = interpolateOutputPath
 
-            interpolateOutputPath = self.path+f'\\{name}_{process.name}_frames'
-            video["interpolateOutputPath"] = interpolateOutputPath
-
-            # empty interpolate frames folder
-            if isdir(interpolateOutputPath):
-                rmtree(interpolateOutputPath)
-
-            # new frames interpolate
-            mkdir(interpolateOutputPath)
-
-            # frames watch
-            self._frameWatchStart(interpolateOutputPath,interpolateFrame)
-            
-            command = self._getCommand(video, process.name, substep=1)
-            result = self._runProc(command, process.value[1])
-            
-            # frame watch end
-            self._frameWatchStop()
-
-            # stop whole process if killProc() called
-            if self.killed:
-                break
-            
-            # skip next steps if process not correctly ended
-            if not result:
-                continue
-
-            # remove frames
-            rmtree(getFramesOutputPath)
-
-            # interpolate frames to video
-            command = self._getCommand(video, process.name, substep=2)
-            result = self._runProc(command, process.value[2])
-
-            # stop whole process if killProc() called
-            if self.killed:
-                break
-            
-            # skip next steps if process not correctly ended
-            if not result:
-                continue
-
-            # remove interpolated frames
+        # empty interpolate frames folder
+        if isdir(interpolateOutputPath):
             rmtree(interpolateOutputPath)
 
-        removeEmptyFolder(outputFolder)
-        noticeProcessEnd()
+        # new frames interpolate
+        mkdir(interpolateOutputPath)
 
-    def preview(self, gridWidth:int=3, gridHeight:int=2) -> None:
+        # frames watch
+        self._frameWatchStart(interpolateOutputPath,interpolateFrame)
+        
+        command = self._getCommand(video, process.name, substep=1)
+        result = self._runProc(command, process.value[1])
+        
+        # frame watch end
+        self._frameWatchStop()
+
+        # stop whole process if killProc() called
+        if self.killed:
+            return "stop"
+        
+        # skip next steps if process not correctly ended
+        if not result:
+            return "err"
+
+        # remove frames
+        rmtree(getFramesOutputPath)
+
+        # interpolate frames to video
+        command = self._getCommand(video, process.name, substep=2)
+        result = self._runProc(command, process.value[2])
+
+        # stop whole process if killProc() called
+        if self.killed:
+            return "stop"
+        
+        # skip next steps if process not correctly ended
+        if not result:
+            return "err"
+
+        # remove interpolated frames
+        rmtree(interpolateOutputPath)
+
+        removeEmptyFolder(outputFolder)
+        return "end"
+
+    @_serial
+    def preview(self, video:VideoInfo, gridWidth:int=3, gridHeight:int=2) -> str:
         """
         Generate a grid of images
 
@@ -1224,82 +1252,74 @@ class VideoScripy():
             mkdir(outputFolder)
 
         gridNb = gridWidth*gridHeight
+            
+        # skip not video type
+        if video["type"] not in self.vType:
+            printC('Skipped', "yellow")
+            return "skip"
+
+        duration = video['duration'].total_seconds()
+        width = video['width']
+        height = video['height']
+
+        outputName = video['name'].replace(f".{video['type']}",".png")
         
-        for index, video in enumerate(self.vList):
-            noticeProcessBegin()
+        processTime = time()
+
+        if gridNb != 1:
+            chopTime = 0.233 * duration/(gridNb-1)
+        else:
+            chopTime = 0.233 * duration
             
-            # skip not video type
-            if video["type"] not in self.vType:
-                printC('Skipped', "yellow")
-                continue
-
-            name = video['name']
-            duration = video['duration'].total_seconds()
-            width = video['width']
-            height = video['height']
-
-            outputName = video['name'].replace(f".{video['type']}",".png")
-
-            # show current previewing video
-            print(f'{index+1}/{len(self.vList)}'.center(20, '-'))
-            print(name)
+        for imgNb in range(gridNb):
             
-            processTime = time()
-
-            if gridNb != 1:
-                chopTime = 0.233 * duration/(gridNb-1)
+            if imgNb == 0:
+                imgTime = chopTime
+            elif imgNb == gridNb-1:
+                imgTime = duration - chopTime
             else:
-                chopTime = 0.233 * duration
-                
-            for imgNb in range(gridNb):
-                
-                if imgNb == 0:
-                    imgTime = chopTime
-                elif imgNb == gridNb-1:
-                    imgTime = duration - chopTime
-                else:
-                    imgTime = chopTime + imgNb*(duration-2*chopTime)/(gridNb-1)
+                imgTime = chopTime + imgNb*(duration-2*chopTime)/(gridNb-1)
 
-                command = (
-                    f' ffmpeg'
-                    f' -ss {imgTime}'
-                    f' -i "{video["path"]}"'
-                    f' -frames:v 1'
-                    f' -y'
-                    f' "{self.path}\\{process}\\{imgNb}.png"'
-                )
-                self._runProcAsync(command)
-            self._runProcAsyncWait()
-            
-            # stop whole process if killProc() called
-            if self.killed:
-                break
+            command = (
+                f' ffmpeg'
+                f' -ss {imgTime}'
+                f' -i "{video["path"]}"'
+                f' -frames:v 1'
+                f' -y'
+                f' "{self.path}\\{process}\\{imgNb}.png"'
+            )
+            self._runProcAsync(command)
+        self._runProcAsyncWait()
+        
+        # stop whole process if killProc() called
+        if self.killed:
+            return "stop"
 
-            newImageWidth = width*gridWidth
-            newImageHeight = height*gridHeight
-            newImage = Image.new('RGB', (newImageWidth,newImageHeight))
+        newImageWidth = width*gridWidth
+        newImageHeight = height*gridHeight
+        newImage = Image.new('RGB', (newImageWidth,newImageHeight))
 
-            imgNb = 0
-            for ghCount in range(gridHeight):
-                for gwCount in range(gridWidth):
-                    imTempPath = f"{self.path}\\{process}\\{imgNb}.png"
-                    imgNb += 1
-                    imTemp = Image.open(imTempPath)
-                    newImage.paste(imTemp, (gwCount*width, ghCount*height))
-
-            newImage.save(f"{self.path}\\{process}\\{outputName}")
-
-            for imgNb in range(gridNb):
+        imgNb = 0
+        for ghCount in range(gridHeight):
+            for gwCount in range(gridWidth):
                 imTempPath = f"{self.path}\\{process}\\{imgNb}.png"
                 imgNb += 1
-                remove(imTempPath)
+                imTemp = Image.open(imTempPath)
+                newImage.paste(imTemp, (gwCount*width, ghCount*height))
 
-            processTime = time() - processTime
-            processTime = timedelta(seconds=processTime)
-            print(f"Took :{str(processTime)[:-3]}")
+        newImage.save(f"{self.path}\\{process}\\{outputName}")
 
-        noticeProcessEnd()
+        for imgNb in range(gridNb):
+            imTempPath = f"{self.path}\\{process}\\{imgNb}.png"
+            imgNb += 1
+            remove(imTempPath)
+
+        processTime = time() - processTime
+        processTime = timedelta(seconds=processTime)
+        print(f"Took :{str(processTime)[:-3]}")
+
         removeEmptyFolder(outputFolder)
+        return "end"
 
     def stream(self) -> None:
         """
