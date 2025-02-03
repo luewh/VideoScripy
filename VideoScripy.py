@@ -308,23 +308,29 @@ class VideoScripy():
                 # get stream info
                 for stream in results[videoIndex]['streams']:
 
-                    # some subtitle dont has codec_name
+                    # some subtitle dont has codec_name (mov_text)
                     try :
                         codecName = stream["codec_name"]
                     except:
                         codecName = stream["codec_tag_string"]
                     
-                    # mkv dont has language tags
+                    # mkv video stream dont has language tags, needs to be initialized
                     try :
                         tagLanguage = stream["tags"]["language"]
                     except:
                         tagLanguage = "und"
                         
-                    # mp4 can not get stream title
+                    # use handler_name as title
                     try :
-                        tagTitle = stream["tags"]["title"]
+                        # mp4
+                        tagTitle = stream["tags"]["handler_name"]
                     except:
-                        tagTitle = ""
+                        try:
+                            # mkv
+                            tagTitle = stream["tags"]["HANDLER_NAME"]
+                        except:
+                            # others (png)
+                            tagTitle = ""
 
                     streamInfo.append({
                         "index": int(stream["index"]),
@@ -1400,6 +1406,7 @@ class VideoScripy():
                 for streamType in orderedStreams 
                 for stream in streamType
             ]
+
             commandInputs += f'-i "{video["path"]}" '
 
             for stream in orderedStreams:
@@ -1410,8 +1417,9 @@ class VideoScripy():
                         commandMap += f'-map -{index}:d? '
                     
                     commandMap += f'-map {index}:{stream["index"]} '
-                    if stream["title"] != "":
-                        commandMetadata += f'-metadata:s:{outputStreamCount} title="{stream["title"]}" '
+                    # clear title tag to avoid duble title
+                    commandMetadata += f'-metadata:s:{outputStreamCount} title="" '
+                    commandMetadata += f'-metadata:s:{outputStreamCount} handler_name="{stream["title"]}" '
                     commandMetadata += f'-metadata:s:{outputStreamCount} language={stream["language"]} '
                     outputStreamCount += 1
                     

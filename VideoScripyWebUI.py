@@ -531,12 +531,19 @@ def getStreamParam(defaultTitle=False):
                 for stream in video["streams"]:
                     if not stream["selected"]:
                         continue
+
+                    inputValue = ""
+                    if defaultTitle:
+                        inputValue = stream["title"]
+                        if stream["title"] == "":
+                            inputValue = video["name"].replace(f'.{video["type"]}',"")
+                    
                     streamParam.append(dbc.Stack(
                         [
                             dcc.Input(
                                 id={"type": "input", "id": f"{index} {stream['index']} title"},
                                 type="text",
-                                value=video["name"].replace(f'.{video["type"]}',"") if defaultTitle else "",
+                                value=inputValue,
                                 placeholder=stream["title"],
                                 className="psu_stream_input_title",
                             ),
@@ -1407,7 +1414,8 @@ def runProcess(_, selectedProcess, inputValues):
             sIndex = int(sIndex)
             # set if has value
             try:
-                allVideoList[vIndex]["streams"][sIndex][metaData] = value["value"]
+                if value["value"] != "":
+                    allVideoList[vIndex]["streams"][sIndex][metaData] = value["value"]
             except:
                 pass
     

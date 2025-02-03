@@ -62,13 +62,14 @@
     background: rgb(255, 255, 255);
 }
 .psu_stream_input_title {
-    width: 280px;
+    width: 300px;
     height: 25px;
+    font-size: 10px;
     border-radius: 4px;
     border: 1px solid rgb(200, 200, 200);
 }
 .psu_stream_dropdown_lang {
-    width: 160px;
+    width: 150px;
     font-size: 10px;
     color: black;
 }
@@ -91,7 +92,7 @@
 }
 .psu_stream_input_txt {
     white-space: pre;
-    height: 25px;
+    font-size: 10px;
     font-family: monospace;
     overflow: clip;
 }
