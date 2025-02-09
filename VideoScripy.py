@@ -862,12 +862,13 @@ class VideoScripy():
                     break
 
             noticeProcessEnd()
-
+            
             # complete results if stopped
             if len(results) < len(args[0].vList):
                 results += ["x"]*(len(args[0].vList)-len(results))
             # complete results to multiple of 5
-            results += [" "]*(5-len(results)%5)
+            if len(results)%5 != 0:
+                results += [" "]*(5-len(results)%5)
             # show SUMMARY
             print("SUMMARY :", end='')
             for index, result in enumerate(results):
