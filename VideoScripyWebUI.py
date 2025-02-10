@@ -508,7 +508,16 @@ def previewInputUI():
         ),
     ]
 
-def getStreamParam(defaultTitle=False):
+def getStreamParam(defaultTitle:int=0):
+    """
+    defaultTitle 0 | 1 | 2
+
+    0 : ""
+    1 : video["name"]
+    2 : stream["title"]
+    else : ""
+    
+    """
     global allVideoList
 
     hasVideo = False
@@ -532,11 +541,14 @@ def getStreamParam(defaultTitle=False):
                     if not stream["selected"]:
                         continue
 
-                    inputValue = ""
-                    if defaultTitle:
+                    if defaultTitle == 0:
+                        inputValue = ""
+                    elif defaultTitle == 1:
+                        inputValue = video["name"].replace(f'.{video["type"]}',"")
+                    elif defaultTitle == 2:
                         inputValue = stream["title"]
-                        if stream["title"] == "":
-                            inputValue = video["name"].replace(f'.{video["type"]}',"")
+                    else:
+                        inputValue = ""
                     
                     streamParam.append(dbc.Stack(
                         [
@@ -580,7 +592,7 @@ def streamInputUI():
                 hidden=True,
             ),
             html.Button(
-                "DEFAULT TITLE",
+                children="DEFAULT TITLE",
                 id={"type": "spec", "id": "button_defaultTitleStream"},
                 className="psu_stream_button",
             ),
@@ -1337,6 +1349,7 @@ def subtitleStreamInvert(clicks):
 
 @callback(
     Output('div_streamParamUI', 'children', allow_duplicate=True),
+    Output({"type": "spec", "id": "button_defaultTitleStream"}, 'children'),
     Input({"type": "spec", "id": "button_defaultTitleStream"}, 'n_clicks'),
     running=[
         (Output({"type": "spec", "id": "button_defaultTitleStream"}, 'disabled'), True, False)
@@ -1349,10 +1362,8 @@ def setTitleToDefault(n_clicks):
     if n_clicks is None:
         raise PreventUpdate
     
-    if n_clicks%2 != 0:
-        return getStreamParam(defaultTitle=True)
-    else:
-        return getStreamParam(defaultTitle=False)
+    # defaultTitle = 0 | 1 | 2
+    return getStreamParam(defaultTitle=n_clicks%3), f"DEFAULT TITLE ({n_clicks%3})"
 
 
 
