@@ -26,7 +26,7 @@ __all__ = [
     'VideoScripy',
     'VideoInfo', 'ProcAsyncReturn', 'StreamInfo',
     'VideoProcess',
-    'colorAnsi',
+    'colorAnsi', 'printC',
     'run',
 ]
 
@@ -89,26 +89,6 @@ def printC(text, color:str=None):
         print(f'"{color}" not avalable', end='')
 
     print(text + colorAnsi["reset"])
-
-def removeEmptyFolder(folderName:str):
-    try:
-        rmdir(folderName)
-    except:
-        pass
-
-def noticeProcessBegin():
-    sound = "./assets/typewriter_carriage_return.mp3"
-    try:
-        playsound(sound, block=False)
-    except:
-        pass
-
-def noticeProcessEnd():
-    sound = "./assets/typewriter_bell.mp3"
-    try:
-        playsound(sound, block=True)
-    except:
-        pass
 
 
 
@@ -194,6 +174,33 @@ class VideoScripy():
                 printC(f'{tool} found', 'green')
             else:
                 printC(f'{tool} not found, please check if it is in environment "PATH"', 'red')
+
+    def removeEmptyFolder(self, folderName:str = None):
+        if folderName is not None:
+            try:
+                # print(folderName)
+                rmdir(folderName)
+            except:
+                # print("ex")
+                pass
+        else:
+            for process in [p.name for p in VideoProcess]:
+                outputFolder = self.path+f'\\{process}'
+                self.removeEmptyFolder(outputFolder)
+
+    def noticeProcessBegin(self):
+        sound = "./assets/typewriter_carriage_return.mp3"
+        try:
+            playsound(sound, block=False)
+        except:
+            pass
+
+    def noticeProcessEnd(self):
+        sound = "./assets/typewriter_bell.mp3"
+        try:
+            playsound(sound, block=True)
+        except:
+            pass
 
 
     # get video related
@@ -849,7 +856,7 @@ class VideoScripy():
 
             # args[0] == self
             for index, video in enumerate(args[0].vList):
-                noticeProcessBegin()
+                args[0].noticeProcessBegin()
                 # show current video
                 print(f'{index+1}/{len(args[0].vList)}'.center(20, '-'))
                 print(video["name"])
@@ -861,7 +868,8 @@ class VideoScripy():
                 if result == "stop":
                     break
 
-            noticeProcessEnd()
+            args[0].noticeProcessEnd()
+            args[0].removeEmptyFolder()
             
             # complete results if stopped
             if len(results) < len(args[0].vList):
@@ -924,7 +932,7 @@ class VideoScripy():
         if not result:
             return "err"
     
-        removeEmptyFolder(outputFolder)
+        self.removeEmptyFolder(outputFolder)
         return "end"
 
     @_serial
@@ -1019,7 +1027,7 @@ class VideoScripy():
         if not result:
             return "err"
         
-        removeEmptyFolder(outputFolder)
+        self.removeEmptyFolder(outputFolder)
         return "end"
 
     @_serial
@@ -1140,7 +1148,7 @@ class VideoScripy():
         # remove upscaled frames
         rmtree(upscaleOutputPath)
 
-        removeEmptyFolder(outputFolder)
+        self.removeEmptyFolder(outputFolder)
         return "end"
 
     @_serial
@@ -1246,7 +1254,7 @@ class VideoScripy():
         # remove interpolated frames
         rmtree(interpolateOutputPath)
 
-        removeEmptyFolder(outputFolder)
+        self.removeEmptyFolder(outputFolder)
         return "end"
 
     @_serial
@@ -1336,7 +1344,7 @@ class VideoScripy():
         processTime = timedelta(seconds=processTime)
         print(f"Took :{str(processTime)[:-3]}")
 
-        removeEmptyFolder(outputFolder)
+        self.removeEmptyFolder(outputFolder)
         return "end"
 
     def stream(self) -> None:
@@ -1345,7 +1353,7 @@ class VideoScripy():
         And also modify metadata (title language).
         """
         
-        noticeProcessBegin()
+        self.noticeProcessBegin()
 
         process = VideoProcess.stream.name
         # create output folder
@@ -1366,8 +1374,8 @@ class VideoScripy():
                 break
         # end process if no video
         if not hasVideo:
-            removeEmptyFolder(outputFolder)
-            noticeProcessEnd()
+            self.removeEmptyFolder(outputFolder)
+            self.noticeProcessEnd()
             return
         
         # warn different video duration
@@ -1447,8 +1455,8 @@ class VideoScripy():
         )
         self._runProc(command, process)
             
-        removeEmptyFolder(outputFolder)
-        noticeProcessEnd()
+        self.removeEmptyFolder(outputFolder)
+        self.noticeProcessEnd()
 
 
 
