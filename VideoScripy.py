@@ -1382,47 +1382,58 @@ class VideoScripy():
         subtitleCopy = '-c:s mov_text'
         if videoType == "mkv":
             subtitleCopy = ''
-
+        
+        # order stream by video, audio, subtitle
         commandInputs = ""
         commandMap = ""
-        commandMetadata = ""
-        outputStreamCount = 0
-        for index, video in enumerate(self.vList):
+        orderedStreams = [[],[],[],[]]
+        for videoIndex, video in enumerate(self.vList):
+
             print(video['name'])
+            commandInputs += f'-i "{video["path"]}" '
             
-            # order stream by video, audio, subtitle
-            orderedStreams = [[],[],[],[]]
+            # remove time codec for mp4
+            if videoType == "mp4":
+                commandMap += f'-map -{videoIndex}:d? '
+            
             for stream in video["streams"]:
                 if stream["codec_type"] == "video":
-                    orderedStreams[0].append(stream)
+                    orderedStreams[0].append({
+                        "videoIndex":videoIndex,
+                        "stream":stream
+                    })
                 elif stream["codec_type"] == "audio":
-                    orderedStreams[1].append(stream)
+                    orderedStreams[1].append({
+                        "videoIndex":videoIndex,
+                        "stream":stream
+                    })
                 elif stream["codec_type"] == "subtitle":
-                    orderedStreams[2].append(stream)
+                    orderedStreams[2].append({
+                        "videoIndex":videoIndex,
+                        "stream":stream
+                    })
                 else:
-                    orderedStreams[3].append(stream)
-            # flatten
-            orderedStreams = [
-                stream 
-                for streamType in orderedStreams 
-                for stream in streamType
-            ]
+                    orderedStreams[3].append({
+                        "videoIndex":videoIndex,
+                        "stream":stream
+                    })
+        # flatten
+        orderedStreams = [
+            stream 
+            for streamType in orderedStreams 
+            for stream in streamType
+        ]
 
-            commandInputs += f'-i "{video["path"]}" '
-
-            for stream in orderedStreams:
-                if stream["selected"]:
-
-                    # remove time codec for mp4
-                    if videoType == "mp4":
-                        commandMap += f'-map -{index}:d? '
-                    
-                    commandMap += f'-map {index}:{stream["index"]} '
-                    # clear title tag to avoid duble title
-                    commandMetadata += f'-metadata:s:{outputStreamCount} title="" '
-                    commandMetadata += f'-metadata:s:{outputStreamCount} handler_name="{stream["title"]}" '
-                    commandMetadata += f'-metadata:s:{outputStreamCount} language={stream["language"]} '
-                    outputStreamCount += 1
+        commandMetadata = ""
+        outputStreamCount = 0
+        for stream in orderedStreams:
+            if stream["stream"]["selected"]:
+                commandMap += f'-map {stream["videoIndex"]}:{stream["stream"]["index"]} '
+                # clear title tag to avoid duble title
+                commandMetadata += f'-metadata:s:{outputStreamCount} title="" '
+                commandMetadata += f'-metadata:s:{outputStreamCount} handler_name="{stream["stream"]["title"]}" '
+                commandMetadata += f'-metadata:s:{outputStreamCount} language={stream["stream"]["language"]} '
+                outputStreamCount += 1
                     
         command = (
             f' ffmpeg'
