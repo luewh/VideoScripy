@@ -362,11 +362,18 @@ class VideoScripy():
                             f'More than 1 video stream found in "{self.vList[videoIndex]["name"]}", '
                             f'only the first will be processed', "yellow"
                         )
-                    videoStream = videoStream[0]
-                    self.vList[videoIndex]['width'] = int(videoStream['width'])
-                    self.vList[videoIndex]['height'] = int(videoStream['height'])
-                    num, denom = videoStream['r_frame_rate'].split('/')
-                    self.vList[videoIndex]['fps'] = round(float(num)/float(denom),2)
+                    try:
+                        videoStream = videoStream[0]
+                        self.vList[videoIndex]['width'] = int(videoStream['width'])
+                        self.vList[videoIndex]['height'] = int(videoStream['height'])
+                        num, denom = videoStream['r_frame_rate'].split('/')
+                        self.vList[videoIndex]['fps'] = round(float(num)/float(denom),2)
+                    except:
+                        printC(
+                            f'"{self.vList[videoIndex]["name"]}" typed as video but has no video content',
+                            "yellow"
+                        )
+                        self.vList[videoIndex]["type"] = "other"
                 # mp4
                 if self.vList[videoIndex]["type"] == "mp4":
                     self.vList[videoIndex]['duration'] = timedelta(seconds=float(videoStream['duration']))
@@ -380,14 +387,14 @@ class VideoScripy():
                         self.vList[videoIndex]['fps'] 
                         * self.vList[videoIndex]['duration'].total_seconds()
                     )
-                # smi
-                elif self.vList[videoIndex]["type"] in ["smi"]:
+                # smi and other
+                elif self.vList[videoIndex]["type"] in ["smi", "other"]:
                     self.vList[videoIndex]['duration'] = timedelta(seconds=0)
                     self.vList[videoIndex]['bitRate'] = 0
                     self.vList[videoIndex]['nbFrames'] = 0
                     self.vList[videoIndex]['width'] = 0
                     self.vList[videoIndex]['height'] = 0
-                    self.vList[videoIndex]['fps'] = 0.0                
+                    self.vList[videoIndex]['fps'] = 0.0
             
             except Exception as e:
                 printC(f'Unexpected erro "{e.with_traceback(None)}"', "red")
@@ -1438,7 +1445,8 @@ class VideoScripy():
             if stream["stream"]["selected"]:
                 commandMap += f'-map {stream["videoIndex"]}:{stream["stream"]["index"]} '
                 # clear title tag to avoid duble title
-                commandMetadata += f'-metadata:s:{outputStreamCount} title="" '
+                # allow double title tag, handler_name for mp4 ffprobe
+                commandMetadata += f'-metadata:s:{outputStreamCount} title="{stream["stream"]["title"]}" '
                 commandMetadata += f'-metadata:s:{outputStreamCount} handler_name="{stream["stream"]["title"]}" '
                 commandMetadata += f'-metadata:s:{outputStreamCount} language={stream["stream"]["language"]} '
                 outputStreamCount += 1
