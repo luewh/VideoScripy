@@ -22,6 +22,7 @@ addPath = []
 addPath.append("./tools/ffmpeg-full_build/bin")
 addPath.append("./tools/Real-ESRGAN")
 addPath.append("./tools/Ifrnet")
+addPath.append("./tools/NVEncC")
 for index, path in enumerate(addPath):
     addPath[index] = os.path.abspath(path)
 os.environ["PATH"] += os.pathsep.join(addPath)

@@ -1,6 +1,7 @@
 # built-in
 import subprocess
 import json
+import re
 from threading import Thread
 from pathlib import Path
 from datetime import timedelta
@@ -24,12 +25,16 @@ init()
 # from VideoScripy import *
 __all__ = [
     'VideoScripy',
-    'VideoInfo', 'ProcAsyncReturn', 'StreamInfo',
+    'VideoInfo', 'ProcAsyncReturn', 'StreamInfo', 'GPUInfo',
     'VideoProcess',
     'colorAnsi', 'printC',
     'run',
 ]
 
+class GPUInfo(TypedDict):
+    id : int
+    name : str
+    codecs : list
 
 class ProcAsyncReturn(TypedDict):
     returnCode : int
@@ -140,10 +145,6 @@ class VideoScripy():
         self.scanType = self.vType + self.aType + self.sType
         self.folderSkip = [p.name for p in VideoProcess]
         self.OPTIMIZE_TOLERENCE = 1.15
-        
-        self.h265 = True
-        self.gpu = True
-        self.setEncoder(h265=True, gpu=True)
 
         self.proc:subprocess.Popen = None
         self.killed = False
@@ -151,12 +152,20 @@ class VideoScripy():
         self.procAsync:list[subprocess.Popen] = []
 
         self.EXIT_CODE_FILE_NAME = "exitCode.txt"
+        
+        self.h265 = False
+        self.gpu = False
+        self.GPUs:list[GPUInfo] = []
+        self.checkGPUs()
+        self.selectedGPU:GPUInfo = None
+        self.selectGPU()
+        self.setEncoder(h265=True, gpu=True)
 
         self.checkTools()
-        
+    
     def checkTools(self) -> None:
         """
-        Check all tools by running -version or -h zith cmd.exe asynchronously.\n
+        Check all tools by running -version or -h with cmd.exe asynchronously.\n
         Tool found if returned code is 0 or 4_294_967_295
         """
         tools = {
@@ -164,6 +173,7 @@ class VideoScripy():
             "FFprobe": "ffprobe -version",
             "Real-ESRGAN": "realesrgan-ncnn-vulkan.exe -h",
             "IFRNet": "ifrnet-ncnn-vulkan.exe -h",
+            "NVEncC": "NVEncC64.exe --version",
         }
         for tool, cmd in tools.items():
             self._runProcAsync(cmd)
@@ -174,6 +184,60 @@ class VideoScripy():
                 printC(f'{tool} found', 'green')
             else:
                 printC(f'{tool} not found, please check if it is in environment "PATH"', 'red')
+
+    def checkGPUs(self) -> None:
+        """
+        Fill up self.GPUs by each GPU's info.
+        """
+        # get gpu device
+        command = "NVEncC64.exe --check-device"
+        self._runProcAsync(command)
+        result = self._runProcAsyncWait()[0]
+        result:list[str] = result["stdout"].decode('utf-8').split("\r\n")
+        for resultStr in result:
+            if "DeviceId" in resultStr:
+                id = re.findall("#.+:", resultStr)[0].replace("#", "").replace(":", "")
+                try:
+                    id = int(id)
+                except:
+                    printC("Unexpected int conversion error at self.checkGPUs()", "red")
+                
+                name = re.split("#.+:", resultStr)[-1].strip()
+
+                self.GPUs.append({
+                    "id" : id,
+                    "name" : name,
+                    "codecs" : [],
+                })
+
+        # get codec of each gpu
+        for gpu in self.GPUs:
+            command = f'NVEncC64.exe --check-features {gpu["id"]}'
+            self._runProcAsync(command)
+            result = self._runProcAsyncWait()[0]
+            result = result["stdout"].decode('utf-8').split("\r\n")
+
+            for resultStr in result:
+                if "Codec:" in resultStr:
+                    gpu["codecs"].append(resultStr.split(":")[-1].strip())
+        
+    def selectGPU(self, deviceId:int=0) -> None:
+        """
+        Set self.selectedGPU to corresponding element of self.GPUs.
+        """
+        if len(self.GPUs) == 0:
+            printC("No available GPU", "yellow")
+            self.selectedGPU:GPUInfo = None
+            return
+        
+        try:
+            self.selectedGPU = self.GPUs[deviceId]
+            printC(f'Selecting GPU {self.selectedGPU["id"]} : {self.selectedGPU["name"]}', "blue")
+            printC(f'Available codec : {" | ".join(self.selectedGPU["codecs"])}', "blue")
+        except:
+            printC("Wrong device id entered, available GPU(s) is(are):", "red")
+            for gpu in self.GPUs:
+                print(f'    {gpu["id"]} : {gpu["name"]}')
 
     def removeEmptyFolder(self, folderName:str = None):
         if folderName is not None:
@@ -408,7 +472,8 @@ class VideoScripy():
     # ffmpeg encoder related
     def setEncoder(self, h265=True, gpu=True) -> None:
         """
-        Set encoder parameters according h265 and GPU usage
+        Set encoder parameters according h265 and GPU usage.\n
+        Make sure to be called after self.checkGPUs() and self.selectGPU().
 
         Parameters:
             h265 (bool):
@@ -417,9 +482,23 @@ class VideoScripy():
             gpu (bool):
                 _
         """
+        # check GPU possibility
+        if (gpu) and (self.selectedGPU is None):
+            printC("Can not use GPU to encode video", "yellow")
+            gpu = False
+        
+        # TODO missing feature of cheking cpu h265 availability
+        # check GPU h265 possibility
+        if (h265) and (gpu) and ("265" not in " ".join(self.selectedGPU["codecs"])):
+            printC("Selected GPU do not has H265 video encoder", "yellow")
+            gpu = False
+
+        # summary
         self.h265 = h265
         self.gpu = gpu
+        printC(f'Using {"gpu" if gpu else "cpu"} {"h265" if h265 else "h264"} as video encoder', "blue")
         
+        # cpu
         if not gpu:
             if not h265:
                 self.encoder = ' libx264 -crf 1'
@@ -429,7 +508,7 @@ class VideoScripy():
             self.encoder += (
                 ' -preset medium'
             )
-
+        # gpu
         else:
             if not h265:
                 self.encoder = ' h264_nvenc -b_ref_mode middle'
@@ -437,6 +516,7 @@ class VideoScripy():
                 self.encoder = ' hevc_nvenc -weighted_pred 1'
 
             self.encoder += (
+                f' -gpu {self.selectedGPU["id"]}'
                 ' -preset p6'
                 ' -tune hq'
                 ' -rc vbr'
@@ -445,7 +525,7 @@ class VideoScripy():
                 ' -spatial_aq 1'
                 ' -cq 1'
             )
-
+    
     def _getCommand(self, video:VideoInfo, process:str, substep='') -> str:
         """
         Return shell script according to videoInfo and process.\n
@@ -465,9 +545,13 @@ class VideoScripy():
         if substep == 2 and process == VideoProcess.interpolate.name:
             videoFps = video["interpolateFps"]
 
-        haccel = ''
+        hwaccel = ''
         if self.gpu:
-            haccel = ' -hwaccel cuda -hwaccel_output_format cuda'
+            hwaccel = (
+                ' -hwaccel cuda'
+                f' -hwaccel_device {self.selectedGPU["id"]}'
+                ' -hwaccel_output_format cuda'
+            )
 
         # set communFFmpegOut
         communFFmpegOut = (
@@ -481,7 +565,7 @@ class VideoScripy():
         if process == VideoProcess.optimize.name:
             command = (
                 f' ffmpeg'
-                f' {haccel}'
+                f' {hwaccel}'
                 f' -i "{videoPath}"'
                 f' -map 0:v -map 0:a? -map 0:s?'
                 f' {communFFmpegOut}'
@@ -495,7 +579,7 @@ class VideoScripy():
             
             command = (
                 f' ffmpeg'
-                f' {haccel}'
+                f' {hwaccel}'
                 f' -i "{videoPath}"'
                 f' -map 0:v -map 0:a? -map 0:s?'
                 f' -filter:v:0 {resizeFilter}={video["resizeWidth"]}:{video["resizeHeight"]}'
@@ -503,7 +587,7 @@ class VideoScripy():
             )
 
         elif process in [VideoProcess.upscale.name, VideoProcess.interpolate.name]:
-
+            
             if substep == 0:
                 command = (
                     f' ffmpeg'
@@ -513,9 +597,15 @@ class VideoScripy():
                     f' "{video["getFramesOutputPath"]}/frame%08d.jpg"'
                 )
             else:
+                
+                gpuNumber = 0
+                if self.gpu:
+                    gpuNumber = self.selectedGPU["id"]+1
+
                 if process == VideoProcess.upscale.name:
                     processOutputPath = video["upscaleOutputPath"]
                     upscaleFactor = video["upscaleFactor"]
+                    
                 elif process == VideoProcess.interpolate.name:
                     processOutputPath = video["interpolateOutputPath"]
 
@@ -535,23 +625,23 @@ class VideoScripy():
                         printC(f'Unknown upscale factor "{upscaleFactor}"', "red")
                         return None
                     command += (
-                        f' -f jpg -g 1'
+                        f' -f jpg -g {gpuNumber}'
                     )
                 elif substep == 1 and process == VideoProcess.interpolate.name:
                     command = (
                         f' ifrnet-ncnn-vulkan.exe'+
                         f' -i "{video["getFramesOutputPath"]}"'+
                         f' -o "{processOutputPath}"'+
-                        ' -m IFRNet_GoPro -g 1 -f frame%08d.jpg'+
+                        f' -m IFRNet_GoPro -g {gpuNumber} -f frame%08d.jpg'+
                         f' -n {video["interpolateFrame"]}'
                     )
 
                 elif substep == 2:
                     command = (
                         f' ffmpeg'
-                        f' {haccel}'
+                        f' {hwaccel}'
                         f' -i "{videoPath}"'
-                        f' {haccel}'
+                        f' {hwaccel}'
                         f' -c:v mjpeg_cuvid -r {videoFps}'
                         f' -i "{processOutputPath}/frame%08d.jpg"'
                         f' -map 1:v:0 -map 0:a? -map 0:s?'
@@ -685,7 +775,7 @@ class VideoScripy():
     def _runProcAsyncWait(self) -> list[ProcAsyncReturn]:
         """
         Wait all "asynchronous" process.\n
-        Return list of process's (return code, stdout)
+        Return list of process's {returnCode, stdout}
         """
         result:list[ProcAsyncReturn] = []
         for proc in self.procAsync:
