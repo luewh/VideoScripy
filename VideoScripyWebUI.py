@@ -427,6 +427,7 @@ def clientClose(_):
 @callback(
     Output("dropdown_encoder", 'value'),
     Input("dropdown_encoder", 'value'),
+    running=[(Output('interval_log', 'n_intervals'), 0, 0)],
     prevent_initial_call=True,
 )
 def setVideoEncoder(selectedVideoEncoder):
@@ -465,6 +466,7 @@ def setVideoEncoder(selectedVideoEncoder):
 
 @callback(
     Input("dropdown_device", 'value'),
+    running=[(Output('interval_log', 'n_intervals'), 0, 0)],
     prevent_initial_call=True,
 )
 def setVideoDevice(selectedDevice):
@@ -472,7 +474,6 @@ def setVideoDevice(selectedDevice):
     if selectedDevice is None:
         raise PreventUpdate
     vs.selectDevice(selectedDevice)
-    print(selectedDevice)
 
 
 

@@ -5,7 +5,7 @@ VideoScripy is a collection of video processes including video **Upscale** and v
 VideoScripyWebUI is a local web user interface developed with **Dash**, it has the goal of enhancing user experience.
 ![demo.gif](./doc/demo_upscale.gif)
 
-> <span style="color:red">**⚠ Currently only compatible with Windows users who have Nvidia cards.**</span> 
+<!-- > <span style="color:red">**⚠ Currently only compatible with Windows users who have Nvidia cards.**</span>  -->
 
 
 
@@ -23,7 +23,7 @@ VideoScripyWebUI is a local web user interface developed with **Dash**, it has t
 ## Requirements
 
 - Windows OS
-- NVIDIA GPU
+- NVIDIA GPU for faster video process
 - Atleast 50 Go disk space free for Upscale process | 10 Go for Interpolate process
 - Python 3.10
 - [Tools](#installation-1)
@@ -40,7 +40,7 @@ Download and extract the [Embedded release](https://github.com/luewh/Video-Scrip
 
 ### Usage
 
-Run the `RUN.bat`
+Run the `VideoScripyWebUI.bat`
 
 
 
@@ -65,6 +65,7 @@ Advantage : **Freedom**
     [FFmpeg](https://www.gyan.dev/ffmpeg/builds/) full build for hardware acceleration.  
     [Real-ESRGAN-ncnn-vulkan](https://github.com/xinntao/Real-ESRGAN-ncnn-vulkan/releases) for video upscaling.  
     [Ifrnet-ncnn-vulkan](https://github.com/nihui/ifrnet-ncnn-vulkan/releases) for video frame interpolation.  
+    [NVEncC](https://github.com/rigaya/NVEnc) for GPU feature detection.  
 
 4. Include tools
     
@@ -85,12 +86,14 @@ Advantage : **Freedom**
     │   └───Ifrnet
     │   │   │   ...
     │   │   │   ifrnet-ncnn-vulkan.exe
+    |...
     ```
 
     Or add them in the environment variable *PATH*
     - `<pathTo>\ffmpeg-full_build\bin`
     - `<pathTo>\Real-ESRGAN`
     - `<pathTo>\Ifrnet`
+    - `<pathTo>\NVEnc`
 
 ### Usage
 
@@ -114,7 +117,7 @@ Run the `VideoScripyWebUI.py`
     Increase video size by factor of 2,3 or 4 with AI, enhance video quality.  
     <details>
     <summary>expand more</summary>
-        Begin with a transformation of video to image frames, then upscale each frames, finally reassemble to video.   
+        Begin with a transformation of video to image frames, then upscale each frames, finally reassemble to video.  
         It has the ability to start from last upscal progress if the "_upscaledx?_frame" wasn't deleted.
     </details>
 
@@ -158,6 +161,7 @@ This project relies on the following software and projects :
 - [FFmpeg](https://www.ffmpeg.org/)
 - [FFmpeg-python](https://github.com/kkroening/ffmpeg-python)
 - [Dash](https://dash.plotly.com/)
+- [NVEncC](https://github.com/rigaya/NVEnc)
 
 Sounds come from :
 - [Pixabay](https://pixabay.com/sound-effects/search/typewriter/)
