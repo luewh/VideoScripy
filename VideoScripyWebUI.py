@@ -94,7 +94,16 @@ langDict = [
     {"label": "German | deutsch",
      "value": "deu"}, #ger
 ]
-
+encoderDict = [
+    {"label": "GPU & H265",
+     "value": "True True"},
+    {"label": "GPU & H264",
+     "value": "True False"},
+    {"label": "CPU & H265",
+     "value": "False True"},
+    {"label": "CPU & H264",
+     "value": "False False"},
+]
 
 
 app = Dash(
@@ -147,16 +156,74 @@ app.layout = html.Div(
                                 "Process :",
                                 className="ch_h6_title",
                             ),
-                            dcc.Dropdown(
-                                processes,
-                                value=processes[0],
-                                placeholder="Select a process ...",
-                                id="dropdown_processes",
-                                maxHeight=233,
-                                optionHeight=28,
-                                searchable=True,
-                                clearable=False,
-                                className="dcc_dropdown",
+                            dbc.Stack(
+                                [
+                                    dbc.Col(
+                                        dcc.Dropdown(
+                                            processes,
+                                            value=processes[0],
+                                            placeholder="Select a process ...",
+                                            id="dropdown_processes",
+                                            maxHeight=233,
+                                            optionHeight=28,
+                                            searchable=True,
+                                            clearable=False,
+                                            className="dcc_dropdown",
+                                        ),
+                                        width=6,
+                                    ),
+                                    dbc.Tooltip(
+                                        [
+                                            html.Div("GPU is fast but has lower quality than CPU."),
+                                            html.Div("H265 has better compression but slower than H264."),
+                                        ],
+                                        target="dropdown_encoder",
+                                        placement="left",
+                                        delay={"show": 1500, "hide": 0},
+                                    ),
+                                    dbc.Col(
+                                        dcc.Dropdown(
+                                            encoderDict,
+                                            value="True True",
+                                            placeholder="Select a enccoder ...",
+                                            id="dropdown_encoder",
+                                            maxHeight=233,
+                                            optionHeight=20,
+                                            searchable=True,
+                                            clearable=False,
+                                            style={
+                                                "height":"5vh",
+                                                "font-size":"10px",
+                                                "color":"black",
+                                            },
+                                        ),
+                                        width=2,
+                                    ),
+                                    dbc.Col(
+                                        dcc.Dropdown(
+                                            [
+                                                {
+                                                    "label" : devices["name"],
+                                                    "value" : devices["id"],
+                                                } for devices in vs.devices
+                                            ],
+                                            value=vs.selectedDevice["id"],
+                                            placeholder="Select a hardware ...",
+                                            id="dropdown_device",
+                                            maxHeight=233,
+                                            optionHeight=20,
+                                            searchable=True,
+                                            clearable=False,
+                                            style={
+                                                "height":"5vh",
+                                                "font-size":"10px",
+                                                "color":"black",
+                                            },
+                                        ),
+                                        width=4,
+                                    )
+                                ],
+                                direction="horizontal",
                             ),
                             html.Hr(className="ch_hr"),
                         ],
@@ -354,6 +421,58 @@ def clientClose(_):
     print("| "+text+" |")
     print("-"*(len(text)+4))
     raise PreventUpdate
+
+
+
+@callback(
+    Output("dropdown_encoder", 'value'),
+    Input("dropdown_encoder", 'value'),
+    prevent_initial_call=True,
+)
+def setVideoEncoder(selectedVideoEncoder):
+    global vs
+    if selectedVideoEncoder is None:
+        raise PreventUpdate
+    
+    # get GPU and H265 boolean
+    selectedVideoEncoder = selectedVideoEncoder.split(" ")
+
+    # convert string to bool
+    for argIndex in range(len(selectedVideoEncoder)):
+        if selectedVideoEncoder[argIndex] == "True":
+            selectedVideoEncoder[argIndex] = True
+        elif selectedVideoEncoder[argIndex] == "False":
+            selectedVideoEncoder[argIndex] = False
+        else:
+            print("Something wrong in setVideoEncoder() :", selectedVideoEncoder)
+
+    vs.setEncoder(gpu=selectedVideoEncoder[0], h265=selectedVideoEncoder[1])
+
+    result = ""
+    if vs.gpu:
+        result += "True "
+    else:
+        result += "False "
+        
+    if vs.h265:
+        result += "True"
+    else:
+        result += "False"
+    
+    return result
+
+
+
+@callback(
+    Input("dropdown_device", 'value'),
+    prevent_initial_call=True,
+)
+def setVideoDevice(selectedDevice):
+    global vs
+    if selectedDevice is None:
+        raise PreventUpdate
+    vs.selectDevice(selectedDevice)
+    print(selectedDevice)
 
 
 

@@ -155,10 +155,16 @@ class VideoScripy():
         
         self.h265 = False
         self.gpu = False
-        self.GPUs:list[GPUInfo] = []
+        self.devices:list[GPUInfo] = []
+        # TODO missing feature of cheking cpu h265 availability
+        self.devices.append({
+            "id" : -1,
+            "name" : "CPU",
+            "codecs" : ["H.264/AVC", "H.265/HEVC"],
+        })
         self.checkGPUs()
-        self.selectedGPU:GPUInfo = None
-        self.selectGPU()
+        self.selectedDevice:GPUInfo = None
+        self.selectDevice()
         self.setEncoder(h265=True, gpu=True)
 
         self.checkTools()
@@ -187,7 +193,7 @@ class VideoScripy():
 
     def checkGPUs(self) -> None:
         """
-        Fill up self.GPUs by each GPU's info.
+        Fill up self.devices by each GPU's info.
         """
         # get gpu device
         command = "NVEncC64.exe --check-device"
@@ -204,40 +210,46 @@ class VideoScripy():
                 
                 name = re.split("#.+:", resultStr)[-1].strip()
 
-                self.GPUs.append({
+                self.devices.append({
                     "id" : id,
                     "name" : name,
                     "codecs" : [],
                 })
 
         # get codec of each gpu
-        for gpu in self.GPUs:
-            command = f'NVEncC64.exe --check-features {gpu["id"]}'
+        for device in self.devices:
+
+            # skip CPU
+            if device["id"] == -1:
+                continue
+
+            command = f'NVEncC64.exe --check-features {device["id"]}'
             self._runProcAsync(command)
             result = self._runProcAsyncWait()[0]
             result = result["stdout"].decode('utf-8').split("\r\n")
-
             for resultStr in result:
                 if "Codec:" in resultStr:
-                    gpu["codecs"].append(resultStr.split(":")[-1].strip())
+                    device["codecs"].append(resultStr.split(":")[-1].strip())
         
-    def selectGPU(self, deviceId:int=0) -> None:
+    def selectDevice(self, deviceId:int=0) -> None:
         """
-        Set self.selectedGPU to corresponding element of self.GPUs.
+        Set self.selectedDevice to corresponding element of self.devices.\n
+        -1 for CPU.\n
         """
-        if len(self.GPUs) == 0:
-            printC("No available GPU", "yellow")
-            self.selectedGPU:GPUInfo = None
-            return
-        
-        try:
-            self.selectedGPU = self.GPUs[deviceId]
-            printC(f'Selecting GPU {self.selectedGPU["id"]} : {self.selectedGPU["name"]}', "blue")
-            printC(f'Available codec : {" | ".join(self.selectedGPU["codecs"])}', "blue")
-        except:
-            printC("Wrong device id entered, available GPU(s) is(are):", "red")
-            for gpu in self.GPUs:
-                print(f'    {gpu["id"]} : {gpu["name"]}')
+        # check device id availability
+        if deviceId not in [device["id"] for device in self.devices]:
+            printC(f'Wrong device id "{deviceId}" is entered, available id are:', "red")
+            for device in self.devices:
+                print(f'    {device["id"]} : {device["name"]}')
+            printC("Using CPU as default device", "yellow")
+            deviceId = -1
+
+        # select device
+        for device in self.devices:
+            if deviceId == device["id"]:
+                self.selectedDevice = device
+                printC(f'Selecting device {self.selectedDevice["id"]} : {self.selectedDevice["name"]}', "blue")
+                printC(f'Available codec : {" | ".join(self.selectedDevice["codecs"])}', "blue")
 
     def removeEmptyFolder(self, folderName:str = None):
         if folderName is not None:
@@ -473,7 +485,7 @@ class VideoScripy():
     def setEncoder(self, h265=True, gpu=True) -> None:
         """
         Set encoder parameters according h265 and GPU usage.\n
-        Make sure to be called after self.checkGPUs() and self.selectGPU().
+        Make sure to be called after self.checkGPUs() and self.selectDevice().
 
         Parameters:
             h265 (bool):
@@ -483,15 +495,14 @@ class VideoScripy():
                 _
         """
         # check GPU possibility
-        if (gpu) and (self.selectedGPU is None):
-            printC("Can not use GPU to encode video", "yellow")
+        if (gpu) and (self.selectedDevice["id"] == -1):
+            printC("Can not use GPU to encode video because CPU was selected", "yellow")
             gpu = False
         
-        # TODO missing feature of cheking cpu h265 availability
-        # check GPU h265 possibility
-        if (h265) and (gpu) and ("265" not in " ".join(self.selectedGPU["codecs"])):
-            printC("Selected GPU do not has H265 video encoder", "yellow")
-            gpu = False
+        # check h265 possibility
+        if (h265) and ("265" not in " ".join(self.selectedDevice["codecs"])):
+            printC("Selected device do not has H265 video encoder", "yellow")
+            h265 = False
 
         # summary
         self.h265 = h265
@@ -516,7 +527,7 @@ class VideoScripy():
                 self.encoder = ' hevc_nvenc -weighted_pred 1'
 
             self.encoder += (
-                f' -gpu {self.selectedGPU["id"]}'
+                f' -gpu {self.selectedDevice["id"]}'
                 ' -preset p6'
                 ' -tune hq'
                 ' -rc vbr'
@@ -549,7 +560,7 @@ class VideoScripy():
         if self.gpu:
             hwaccel = (
                 ' -hwaccel cuda'
-                f' -hwaccel_device {self.selectedGPU["id"]}'
+                f' -hwaccel_device {self.selectedDevice["id"]}'
                 ' -hwaccel_output_format cuda'
             )
 
@@ -600,7 +611,7 @@ class VideoScripy():
                 
                 gpuNumber = 0
                 if self.gpu:
-                    gpuNumber = self.selectedGPU["id"]+1
+                    gpuNumber = self.selectedDevice["id"]+1
 
                 if process == VideoProcess.upscale.name:
                     processOutputPath = video["upscaleOutputPath"]
