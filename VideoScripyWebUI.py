@@ -11,7 +11,6 @@ from dash import no_update, ctx, callback, ALL, MATCH
 from dash.dependencies import Input, Output, State
 from dash.exceptions import PreventUpdate
 import dash_bootstrap_components as dbc
-import dash_daq as daq
 from tkinter import Tk, filedialog
 
 # own class
@@ -27,8 +26,8 @@ for index, path in enumerate(addPath):
     addPath[index] = os.path.abspath(path)
 os.environ["PATH"] += os.pathsep.join(addPath)
 
-ip = "localhost"
-port = "8848"
+IP = "localhost"
+PORT = "8848"
 
 # extend VideoInfo
 class VideoInfo(VideoInfo):
@@ -38,14 +37,19 @@ vs = VideoScripy()
 allVideoList:list[VideoInfo] = []
 processes = [p.name for p in VideoProcess]
 videoSizesDict = [
-    # {"label":"240p/SD", "width":426, "height":240},
-    # {"label":"360p/SD", "width":640, "height":360},
+    {"label":"240p/SD", "width":426, "height":240},
+    {"label":"360p/SD", "width":640, "height":360},
     {"label":"480p/SD", "width":854, "height":480},
     {"label":"720p/HD", "width":1280, "height":720},
     {"label":"1080p/FHD", "width":1920, "height":1080},
     {"label":"1440p/2K", "width":2560, "height":1440},
     {"label":"2160p/4K", "width":3840, "height":2160},
     {"label":"4320p/8K", "width":7680, "height":4320},
+]
+videoQualityDict = [
+    {"label":"low : 1", "value":1},
+    {"label":"best : 3", "value":3},
+    {"label":"ultra : 6", "value":6},
 ]
 upscaleFactor = [2, 3, 4]
 videoItemColor = {
@@ -344,8 +348,8 @@ app.layout = html.Div(
     prevent_initial_call=True,
 )
 def clientClose(_):
-    global ip, port
-    text = f"Dash is running on http://{ip}:{port}/"
+    global IP, PORT
+    text = f"Dash is running on http://{IP}:{PORT}/"
     print("-"*(len(text)+4))
     print("| "+text+" |")
     print("-"*(len(text)+4))
@@ -354,21 +358,43 @@ def clientClose(_):
 
 
 def qualityInputUI():
+    global videoQualityDict
     return [
         html.Div(
             "video quality",
             # className="div_text_simple",
         ),
-        dcc.Input(
-            id={"type": "input", "id": "videoQuality"},
-            type="number",
-            value=3.0,
-            min=0.1,
-            max=9.9,
-            step=0.1,
-            persistence=True,
-            className="dcc_input",
-            style={"width":"50px"},
+        dbc.Stack(
+            [
+                dcc.Input(
+                    id={"type": "input", "id": "videoQuality"},
+                    type="number",
+                    value=3.0,
+                    min=0.1,
+                    max=9.9,
+                    step=0.1,
+                    persistence=True,
+                    className="dcc_input",
+                    style={"width":"50px"},
+                ),
+                dbc.Tooltip(
+                    "bitrate = width * height * quality",
+                    target={"type": "spec", "id": "dropdown_videoQuality"},
+                    delay={"show": 500, "hide": 0},
+                ),
+                dcc.Dropdown(
+                    [videoQuality["label"] for videoQuality in videoQualityDict],
+                    placeholder="STANDAR QUALITY",
+                    id={"type": "spec", "id": "dropdown_videoQuality"},
+                    searchable=False,
+                    clearable=False,
+                    maxHeight=70,
+                    optionHeight=19,
+                    className="dcc_dropdown",
+                    style={"width":"180px"},
+                ),
+            ],
+            direction="horizontal",
         ),
     ]
 
@@ -417,7 +443,7 @@ def resizeInputUI():
                     id={"type": "spec", "id": "dropdown_videoSize"},
                     searchable=False,
                     clearable=False,
-                    maxHeight=120,
+                    maxHeight=115,
                     optionHeight=19,
                     className="dcc_dropdown",
                     style={"width":"140px"},
@@ -690,6 +716,21 @@ def update_div_streamParamUI(clicks):
         raise PreventUpdate
     
     return getStreamParam()
+
+
+
+@callback(
+    Output({"type": "input", "id": "videoQuality"}, 'value'),
+    Output({"type": "spec", "id": "dropdown_videoQuality"}, 'value'),
+    Input({"type": "spec", "id": "dropdown_videoQuality"}, 'value'),
+    prevent_initial_call=True,
+)
+def setVideoQuality(selectedVideoQuality):
+    global videoQualityDict
+    for videoQuality in videoQualityDict:
+        if videoQuality["label"] == selectedVideoQuality:
+            return videoQuality["value"], None
+    raise PreventUpdate
 
 
 
@@ -1542,7 +1583,7 @@ stdout = StdoutIntercept()
 def logConsole(_):
     global stdout, colorAnsi
 
-    # skip if not stdout
+    # skip if no stdout
     if stdout.queue == []:
         raise PreventUpdate
     
@@ -1573,13 +1614,13 @@ if __name__ == '__main__':
 
     def open_browser():
         if not os.environ.get("WERKZEUG_RUN_MAIN"):
-            open_new(f'http://{ip}:{port}/')
+            open_new(f'http://{IP}:{PORT}/')
 
     Timer(1, open_browser).start()
 
     app.run(
-        host=ip,
-        port=port,
+        host=IP,
+        port=PORT,
         debug=True,
         dev_tools_silence_routes_logging=True,
     )

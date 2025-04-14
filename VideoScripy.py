@@ -496,7 +496,7 @@ class VideoScripy():
         # summary
         self.h265 = h265
         self.gpu = gpu
-        printC(f'Using {"gpu" if gpu else "cpu"} {"h265" if h265 else "h264"} as video encoder', "blue")
+        printC(f'Using {"(gpu)" if gpu else "(cpu)"} and {"(h265)" if h265 else "(h264)"} as video encoder', "blue")
         
         # cpu
         if not gpu:
