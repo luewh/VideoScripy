@@ -1398,6 +1398,7 @@ class VideoScripy():
 
         outputName = video['name'].replace(f".{video['type']}",".png")
         
+        printC(f'Running process : {process}', "blue")
         processTime = time()
 
         if gridNb != 1:
