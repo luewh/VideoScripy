@@ -1538,6 +1538,8 @@ def setTitleToDefault(n_clicks):
         (Output('button_stopProcess', 'disabled'), False, True),
 
         (Output('dropdown_processes', 'disabled'), True, False),
+        (Output('dropdown_encoder', 'disabled'), True, False),
+        (Output('dropdown_device', 'disabled'), True, False),
 
         (Output({'type':'input','id': ALL}, 'disabled'), True, False),
         (Output({'type':'spec','id': ALL}, 'disabled'), True, False),
