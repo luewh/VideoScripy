@@ -110,8 +110,12 @@ Run the `VideoScripyWebUI.py`
         The processed videos will have a bitRate = width * height * quality, quality=3 is generally the lowest value before appearance of artifacts (bad images, blurry...). In other words, humain wont notice the visual difference between video of quality 3 and 6.
     </details>
 
+    ![demo_upscale_s](./doc/demo_optimize_illus.png)
+
 - resize  
     Reduce the video width and height.
+
+    ![demo_upscale_s](./doc/demo_resize_illus.png)
 
 - upscale  
     Increase video size by factor of 2,3 or 4 with AI, enhance video quality.  
@@ -121,9 +125,21 @@ Run the `VideoScripyWebUI.py`
         It has the ability to start from last upscal progress if the "_upscaledx?_frame" wasn't deleted.
     </details>
 
-    From 266x200 to 1064x800  
-    ![demo_upscale_s](./doc/demo_upscale_small.png)
-    ![demo_upscale_b](./doc/demo_upscale_big.png)
+    <ins>Original : 266x200</ins>
+
+    ![demo_upscale_s](./doc/demo_upscale_x1.png)
+
+    <ins>Upscal x2 : 532x400</ins>
+
+    ![demo_upscale_b](./doc/demo_upscale_x2.png)
+
+    <ins>Upscal x3 : 798x600</ins>
+    
+    ![demo_upscale_b](./doc/demo_upscale_x3.png)
+
+    <ins>Upscal x4 1064x800</ins>
+    
+    ![demo_upscale_b](./doc/demo_upscale_x4.png)
 
 - interpolate  
     Increase video frame rate (FPS), smooth video.  
@@ -134,7 +150,9 @@ Run the `VideoScripyWebUI.py`
 
 - preview  
     Generate a grid of images.  
-    3x2 grid of 2min countdown video :
+
+    <ins>3x2 grid of 2min countdown video</ins>
+
     ![demo_preview](./doc/demo_preview.png)
 
 - stream  
@@ -142,12 +160,16 @@ Run the `VideoScripyWebUI.py`
     And also modify metadata as tile and language.  
     Then use media player as PotPlayer to switch between video/audio/subtitle.
 
+    ![demo_upscale_s](./doc/demo_stream_illus.png)
+
 
 
 ## Benchmarking
 
 - ### x3 Faster FFprobe by running it "asynchronously"
-    ffprobe on 64 videos, ~2h long each  
+
+    <ins>ffprobe on 64 videos, ~2h long each</ins>
+
     ![Fast FFprobe](./doc/faster_way_to_run_ffprobe.png)
 
 
