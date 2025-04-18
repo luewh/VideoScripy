@@ -646,15 +646,16 @@ class VideoScripy():
                     )
 
                 elif substep == 2:
-                    imgDecoder = ""
+                    # ffmpeg -decoders
+                    imgDecoder = "mjpeg"
                     if self.gpu:
-                        imgDecoder = "-c:v mjpeg_cuvid"
+                        imgDecoder = "mjpeg_cuvid"
                     command = (
                         f' ffmpeg'
                         f' {hwaccel}'
                         f' -i "{videoPath}"'
                         f' {hwaccel}'
-                        f' {imgDecoder} -r {videoFps}'
+                        f' -c:v {imgDecoder} -r {videoFps}'
                         f' -i "{processOutputPath}/frame%08d.jpg"'
                         f' -map 1:v:0 -map 0:a? -map 0:s?'
                         f' {communFFmpegOut}'
