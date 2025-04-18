@@ -234,7 +234,7 @@ class VideoScripy():
     def selectDevice(self, deviceId:int=0) -> None:
         """
         Set self.selectedDevice to corresponding element of self.devices.\n
-        -1 for CPU.\n
+        If wrong id entered, will use -1 as default which correspond to CPU.\n
         """
         # check device id availability
         if deviceId not in [device["id"] for device in self.devices]:
@@ -254,10 +254,8 @@ class VideoScripy():
     def removeEmptyFolder(self, folderName:str = None):
         if folderName is not None:
             try:
-                # print(folderName)
                 rmdir(folderName)
             except:
-                # print("ex")
                 pass
         else:
             for process in [p.name for p in VideoProcess]:
@@ -648,12 +646,15 @@ class VideoScripy():
                     )
 
                 elif substep == 2:
+                    imgDecoder = ""
+                    if self.gpu:
+                        imgDecoder = "-c:v mjpeg_cuvid"
                     command = (
                         f' ffmpeg'
                         f' {hwaccel}'
                         f' -i "{videoPath}"'
                         f' {hwaccel}'
-                        f' -c:v mjpeg_cuvid -r {videoFps}'
+                        f' {imgDecoder} -r {videoFps}'
                         f' -i "{processOutputPath}/frame%08d.jpg"'
                         f' -map 1:v:0 -map 0:a? -map 0:s?'
                         f' {communFFmpegOut}'
