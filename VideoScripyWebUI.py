@@ -95,14 +95,10 @@ langDict = [
      "value": "deu"}, #ger
 ]
 encoderDict = [
-    {"label": "GPU & H265",
-     "value": "True True"},
-    {"label": "GPU & H264",
-     "value": "True False"},
-    {"label": "CPU & H265",
-     "value": "False True"},
-    {"label": "CPU & H264",
-     "value": "False False"},
+    {"label": "H265",
+     "value": True},
+    {"label": "H264",
+     "value": False},
 ]
 
 
@@ -174,8 +170,8 @@ app.layout = html.Div(
                                     ),
                                     dbc.Tooltip(
                                         [
-                                            html.Div("GPU is fast but has lower quality than CPU."),
                                             html.Div("H265 has better compression but slower than H264."),
+                                            html.Div("H264 video is playable on most of devices while H265 not."),
                                         ],
                                         target="dropdown_encoder",
                                         placement="left",
@@ -184,7 +180,7 @@ app.layout = html.Div(
                                     dbc.Col(
                                         dcc.Dropdown(
                                             encoderDict,
-                                            value="True True",
+                                            value=vs.h265,
                                             placeholder="Select a enccoder ...",
                                             id="dropdown_encoder",
                                             maxHeight=233,
@@ -198,6 +194,15 @@ app.layout = html.Div(
                                             },
                                         ),
                                         width=2,
+                                    ),
+                                    dbc.Tooltip(
+                                        [
+                                            html.Div("GPU is fast but has lower quality than CPU."),
+                                            html.Div("GPU is recommanded on AI process like upscale and interpolate."),
+                                        ],
+                                        target="dropdown_device",
+                                        placement="left",
+                                        delay={"show": 1500, "hide": 0},
                                     ),
                                     dbc.Col(
                                         dcc.Dropdown(
@@ -427,53 +432,29 @@ def clientClose(_):
 @callback(
     Output("dropdown_encoder", 'value'),
     Input("dropdown_encoder", 'value'),
-    running=[(Output('interval_log', 'n_intervals'), 0, 0)],
-    prevent_initial_call=True,
-)
-def setVideoEncoder(selectedVideoEncoder):
-    global vs
-    if selectedVideoEncoder is None:
-        raise PreventUpdate
-    
-    # get GPU and H265 boolean
-    selectedVideoEncoder = selectedVideoEncoder.split(" ")
-
-    # convert string to bool
-    for argIndex in range(len(selectedVideoEncoder)):
-        if selectedVideoEncoder[argIndex] == "True":
-            selectedVideoEncoder[argIndex] = True
-        elif selectedVideoEncoder[argIndex] == "False":
-            selectedVideoEncoder[argIndex] = False
-        else:
-            print("Something wrong in setVideoEncoder() :", selectedVideoEncoder)
-
-    vs.setEncoder(gpu=selectedVideoEncoder[0], h265=selectedVideoEncoder[1])
-
-    result = ""
-    if vs.gpu:
-        result += "True "
-    else:
-        result += "False "
-        
-    if vs.h265:
-        result += "True"
-    else:
-        result += "False"
-    
-    return result
-
-
-
-@callback(
     Input("dropdown_device", 'value'),
     running=[(Output('interval_log', 'n_intervals'), 0, 0)],
     prevent_initial_call=True,
 )
-def setVideoDevice(selectedDevice):
+def setVideoEncoderOrDevice(encoder, device):
     global vs
-    if selectedDevice is None:
-        raise PreventUpdate
-    vs.selectDevice(selectedDevice)
+    if ctx.triggered_id == "dropdown_encoder":
+
+        if encoder is None:
+            raise PreventUpdate
+
+        vs.setEncoder(encoder)
+
+        return vs.h265
+    
+    elif ctx.triggered_id == "dropdown_device":
+
+        if device is None:
+            raise PreventUpdate
+        
+        vs.selectDevice(device)
+
+        return vs.h265
 
 
 

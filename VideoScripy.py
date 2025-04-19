@@ -132,6 +132,8 @@ class VideoScripy():
     def __init__(self) -> None:
         """
         Initialise attributes\n
+        checkGPUs()\n
+        selectDevice()\n
         setEncoder()\n
         checkTools()
         """
@@ -165,7 +167,7 @@ class VideoScripy():
         self.checkGPUs()
         self.selectedDevice:GPUInfo = None
         self.selectDevice()
-        self.setEncoder(h265=True, gpu=True)
+        self.setEncoder(h265=True)
 
         self.checkTools()
     
@@ -234,6 +236,8 @@ class VideoScripy():
     def selectDevice(self, deviceId:int=0) -> None:
         """
         Set self.selectedDevice to corresponding element of self.devices.\n
+        Re setEncoder() with self.h265 as argument.\n
+        Set self.gpu to True if selected device's id is not -1.\n
         If wrong id entered, will use -1 as default which correspond to CPU.\n
         """
         # check device id availability
@@ -250,6 +254,13 @@ class VideoScripy():
                 self.selectedDevice = device
                 printC(f'Selecting device {self.selectedDevice["id"]} : {self.selectedDevice["name"]}', "blue")
                 printC(f'Available codec : {" | ".join(self.selectedDevice["codecs"])}', "blue")
+        
+        # set gpu state
+        self.gpu = deviceId != -1
+        
+        # set encoder according to selected device ability
+        print("Need to reset the video encoder")
+        self.setEncoder(self.h265)
 
     def removeEmptyFolder(self, folderName:str = None):
         if folderName is not None:
@@ -480,7 +491,7 @@ class VideoScripy():
 
 
     # ffmpeg encoder related
-    def setEncoder(self, h265=True, gpu=True) -> None:
+    def setEncoder(self, h265=True) -> None:
         """
         Set encoder parameters according h265 and GPU usage.\n
         Make sure to be called after self.checkGPUs() and self.selectDevice().
@@ -488,15 +499,7 @@ class VideoScripy():
         Parameters:
             h265 (bool):
                 _
-
-            gpu (bool):
-                _
-        """
-        # check GPU possibility
-        if (gpu) and (self.selectedDevice["id"] == -1):
-            printC("Can not use GPU to encode video because CPU was selected", "yellow")
-            gpu = False
-        
+        """        
         # check h265 possibility
         if (h265) and ("265" not in " ".join(self.selectedDevice["codecs"])):
             printC("Selected device do not has H265 video encoder", "yellow")
@@ -504,11 +507,10 @@ class VideoScripy():
 
         # summary
         self.h265 = h265
-        self.gpu = gpu
-        printC(f'Using {"(gpu)" if gpu else "(cpu)"} and {"(h265)" if h265 else "(h264)"} as video encoder', "blue")
+        printC(f'Using {"(h265)" if h265 else "(h264)"} and {"(gpu)" if self.gpu else "(cpu)"} as video encoder', "blue")
         
         # cpu
-        if not gpu:
+        if not self.gpu:
             if not h265:
                 self.encoder = ' libx264 -crf 1'
             else:
