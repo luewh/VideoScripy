@@ -1094,8 +1094,8 @@ def getVideoItem(video:VideoInfo, index:int, prefix:str=""):
 def scanFiles(_):
     global vs, allVideoList
     
-    vs.getVideo()
-    vs.getVideoInfo()
+    if vs.getVideo():
+        vs.getVideoInfo()
 
     # record scanned video, for selection and sort purpose
     allVideoList = vs.vList

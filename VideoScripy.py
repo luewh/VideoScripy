@@ -310,16 +310,23 @@ class VideoScripy():
                 printC(f'Path "{path}" do not exist', "red")
                 return False
     
-    def getVideo(self, folderDepthLimit:int=0) -> None:
+    def getVideo(self, folderDepthLimit:int=0) -> bool:
         """
-        Set attributes vList's path and name by os.walk()
+        Set attributes vList's path and name by os.walk().\n
+        Return false if self.path do not exist anymore.
 
         Parameters:
             folderDepthLimit (int):
                 limit the scan depth
         """
+        
         # empty video list
         self.vList = []
+        
+        # check path validity
+        if not isdir(self.path):
+            printC(f'Path "{self.path}" do not exist', "red")
+            return False
 
         for root, _, files in walk(self.path):
             # get current root's depth
@@ -361,6 +368,8 @@ class VideoScripy():
         
         # order by name
         self.vList.sort(key= lambda video: video['name'])
+
+        return True
     
     def getVideoInfo(self) -> None:
         """
