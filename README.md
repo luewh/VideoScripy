@@ -127,19 +127,19 @@ Run the `VideoScripyWebUI.py`
 
     <ins>Original : 266x200</ins>
 
-    ![demo_upscale_s](./doc/demo_upscale_x1.png)
+    ![demo_upscale_s](./doc/demo.gif)
 
     <ins>Upscal x2 : 532x400</ins>
 
-    ![demo_upscale_b](./doc/demo_upscale_x2.png)
+    ![demo_upscale_b](./doc/demo_upscale_x2.gif)
 
     <ins>Upscal x3 : 798x600</ins>
     
-    ![demo_upscale_b](./doc/demo_upscale_x3.png)
+    ![demo_upscale_b](./doc/demo_upscale_x3.gif)
 
     <ins>Upscal x4 1064x800</ins>
     
-    ![demo_upscale_b](./doc/demo_upscale_x4.png)
+    ![demo_upscale_b](./doc/demo_upscale_x4.gif)
 
 - interpolate  
     Increase video frame rate (FPS), smooth video.  
@@ -147,6 +147,13 @@ Run the `VideoScripyWebUI.py`
     <summary>expand more</summary>
         Begin with a transformation of video to image frames, then interpolate between frames, finally reassemble to video.
     </details>
+    
+    <ins>interpolate 25fps -> 60fps</ins>
+
+    ![demo_upscale_s](./doc/demo.gif)
+    ![demo_upscale_s](./doc/demo_interpolate_60fps.gif)
+
+    (The 60fps gif may be slowed down due to markdown, use a proper viewer may solve the problem)
 
 - preview  
     Generate a grid of images.  
