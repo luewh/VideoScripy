@@ -143,7 +143,7 @@ class VideoScripy():
         self.vList:list[VideoInfo] = []
         self.vType = ["mp4","mkv"]
         self.aType = []
-        self.sType = ["smi"]
+        self.sType = ["smi", "srt"]
         self.scanType = self.vType + self.aType + self.sType
         self.folderSkip = [p.name for p in VideoProcess]
         self.OPTIMIZE_TOLERENCE = 1.15
@@ -481,8 +481,8 @@ class VideoScripy():
                         self.vList[videoIndex]['fps'] 
                         * self.vList[videoIndex]['duration'].total_seconds()
                     )
-                # smi and other
-                elif self.vList[videoIndex]["type"] in ["smi", "other"]:
+                # subtitle and other
+                elif self.vList[videoIndex]["type"] in self.sType + ["other"]:
                     self.vList[videoIndex]['duration'] = timedelta(seconds=0)
                     self.vList[videoIndex]['bitRate'] = 0
                     self.vList[videoIndex]['nbFrames'] = 0
