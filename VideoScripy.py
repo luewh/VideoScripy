@@ -142,7 +142,7 @@ class VideoScripy():
         
         self.vList:list[VideoInfo] = []
         self.vType = ["mp4","mkv"]
-        self.aType = []
+        self.aType = ["mp3", "m4a", "aac", "wav"]
         self.sType = ["smi", "srt"]
         self.scanType = self.vType + self.aType + self.sType
         self.folderSkip = [p.name for p in VideoProcess]
@@ -481,6 +481,14 @@ class VideoScripy():
                         self.vList[videoIndex]['fps'] 
                         * self.vList[videoIndex]['duration'].total_seconds()
                     )
+                # audio
+                elif self.vList[videoIndex]["type"] in self.aType:
+                    self.vList[videoIndex]['duration'] = timedelta(seconds=float(results[videoIndex]['format']['duration']))
+                    self.vList[videoIndex]['bitRate'] = int(results[videoIndex]['format']['bit_rate'])
+                    self.vList[videoIndex]['nbFrames'] = 0
+                    self.vList[videoIndex]['width'] = 0
+                    self.vList[videoIndex]['height'] = 0
+                    self.vList[videoIndex]['fps'] = 0.0
                 # subtitle and other
                 elif self.vList[videoIndex]["type"] in self.sType + ["other"]:
                     self.vList[videoIndex]['duration'] = timedelta(seconds=0)
@@ -489,6 +497,11 @@ class VideoScripy():
                     self.vList[videoIndex]['width'] = 0
                     self.vList[videoIndex]['height'] = 0
                     self.vList[videoIndex]['fps'] = 0.0
+                else:
+                    printC(
+                        f'Uncovered type "{self.vList[videoIndex]["type"]}" at "{self.vList[videoIndex]["name"]}"',
+                        "red"
+                    )
             
             except Exception as e:
                 printC(f'Unexpected erro "{e.with_traceback(None)}"', "red")
