@@ -1,11 +1,16 @@
-# <img src="./assets/favicon.ico" alt="drawing" width="20px"/> VideoScripy & WebUI 
+<div align="center">
 
-VideoScripy is a collection of video processes including video **Upscale** and video frame **Interpolation**, it uses Python to generate **FFmpeg**, **Real-ESRGAN** and **IFRNet** command line script and performes serial processing on scanned **mp4** videos with **hardware acceleration**.
+# <img src="./assets/favicon.ico" alt="drawing" width="20px"/> VideoScripy
 
-VideoScripyWebUI is a local web user interface developed with **Dash**, it has the goal of enhancing user experience.
+**English** | [**中文简体**](./README_CN.md)
+
+**Quality preserved, Storage saved.**
+
+Collection of video processes such as compression, upscale, interpolation and stream manipulation.
+
 ![demo.gif](./doc/demo_upscale.gif)
 
-<!-- > <span style="color:red">**⚠ Currently only compatible with Windows users who have Nvidia cards.**</span>  -->
+</div>
 
 
 
@@ -103,14 +108,14 @@ Run the `VideoScripyWebUI.py`
 
 ## Processes Description
 
-- optimize  
+- compress  
     Reduce the video biteRate in order to gain storage space.  
     <details>
     <summary>expand more</summary>
-        The processed videos will have a bitRate = width * height * quality, quality=3 is generally the lowest value before appearance of artifacts (bad images, blurry...). In other words, humain wont notice the visual difference between video of quality 3 and 6.
+        The processed videos will have a bitRate = width * height * quality, quality=3 is generally the lowest value before appearance of artifacts (bad images, blurry...). In other words, humain won't notice the visual difference between video of quality 3 and 6.
     </details>
 
-    ![demo_upscale_s](./doc/demo_optimize_illus.png)
+    ![demo_upscale_s](./doc/demo_compress_illus.png)
 
 - resize  
     Reduce the video width and height.
@@ -119,10 +124,10 @@ Run the `VideoScripyWebUI.py`
 
 - upscale  
     Increase video size by factor of 2,3 or 4 with AI, enhance video quality.  
+    It has the ability to start from last upscal progress if the "_upscaledx?_frame" wasn't deleted. 
     <details>
     <summary>expand more</summary>
         Begin with a transformation of video to image frames, then upscale each frames, finally reassemble to video.  
-        It has the ability to start from last upscal progress if the "_upscaledx?_frame" wasn't deleted.
     </details>
 
     <ins>Original : 266x200</ins>
@@ -170,7 +175,7 @@ Run the `VideoScripyWebUI.py`
     ![demo_upscale_s](./doc/demo_stream_illus.png)
 
 
-
+<!-- 
 ## Benchmarking
 
 - ### x3 Faster FFprobe by running it "asynchronously"
@@ -178,7 +183,7 @@ Run the `VideoScripyWebUI.py`
     <ins>ffprobe on 64 videos, ~2h long each</ins>
 
     ![Fast FFprobe](./doc/faster_way_to_run_ffprobe.png)
-
+ -->
 
 
 ## Credits
