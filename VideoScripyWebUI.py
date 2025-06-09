@@ -774,7 +774,7 @@ def update_div_processParamUI(selectedProcess:str):
             className="ch_h6_title",
         ),
     ]
-    if selectedProcess == VideoProcess.optimize.name:
+    if selectedProcess == VideoProcess.compress.name:
         processParamUI.extend([
             *qualityInputUI(),
         ])
@@ -1583,8 +1583,8 @@ def runProcess(_, selectedProcess, inputValues):
             vs.vList.append(video)
     
     # run process
-    if selectedProcess == VideoProcess.optimize.name:
-        vs.optimize(videoQuality)
+    if selectedProcess == VideoProcess.compress.name:
+        vs.compress(videoQuality)
     elif selectedProcess == VideoProcess.resize.name:
         vs.resize(videoWidth, videoHeight, videoQuality)
     elif selectedProcess == VideoProcess.upscale.name:

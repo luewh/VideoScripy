@@ -68,7 +68,7 @@ class VideoProcess(Enum):
     """
     Implemented processes and its substep
     """
-    optimize = "optimize"
+    compress = "compress"
     resize = "resize"
     upscale = ["getFrames", "upscale", "frameToVideo"]
     interpolate = ["getFrames", "interpolate", "frameToVideo"]
@@ -115,8 +115,8 @@ class VideoScripy():
         folderSkip ([str]):
             self generated folders, skiped when scanning
 
-        OPTIMIZE_TOLERENCE (float):
-            do not optimize if optimizedBitRate * OPTIMIZE_TOLERENCE < bitRate
+        COMPRESS_TOLERENCE (float):
+            do not compress if compressdBitRate * COMPRESS_TOLERENCE < bitRate
 
         highQualityParam (str):
             hevc_nvenc high quality parameters
@@ -146,7 +146,7 @@ class VideoScripy():
         self.sType = ["smi", "srt"]
         self.scanType = self.vType + self.aType + self.sType
         self.folderSkip = [p.name for p in VideoProcess]
-        self.OPTIMIZE_TOLERENCE = 1.15
+        self.COMPRESS_TOLERENCE = 1.15
 
         self.proc:subprocess.Popen = None
         self.killed = False
@@ -589,13 +589,13 @@ class VideoScripy():
         # set communFFmpegOut
         communFFmpegOut = (
             f' -c:v copy -c:a copy -c:s copy'
-            f' -c:v:0 {self.encoder} {video["optimizeBitRateParam"]}'
+            f' -c:v:0 {self.encoder} {video["compressBitRateParam"]}'
             f' -r {videoFps}'
             f' -y'
             f' "{process}\\{videoName}"'
         )
 
-        if process == VideoProcess.optimize.name:
+        if process == VideoProcess.compress.name:
             command = (
                 f' ffmpeg'
                 f' {hwaccel}'
@@ -939,10 +939,10 @@ class VideoScripy():
         
         return result
 
-    def pre_optimize(self, video:VideoInfo, width:int, height:int, quality:float) -> bool:
+    def pre_compress(self, video:VideoInfo, width:int, height:int, quality:float) -> bool:
         """
-        Compute optimizeBitRate and optimizeBitRateParam, to limit video bit rate\n
-        Return True if optimization needed else False
+        Compute compressBitRate and compressBitRateParam, to limit video bit rate\n
+        Return True if compression is needed else False
         
         Parameters:
             video (VideoInfo):
@@ -958,19 +958,19 @@ class VideoScripy():
                 video bit rate = width x height x quality
         
         """
-        # compute optimization bit rate
-        optimizeBitRate = width * height * quality
+        # compute compression bit rate
+        compressBitRate = width * height * quality
 
-        print(f'{video["bitRate"]/1_000:_.0f} Kbits/s --> {optimizeBitRate/1_000:_.0f} Kbits/s')
+        print(f'{video["bitRate"]/1_000:_.0f} Kbits/s --> {compressBitRate/1_000:_.0f} Kbits/s')
 
-        video['optimizeBitRate'] = optimizeBitRate
-        video['optimizeBitRateParam'] = (
-            f' -maxrate:v {optimizeBitRate}'
-            f' -bufsize:v {optimizeBitRate*2} '
+        video['compressBitRate'] = compressBitRate
+        video['compressBitRateParam'] = (
+            f' -maxrate:v {compressBitRate}'
+            f' -bufsize:v {compressBitRate*2} '
         )
 
-        # check if optimization needed
-        if video["optimizeBitRate"] * self.OPTIMIZE_TOLERENCE > video['bitRate']:
+        # check if compression needed
+        if video["compressBitRate"] * self.COMPRESS_TOLERENCE > video['bitRate']:
             return False
         else:
             return True
@@ -1023,7 +1023,7 @@ class VideoScripy():
         return wrapper
 
     @_serial
-    def optimize(self, video:VideoInfo, quality:float=3.0) -> str:
+    def compress(self, video:VideoInfo, quality:float=3.0) -> str:
         """
         Reduce video bit rate\n
         Return "end", "err", "skip" or "stop"
@@ -1033,7 +1033,7 @@ class VideoScripy():
                 video bit rate = width x height x quality
         """
         
-        process = VideoProcess.optimize.name
+        process = VideoProcess.compress.name
         # create output folder
         outputFolder = self.path+f'\\{process}'
         if not isdir(outputFolder):
@@ -1050,8 +1050,8 @@ class VideoScripy():
         # show current process changing info
         print('{}x{}'.format(width, height))
 
-        optimizeNeed = self.pre_optimize(video, width, height, quality)
-        if not optimizeNeed:
+        compressNeed = self.pre_compress(video, width, height, quality)
+        if not compressNeed:
             printC('Skipped', "yellow")
             return "skip"
 
@@ -1148,7 +1148,7 @@ class VideoScripy():
         video["resizeWidth"] = widthResize
         video["resizeHeight"] = heightResize
 
-        self.pre_optimize(video, widthResize, heightResize, quality)
+        self.pre_compress(video, widthResize, heightResize, quality)
 
         command = self._getCommand(video, process)
         result = self._runProc(command, process)
@@ -1198,7 +1198,7 @@ class VideoScripy():
         heightUpscale = height * upscaleFactor
         print(f'{width}x{height} --> {widthUpscale}x{heightUpscale}')
 
-        self.pre_optimize(video, widthUpscale, heightUpscale, quality)
+        self.pre_compress(video, widthUpscale, heightUpscale, quality)
 
         getFramesOutputPath = self.path+f'\\{name}_tmp_frames'
         video["getFramesOutputPath"] = getFramesOutputPath
@@ -1328,7 +1328,7 @@ class VideoScripy():
 
         print(f'{fps}fps --> {fpsInterp}fps')
 
-        self.pre_optimize(video, width, height, quality)
+        self.pre_compress(video, width, height, quality)
         
         getFramesOutputPath = self.path+'\\{}_tmp_frames'.format(name)
         video["getFramesOutputPath"] = getFramesOutputPath
@@ -1695,7 +1695,7 @@ def run():
 
     if process == 1:
         quality = getInputFloat("Quality",3.0)
-        vs.optimize(quality)
+        vs.compress(quality)
 
     elif process == 2:
         width = getInputInt("Width",1920)
