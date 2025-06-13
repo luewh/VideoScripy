@@ -1088,6 +1088,8 @@ def getVideoItem(video:VideoInfo, index:int, prefix:str=""):
         (Output('interval_log', 'n_intervals'), 0, 0),
 
         (Output({"type": "spec", "id": "button_refreshStream"}, 'n_clicks'), 0, 0),
+        
+        (Output({"type": "spec", "id": "button_defaultTitleStream"}, 'n_clicks'), 0, 0),
     ],
     prevent_initial_call=True,
 )
