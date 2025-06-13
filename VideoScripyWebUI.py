@@ -165,6 +165,8 @@ app.layout = html.Div(
                                             searchable=True,
                                             clearable=False,
                                             className="dcc_dropdown",
+                                            persistence_type="local",
+                                            persistence=True,
                                         ),
                                         width=6,
                                     ),
@@ -307,6 +309,7 @@ app.layout = html.Div(
                                             id="input_path",
                                             type="text",
                                             value=vs.path,
+                                            persistence_type="local",
                                             persistence=True,
                                             disabled=True,
                                             n_submit=0,
@@ -400,7 +403,7 @@ app.layout = html.Div(
                     # video item list
                     dbc.ListGroup(
                         id="list_videos",
-                        className="vsu_list_group"
+                        className="vsu_list_group",
                     ),
                 ],
                 width=7,
@@ -474,6 +477,7 @@ def qualityInputUI():
                     min=0.1,
                     max=9.9,
                     step=0.1,
+                    persistence_type="local",
                     persistence=True,
                     className="dcc_input",
                     style={"width":"50px"},
@@ -513,6 +517,7 @@ def resizeInputUI():
                     id={"type": "input", "id": "videoWidth"},
                     type="number",
                     value=1920,
+                    persistence_type="local",
                     persistence=True,
                     min=-1,
                     max=8192,
@@ -531,6 +536,7 @@ def resizeInputUI():
                     id={"type": "input", "id": "videoHeight"},
                     type="number",
                     value=1080,
+                    persistence_type="local",
                     persistence=True,
                     min=-1,
                     max=8192,
@@ -566,6 +572,7 @@ def upscaleInputUI():
             upscaleFactor,
             upscaleFactor[0],
             id={"type": "input", "id": "upscaleFactor"},
+            persistence_type="local",
             persistence=True,
             searchable=False,
             clearable=False,
@@ -588,6 +595,7 @@ def interpolateInputUI():
             value=30.0,
             min=1.0,
             max=240.0,
+            persistence_type="local",
             persistence=True,
             className="dcc_input",
             style={"width":"65px"},
@@ -607,6 +615,7 @@ def previewInputUI():
                     id={"type": "input", "id": "previewCol"},
                     type="number",
                     value=3,
+                    persistence_type="local",
                     persistence=True,
                     min=1,
                     max=10,
@@ -624,6 +633,7 @@ def previewInputUI():
                     id={"type": "input", "id": "previewRow"},
                     type="number",
                     value=2,
+                    persistence_type="local",
                     persistence=True,
                     min=1,
                     max=10,
@@ -767,6 +777,9 @@ def streamInputUI():
 )
 def update_div_processParamUI(selectedProcess:str):
 
+    if selectedProcess is None:
+        raise PreventUpdate
+
     processParamUI = [
         html.H6(
             f"{selectedProcess.capitalize()} parameters :",
@@ -885,7 +898,7 @@ def editPath(_):
     return False, True
 
 @callback(
-    Output('input_path', 'value'),
+    Output('input_path', 'value', allow_duplicate=True),
     Output('input_path', 'n_submit'),
     Input('button_selectDir', 'n_clicks'),
     running=[(Output('button_selectDir', 'disabled'), True, False)],
@@ -1081,7 +1094,7 @@ def getVideoItem(video:VideoInfo, index:int, prefix:str=""):
     Output('button_runProcess', 'disabled', allow_duplicate=True),
     Output('button_scanFiles', 'children', allow_duplicate=True),
     Output('tooltip_run', 'children', allow_duplicate=True),
-    Output('list_videos', 'children'),
+    Output('list_videos', 'children', allow_duplicate=True),
     Input('button_scanFiles', 'n_clicks'),
     running=[
         (Output('list_videos', 'children'), None, None),
@@ -1712,6 +1725,17 @@ def logConsole(_):
             children.append(html.Span(msg))
 
     return children
+
+
+
+@callback(
+    Output('input_path', 'value'),
+    Input('interval_log', 'disabled'),
+)
+def loadPageRefresh(_):
+    global vs
+    return vs.path
+
 
 
 
