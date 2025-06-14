@@ -48,6 +48,12 @@ class StreamInfo(TypedDict):
     language: str
     title: str
 
+class FrameByte(TypedDict):
+    # picture timestamp
+    pts_time : float
+    # size in byte
+    size : int
+
 class VideoInfo(TypedDict):
     """
     VideoScripy.vList typing
@@ -63,6 +69,8 @@ class VideoInfo(TypedDict):
     nbFrames: int
     streams : list[StreamInfo]
     fileSize : int
+    frameBytePerPacket : list[FrameByte]
+    frameBytePerSecond : list[FrameByte]
 
 class VideoProcess(Enum):
     """
@@ -1481,6 +1489,109 @@ class VideoScripy():
 
         self.removeEmptyFolder(outputFolder)
         return "end"
+
+    @_serial
+    def frame(self, video:VideoInfo) -> str:
+        """
+        Get bitrate of each video frame,\n
+        results are stored in frameBytePerPacket and frameBytePerSecond\n
+        Return "end", "err", "skip" or "stop"
+        """
+
+        processTime = time()
+
+        print(video["duration"], "x", video["fps"])
+        print(
+            "=>", video["duration"].total_seconds()*video["fps"],
+            "=", video["nbFrames"]
+        )
+
+        # run probe
+        command = (
+            f' ffprobe'
+            f' -i "{video["path"]}"'
+            f' -select_streams v:0'
+            f' -show_entries packet=pts_time,size'
+            f' -of json'
+        )
+        printC(f'Running process : frame', "blue")
+        self._runProcAsync(command)
+
+        # wait and retrieve results
+        result = self._runProcAsyncWait()[0]
+
+        # stop whole process if killProc() called
+        if self.killed:
+            return "stop"
+        
+        # skip next steps if process not correctly ended
+        if result['returnCode'] != 0:
+            printC(f'FFprobe error, skip {video["name"]}', "yellow")
+            return "skip"
+        
+        # convert stdout to json format
+        result = (
+            json.loads(result['stdout'].decode('utf-8'))
+        )
+
+        # get info
+        packet_data = result["packets"]
+        
+        # convert str to value
+        for p_d in packet_data:
+            p_d["pts_time"] = float(p_d["pts_time"])
+            p_d["size"] = int(p_d["size"])
+
+        # sort by picture timestamp
+        packet_data = sorted(packet_data, key=lambda x : x["pts_time"])
+        
+        # check sort
+        pts_time_prev = float('-inf')
+        for p_d in packet_data:
+            if p_d["pts_time"] - pts_time_prev < 0:
+                printC(
+                    f'wrong'
+                    f'{p_d["pts_time"]} {pts_time_prev}'
+                    f'{p_d["pts_time"] - pts_time_prev}'
+                    f'{p_d["pts_time"] - pts_time_prev < 0}'
+                    f'{video["name"]}',
+                    "red"
+                )
+                return "err"
+        
+        # per packet to per second
+        second_data = []
+        switch_time = 1
+        size_cumul = 0
+        for p_d in packet_data:
+
+            if p_d["pts_time"] >= switch_time:
+                switch_time += 1
+                second_data.append({
+                    "pts_time": p_d["pts_time"],
+                    "size" : size_cumul
+                })
+                size_cumul = 0
+            else:
+                size_cumul += p_d["size"]
+
+        if size_cumul > 0:
+            # print(size_cumul, p_d["pts_time"])
+            second_data.append({
+                "pts_time": p_d["pts_time"],
+                "size" : size_cumul
+            })
+
+        # write info
+        video["frameBytePerPacket"] = packet_data
+        video["frameBytePerSecond"] = second_data
+        
+        processTime = time() - processTime
+        processTime = timedelta(seconds=processTime)
+        print(f"Took : {str(processTime)[:-3]}")
+
+        return "end"
+
 
     def stream(self) -> None:
         """
