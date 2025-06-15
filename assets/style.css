@@ -285,6 +285,24 @@
     overflow: clip;
 }
 
+.modal_head {
+    height: 5vh;
+    padding: 10;
+}
 
+.modal_foot {
+    height: 5vh;
+    padding: 10;
+}
 
+.modal_body {
+    height: 90vh;
+    padding: 0;
+}
 
+.modal_body_fig {
+    height: 100%;
+    width: 99%;
+    margin: auto;
+    padding: 0;
+}

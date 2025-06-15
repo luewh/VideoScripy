@@ -1587,15 +1587,22 @@ class VideoScripy():
                 size_cumul += p_d["size"]
 
         if size_cumul > 0:
-            # print(size_cumul, p_d["pts_time"])
             second_data.append({
                 "pts_time": p_d["pts_time"],
                 "size" : size_cumul
             })
 
+        # re-struct data
+        packet_data_new = {}
+        packet_data_new["pts_time"] = [x["pts_time"] for x in packet_data]
+        packet_data_new["size"] = [x["size"] for x in packet_data]
+        second_data_new = {}
+        second_data_new["pts_time"] = [x["pts_time"] for x in second_data]
+        second_data_new["size"] = [x["size"] for x in second_data]
+
         # write info
-        video["frameBytePerPacket"] = packet_data
-        video["frameBytePerSecond"] = second_data
+        video["frameBytePerPacket"] = packet_data_new
+        video["frameBytePerSecond"] = second_data_new
         
         processTime = time() - processTime
         processTime = timedelta(seconds=processTime)

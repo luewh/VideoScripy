@@ -11,6 +11,7 @@ from dash import no_update, ctx, callback, ALL, MATCH
 from dash.dependencies import Input, Output, State
 from dash.exceptions import PreventUpdate
 import dash_bootstrap_components as dbc
+import plotly.graph_objects as go
 from tkinter import Tk, filedialog
 
 # own class
@@ -646,7 +647,74 @@ def previewInputUI():
         ),
     ]
 
-def getStreamParam(defaultTitle:int=0):
+def getFrameResult() -> list:
+    global allVideoList
+
+    hasResult = False
+    for video in allVideoList:
+        if video["selected"] and "frameBytePerPacket" in video:
+            hasResult = True
+            break
+    
+    if not hasResult:
+        return ["No result"]
+    else:
+        results = []
+        for index, video in enumerate(allVideoList):
+            if video["selected"] and "frameBytePerPacket" in video:
+                results.append(
+                    html.Button(
+                        children=video["name"],
+                        # use a forbidden character to avoid
+                        # video name being id of another
+                        id={'type':'spec_frame','id': f'{index} {video["name"]} *'},
+                        className="psu_stream_button",
+                    )
+                )
+        return results
+
+def frameResultUI():
+
+    return [
+        html.Button(
+            "REFRESH ⟳",
+            id={"type": "spec", "id": "button_refreshFrame"},
+            className="psu_stream_button",
+            hidden=True,
+        ),
+        dcc.Loading(
+            html.Div(
+                getFrameResult(),
+                id="div_frameInputUI",
+                disable_n_clicks=True,
+            ),
+            color="white",
+            overlay_style={"visibility":"visible","opacity":0.5},
+        ),
+        dbc.Modal(
+            [
+                dbc.ModalHeader(
+                    dbc.ModalTitle(id="modal_frame_title"),
+                    className="modal_head",
+                ),
+                dbc.ModalBody(
+                    id="modal_frame_body",
+                    className="modal_body",
+                ),
+                dbc.ModalFooter(
+                    id="modal_frame_footer",
+                    className="modal_foot",
+                ),
+            ],
+            id="modal_frame",
+            size="xl",
+            scrollable=True,
+            centered=True,
+            is_open=False,
+        ),
+    ]
+
+def getStreamInput(defaultTitle:int=0) -> list:
     """
     defaultTitle 0 | 1 | 2
 
@@ -659,13 +727,13 @@ def getStreamParam(defaultTitle:int=0):
     global allVideoList
 
     hasVideo = False
-    for index, video in enumerate(allVideoList):
+    for video in allVideoList:
         if video["selected"]:
             hasVideo = True
             break
     
     if not hasVideo:
-        return "No video"
+        return ["No video"]
     else:
         streamParam = []
         for index, video in enumerate(allVideoList):
@@ -761,8 +829,8 @@ def streamInputUI():
     # add stream param
     metaDataUI.append(dcc.Loading(
         html.Div(
-            getStreamParam(),
-            id="div_streamParamUI",
+            getStreamInput(),
+            id="div_streamInputUI",
             disable_n_clicks=True,
         ),
         color="white",
@@ -810,6 +878,17 @@ def update_div_processParamUI(selectedProcess:str):
         processParamUI.extend([
             *previewInputUI(),
         ])
+    elif selectedProcess == VideoProcess.frame.name:
+        processParamUI = [
+            html.H6(
+                f"{selectedProcess.capitalize()} results :",
+                disable_n_clicks=True,
+                className="ch_h6_title",
+            ),
+        ]
+        processParamUI.extend([
+            *frameResultUI(),
+        ])
     elif selectedProcess == VideoProcess.stream.name:
         processParamUI = streamInputUI()
     else:
@@ -819,18 +898,102 @@ def update_div_processParamUI(selectedProcess:str):
     return processParamUI
 
 @callback(
-    Output('div_streamParamUI', 'children'),
+    Output('div_streamInputUI', 'children'),
     Input({"type": "spec", "id": "button_refreshStream"}, 'n_clicks'),
     prevent_initial_call=True,
 )
-def update_div_streamParamUI(clicks):
+def update_div_streamInputUI(clicks):
 
     # avoid dynamic button creation click : None/[]
     if clicks is None:
         raise PreventUpdate
     
-    return getStreamParam()
+    return getStreamInput()
 
+@callback(
+    Output('div_frameInputUI', 'children'),
+    Input({"type": "spec", "id": "button_refreshFrame"}, 'n_clicks'),
+    prevent_initial_call=True,
+)
+def update_div_FrameResultUI(clicks):
+
+    # avoid dynamic button creation click : None/[]
+    if clicks is None:
+        raise PreventUpdate
+    
+    return getFrameResult()
+
+
+def getFrameModalBody(videoIndex):
+    global allVideoList
+
+    fig = go.Figure(
+        data=[
+            go.Bar(
+                x=allVideoList[videoIndex]["frameBytePerPacket"]["pts_time"],
+                y=allVideoList[videoIndex]["frameBytePerPacket"]["size"],
+                name="Per Packet",
+            ),
+            go.Bar(
+                x=allVideoList[videoIndex]["frameBytePerSecond"]["pts_time"],
+                y=allVideoList[videoIndex]["frameBytePerSecond"]["size"],
+                name="Per Second",
+            ),
+        ],
+        layout={
+            "barmode":"stack",
+            "hovermode":"x",
+            "autosize":True,
+            "margin":go.layout.Margin(t=30,b=30,r=30),
+        },
+    )
+    fig.update_xaxes(title_text="picture timestamp (s)")
+    fig.update_yaxes(title_text="size (byte)")
+    fig.update_layout(legend=dict(
+        yanchor="top",
+        y=0.99,
+        xanchor="left",
+        x=0.01
+    ))
+    fig.update_layout(dragmode="pan")
+    videoBitrate = allVideoList[videoIndex]["bitRate"]/8
+    fig.add_hline(
+        y=videoBitrate,
+        line_dash="dash",
+        line_color="gray",
+        annotation_text=f'videoBitrate {videoBitrate}Kbyte',
+    )
+
+    return dcc.Graph(
+        id="graph",
+        figure=fig,
+        className="modal_body_fig",
+        config={
+            "displaylogo":False,
+            "scrollZoom":True,
+            "modeBarButtonsToRemove":["select","zoomIn","zoomOut","resetScale","lasso2d"],
+        },
+    )
+
+
+@callback(
+    Output('modal_frame', 'is_open'),
+    Output('modal_frame_title', 'children'),
+    Output('modal_frame_body', 'children'),
+    Output('modal_frame_footer', 'children'),
+    Input({'type':'spec_frame','id': ALL}, 'n_clicks'),
+    prevent_initial_call=True,
+)
+def openFrameModal(n_clicks):
+    global vs
+    # avoid dynamic button creation click : None/[]
+    for click in n_clicks:
+        if click is not None:
+            videoIndex = int(ctx.triggered_id["id"].split(" ")[0])
+            videoName = vs.vList[videoIndex]["name"]
+            return True, videoName, getFrameModalBody(videoIndex), ""
+    
+    raise PreventUpdate
 
 
 @callback(
@@ -1101,6 +1264,7 @@ def getVideoItem(video:VideoInfo, index:int, prefix:str=""):
         (Output('interval_log', 'n_intervals'), 0, 0),
 
         (Output({"type": "spec", "id": "button_refreshStream"}, 'n_clicks'), 0, 0),
+        (Output({"type": "spec", "id": "button_refreshFrame"}, 'n_clicks'), 0, 0),
         
         (Output({"type": "spec", "id": "button_defaultTitleStream"}, 'n_clicks'), 0, 0),
     ],
@@ -1133,6 +1297,7 @@ def scanFiles(_):
         (Output('interval_log', 'n_intervals'), 0, 0),
 
         (Output({"type": "spec", "id": "button_refreshStream"}, 'n_clicks'), 0, 0),
+        (Output({"type": "spec", "id": "button_refreshFrame"}, 'n_clicks'), 0, 0),
     ],
     prevent_initial_call=True,
 )
@@ -1159,6 +1324,7 @@ def switchVideoSelection(_):
         (Input('button_lvideo_all', 'disabled'), True, False),
 
         (Output({"type": "spec", "id": "button_refreshStream"}, 'n_clicks'), 0, 0),
+        (Output({"type": "spec", "id": "button_refreshFrame"}, 'n_clicks'), 0, 0),
     ],
     prevent_initial_call=True,
 )
@@ -1185,6 +1351,7 @@ def videoSelectionALL(_):
         (Input('button_lvideo_none', 'disabled'), True, False),
 
         (Output({"type": "spec", "id": "button_refreshStream"}, 'n_clicks'), 0, 0),
+        (Output({"type": "spec", "id": "button_refreshFrame"}, 'n_clicks'), 0, 0),
     ],
     prevent_initial_call=True,
 )
@@ -1211,6 +1378,7 @@ def videoSelectionNONE(_):
         (Input('button_lvideo_invert', 'disabled'), True, False),
 
         (Output({"type": "spec", "id": "button_refreshStream"}, 'n_clicks'), 0, 0),
+        (Output({"type": "spec", "id": "button_refreshFrame"}, 'n_clicks'), 0, 0),
     ],
     prevent_initial_call=True,
 )
@@ -1237,6 +1405,7 @@ def videoSelectionInvert(_):
         (Output('button_lvideo_revert', 'disabled'), True, False),
 
         (Output({"type": "spec", "id": "button_refreshStream"}, 'n_clicks'), 0, 0),
+        (Output({"type": "spec", "id": "button_refreshFrame"}, 'n_clicks'), 0, 0),
     ],
     prevent_initial_call=True,
 )
@@ -1267,6 +1436,7 @@ def reverseVideoList(_):
         (Output('dropdown_lvideo_sort', 'disabled'), True, False),
 
         (Output({"type": "spec", "id": "button_refreshStream"}, 'n_clicks'), 0, 0),
+        (Output({"type": "spec", "id": "button_refreshFrame"}, 'n_clicks'), 0, 0),
     ],
     prevent_initial_call=True,
 )
@@ -1328,6 +1498,7 @@ def runSetVideoListPrefix(_):
         (Output('interval_log', 'n_intervals'), 0, 0),
 
         (Output({"type": "spec", "id": "button_refreshStream"}, 'n_clicks'), 0, 0),
+        (Output({"type": "spec", "id": "button_refreshFrame"}, 'n_clicks'), 0, 0),
     ],
     prevent_initial_call=True,
 )
@@ -1364,6 +1535,7 @@ def moveUpVideo(clicks):
         (Output('interval_log', 'n_intervals'), 0, 0),
 
         (Output({"type": "spec", "id": "button_refreshStream"}, 'n_clicks'), 0, 0),
+        (Output({"type": "spec", "id": "button_refreshFrame"}, 'n_clicks'), 0, 0),
     ],
     prevent_initial_call=True,
 )
@@ -1506,7 +1678,7 @@ def subtitleStreamInvert(clicks):
     return videoItems, 0
 
 @callback(
-    Output('div_streamParamUI', 'children', allow_duplicate=True),
+    Output('div_streamInputUI', 'children', allow_duplicate=True),
     Output({"type": "spec", "id": "button_defaultTitleStream"}, 'children'),
     Input({"type": "spec", "id": "button_defaultTitleStream"}, 'n_clicks'),
     running=[
@@ -1521,7 +1693,7 @@ def setTitleToDefault(n_clicks):
         raise PreventUpdate
     
     # defaultTitle = 0 | 1 | 2
-    return getStreamParam(defaultTitle=n_clicks%3), f"DEFAULT TITLE ({n_clicks%3})"
+    return getStreamInput(defaultTitle=n_clicks%3), f"DEFAULT TITLE ({n_clicks%3})"
 
 
 
@@ -1555,6 +1727,9 @@ def setTitleToDefault(n_clicks):
 
         (Output('interval_log', 'disabled'), False, True),
         (Output('interval_log', 'n_intervals'), 0, 0),
+
+        (Output('div_frameInputUI', 'children'), None, None),
+        (Output({"type": "spec", "id": "button_refreshFrame"}, 'n_clicks'), 0, 0),
     ],
     prevent_initial_call=True,
 )
@@ -1563,6 +1738,7 @@ def runProcess(_, selectedProcess, inputValues):
 
     # get inputs values
     values = ctx.states_list[1]
+    
     for value in values:
         if value["id"]["id"] == "videoQuality":
             videoQuality = value["value"]
@@ -1608,6 +1784,8 @@ def runProcess(_, selectedProcess, inputValues):
         vs.interpolate(videoFPS, videoQuality)
     elif selectedProcess == VideoProcess.preview.name:
         vs.preview(previewCol, previewRow)
+    elif selectedProcess == VideoProcess.frame.name:
+        vs.frame()
     elif selectedProcess == VideoProcess.stream.name:
         vs.stream()
     else:
