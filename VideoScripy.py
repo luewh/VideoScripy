@@ -22,14 +22,44 @@ from colorama import init
 init()
 
 
+
 # from VideoScripy import *
 __all__ = [
-    'VideoScripy',
-    'VideoInfo', 'ProcAsyncReturn', 'StreamInfo', 'GPUInfo',
-    'VideoProcess',
     'colorAnsi', 'printC',
-    'run',
+    # dict class
+    'GPUInfo', 'ProcAsyncReturn',
+    # dict class
+    'StreamInfo', 'FrameByte', 'VideoInfo',
+    # enum class
+    'VideoProcess',
+    # main object
+    'VideoScripy',
+    
+    # 'run',
 ]
+
+
+
+colorAnsi = {
+    "reset"  : "\x1b[0m",
+    "red"    : "\x1b[31m",
+    "green"  : "\x1b[32m",
+    "yellow" : "\x1b[33m",
+    "blue"   : "\x1b[34m",
+}
+def printC(text, color:str=None):
+    """
+    print with color : red green blue yellow
+    """
+    global colorAnsi
+    try:
+        print(colorAnsi[color], end='')
+    except:
+        print(f'"{color}" not avalable', end='')
+
+    print(text + colorAnsi["reset"])
+
+
 
 class GPUInfo(TypedDict):
     id : int
@@ -81,27 +111,8 @@ class VideoProcess(Enum):
     upscale = ["getFrames", "upscale", "frameToVideo"]
     interpolate = ["getFrames", "interpolate", "frameToVideo"]
     preview = "preview"
+    frame = "frame"
     stream = "stream"
-
-
-colorAnsi = {
-    "reset"  : "\x1b[0m",
-    "red"    : "\x1b[31m",
-    "green"  : "\x1b[32m",
-    "yellow" : "\x1b[33m",
-    "blue"   : "\x1b[34m",
-}
-def printC(text, color:str=None):
-    """
-    print with color : red green blue yellow
-    """
-    global colorAnsi
-    try:
-        print(colorAnsi[color], end='')
-    except:
-        print(f'"{color}" not avalable', end='')
-
-    print(text + colorAnsi["reset"])
 
 
 
@@ -267,7 +278,7 @@ class VideoScripy():
         self.gpu = deviceId != -1
         
         # set encoder according to selected device ability
-        print("Need to reset the video encoder")
+        # print("Need to reset the video encoder")
         self.setEncoder(self.h265)
 
     def removeEmptyFolder(self, folderName:str = None):
@@ -458,12 +469,12 @@ class VideoScripy():
                 self.vList[videoIndex]['fileSize'] = int(results[videoIndex]['format']['size'])
                 # video
                 if self.vList[videoIndex]["type"] in self.vType:
-                    # warn more than 1 video stream
-                    if len(videoStream) > 1:
-                        printC(
-                            f'More than 1 video stream found in "{self.vList[videoIndex]["name"]}", '
-                            f'only the first will be processed', "yellow"
-                        )
+                    # # warn more than 1 video stream
+                    # if len(videoStream) > 1:
+                    #     printC(
+                    #         f'More than 1 video stream found in "{self.vList[videoIndex]["name"]}", '
+                    #         f'only the first will be processed', "yellow"
+                    #     )
                     try:
                         videoStream = videoStream[0]
                         self.vList[videoIndex]['width'] = int(videoStream['width'])
@@ -1707,137 +1718,138 @@ class VideoScripy():
 
 
 
-def run():
-    def getInputInt(
-            message:str="",
-            default:int=None,
-            selections:list=[],
-            absolute=True,
-        ) -> int:
+# # not maintained anymore
+# def run():
+#     def getInputInt(
+#             message:str="",
+#             default:int=None,
+#             selections:list=[],
+#             absolute=True,
+#         ) -> int:
 
-        while True:
-            # get input
-            entered = input(f"{message} [{default}]:")
+#         while True:
+#             # get input
+#             entered = input(f"{message} [{default}]:")
 
-            # check if default
-            if default != None and entered == "":
-                print(default)
-                return default
+#             # check if default
+#             if default != None and entered == "":
+#                 print(default)
+#                 return default
 
-            try:
-                entered = int(entered)
-                if absolute:
-                    entered = abs(entered)
-            except:
-                print(f'{entered} is not an integer')
+#             try:
+#                 entered = int(entered)
+#                 if absolute:
+#                     entered = abs(entered)
+#             except:
+#                 print(f'{entered} is not an integer')
 
-            # no selection constrain
-            if selections == []:
-                print(entered)
-                return entered
+#             # no selection constrain
+#             if selections == []:
+#                 print(entered)
+#                 return entered
             
-            # check if in selections
-            elif entered in selections:
-                print(entered)
-                return entered
-            else:
-                print(f'{entered} is not in {selections}')
+#             # check if in selections
+#             elif entered in selections:
+#                 print(entered)
+#                 return entered
+#             else:
+#                 print(f'{entered} is not in {selections}')
 
-    def getInputFloat(
-            message:str="",
-            default:float=None,
-            absolute=True,
-        ) -> float:
+#     def getInputFloat(
+#             message:str="",
+#             default:float=None,
+#             absolute=True,
+#         ) -> float:
 
-        while True:
-            # get input
-            entered = input(f"{message} [{default}]:")
+#         while True:
+#             # get input
+#             entered = input(f"{message} [{default}]:")
 
-            # check if default
-            if default != None and entered == "":
-                print(default)
-                return default
+#             # check if default
+#             if default != None and entered == "":
+#                 print(default)
+#                 return default
 
-            try:
-                entered = int(entered)
-                if absolute:
-                    entered = abs(entered)
-                print(entered)
-                return entered
-            except:
-                print(f'{entered} is not a float')
+#             try:
+#                 entered = int(entered)
+#                 if absolute:
+#                     entered = abs(entered)
+#                 print(entered)
+#                 return entered
+#             except:
+#                 print(f'{entered} is not a float')
 
-    def getInputBool(
-            message:str="",
-            default:bool=None,
-        ) -> bool:
+#     def getInputBool(
+#             message:str="",
+#             default:bool=None,
+#         ) -> bool:
 
-        while True:
-            # get input
-            entered = input(f"{message} [{default}]:")
+#         while True:
+#             # get input
+#             entered = input(f"{message} [{default}]:")
 
-            # check if default
-            if default != None and entered == "":
-                print(default)
-                return default
+#             # check if default
+#             if default != None and entered == "":
+#                 print(default)
+#                 return default
 
-            try:
-                if entered.lower() in ["1", "y", "yes", "o", "oui"]:
-                    print(True)
-                    return True
-                else:
-                    print(False)
-                    return False
-            except:
-                print(f'{entered} is not a boolean')
+#             try:
+#                 if entered.lower() in ["1", "y", "yes", "o", "oui"]:
+#                     print(True)
+#                     return True
+#                 else:
+#                     print(False)
+#                     return False
+#             except:
+#                 print(f'{entered} is not a boolean')
     
-    vs = VideoScripy()
+#     vs = VideoScripy()
 
-    vs.getVideo(folderDepthLimit=0)
-    vs.getVideoInfo()
+#     vs.getVideo(folderDepthLimit=0)
+#     vs.getVideoInfo()
 
-    for index, process in enumerate(VideoProcess):
-        print(f'{index+1} - {process.name}')
-    process = getInputInt(
-        message='Select a process',
-        default=1,
-        selections=[i+1 for i in range(len(VideoProcess))]
-    )
+#     for index, process in enumerate(VideoProcess):
+#         print(f'{index+1} - {process.name}')
+#     process = getInputInt(
+#         message='Select a process',
+#         default=1,
+#         selections=[i+1 for i in range(len(VideoProcess))]
+#     )
 
-    if process == 1:
-        quality = getInputFloat("Quality",3.0)
-        vs.compress(quality)
+#     if process == 1:
+#         quality = getInputFloat("Quality",3.0)
+#         vs.compress(quality)
 
-    elif process == 2:
-        width = getInputInt("Width",1920)
-        height = getInputInt("Height",-1)
-        quality = getInputFloat("Quality",3.0)
-        vs.resize(width, height, quality)
+#     elif process == 2:
+#         width = getInputInt("Width",1920)
+#         height = getInputInt("Height",-1)
+#         quality = getInputFloat("Quality",3.0)
+#         vs.resize(width, height, quality)
 
-    elif process == 3:
-        upFactor = getInputInt('Upscale factor',2,[2,3,4])
-        quality = getInputFloat("Quality",3.0)
-        vs.upscale(upFactor, quality)
+#     elif process == 3:
+#         upFactor = getInputInt('Upscale factor',2,[2,3,4])
+#         quality = getInputFloat("Quality",3.0)
+#         vs.upscale(upFactor, quality)
 
-    elif process == 4:
-        fps = getInputFloat("FPS",60.0)
-        quality = getInputFloat("Quality",3.0)
-        vs.interpolate(fps, quality)
+#     elif process == 4:
+#         fps = getInputFloat("FPS",60.0)
+#         quality = getInputFloat("Quality",3.0)
+#         vs.interpolate(fps, quality)
 
-    elif process == 5:
-        gridWidth = getInputInt("Width",3)
-        gridHeight = getInputInt("Height",2)
-        vs.preview(gridWidth, gridHeight)
+#     elif process == 5:
+#         gridWidth = getInputInt("Width",3)
+#         gridHeight = getInputInt("Height",2)
+#         vs.preview(gridWidth, gridHeight)
     
-    else:
-        print("Not implemented")
+#     else:
+#         print("Not implemented")
     
-    input("Press enter to exit")
+#     input("Press enter to exit")
 
 
 
-if __name__ == '__main__':
-    run()
+# if __name__ == '__main__':
+#     run()
 
 
 
