@@ -1716,22 +1716,26 @@ class VideoScripy():
                 if stream["codec_type"] == "video":
                     orderedStreams[0].append({
                         "videoIndex":videoIndex,
-                        "stream":stream
+                        "stream":stream,
+                        "fileType":video["type"],
                     })
                 elif stream["codec_type"] == "audio":
                     orderedStreams[1].append({
                         "videoIndex":videoIndex,
-                        "stream":stream
+                        "stream":stream,
+                        "fileType":video["type"],
                     })
                 elif stream["codec_type"] == "subtitle":
                     orderedStreams[2].append({
                         "videoIndex":videoIndex,
-                        "stream":stream
+                        "stream":stream,
+                        "fileType":video["type"],
                     })
                 else:
                     orderedStreams[3].append({
                         "videoIndex":videoIndex,
-                        "stream":stream
+                        "stream":stream,
+                        "fileType":video["type"],
                     })
         # flatten
         orderedStreams = [
@@ -1744,11 +1748,18 @@ class VideoScripy():
         outputStreamCount = 0
         for stream in orderedStreams:
             if stream["stream"]["selected"]:
+
                 commandMap += f'-map {stream["videoIndex"]}:{stream["stream"]["index"]} '
-                # clear title tag to avoid duble title
+
+                # set picture disposition to attached_pic
+                if stream["fileType"] in self.pType and stream["fileType"] != "webp":
+                    commandMetadata += f'-disposition:{outputStreamCount} attached_pic '
+
+                # clear title tag to avoid double title
                 # allow double title tag, handler_name for mp4 ffprobe
                 commandMetadata += f'-metadata:s:{outputStreamCount} title="{stream["stream"]["title"]}" '
                 commandMetadata += f'-metadata:s:{outputStreamCount} handler_name="{stream["stream"]["title"]}" '
+
                 commandMetadata += f'-metadata:s:{outputStreamCount} language={stream["stream"]["language"]} '
                 outputStreamCount += 1
                     
