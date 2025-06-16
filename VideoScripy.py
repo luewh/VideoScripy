@@ -1509,6 +1509,11 @@ class VideoScripy():
         Return "end", "err", "skip" or "stop"
         """
 
+        # skip not video type
+        if video["type"] not in self.vType:
+            printC('Skipped', "yellow")
+            return "skip"
+        
         processTime = time()
 
         print(video["duration"], "x", video["fps"])
@@ -1537,8 +1542,8 @@ class VideoScripy():
         
         # skip next steps if process not correctly ended
         if result['returnCode'] != 0:
-            printC(f'FFprobe error, skip {video["name"]}', "yellow")
-            return "skip"
+            printC(f'FFprobe error at {video["name"]}', "red")
+            return "err"
         
         # convert stdout to json format
         result = (
