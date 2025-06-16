@@ -1817,7 +1817,7 @@ class StdoutIntercept(object):
         stdout.write = self.write
         stderr.write = self.write
         self.queue = []
-        self.QUEUE_LIMIT = 1000
+        self.QUEUE_LIMIT = 200
         self.carriage = False
 
     def __del__(self):

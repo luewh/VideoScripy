@@ -161,9 +161,11 @@ class VideoScripy():
         
         self.vList:list[VideoInfo] = []
         self.vType = ["mp4","mkv"]
+        # Real-ESRGAN support format
+        self.pType = ["png","jpg","jpeg","webp"]
         self.aType = ["mp3", "m4a", "aac", "wav"]
         self.sType = ["smi", "srt"]
-        self.scanType = self.vType + self.aType + self.sType
+        self.scanType = self.vType + self.pType + self.aType + self.sType
         self.folderSkip = [p.name for p in VideoProcess]
         self.COMPRESS_TOLERENCE = 1.15
 
@@ -500,6 +502,14 @@ class VideoScripy():
                         self.vList[videoIndex]['fps'] 
                         * self.vList[videoIndex]['duration'].total_seconds()
                     )
+                # picture
+                elif self.vList[videoIndex]["type"] in self.pType:
+                    self.vList[videoIndex]['duration'] = timedelta(seconds=0)
+                    self.vList[videoIndex]['bitRate'] = 0
+                    self.vList[videoIndex]['nbFrames'] = 1
+                    self.vList[videoIndex]['width'] = int(videoStream[0]['width'])
+                    self.vList[videoIndex]['height'] = int(videoStream[0]['height'])
+                    self.vList[videoIndex]['fps'] = 1.0
                 # audio
                 elif self.vList[videoIndex]["type"] in self.aType:
                     self.vList[videoIndex]['duration'] = timedelta(seconds=float(results[videoIndex]['format']['duration']))
@@ -528,7 +538,7 @@ class VideoScripy():
                 # delete errored video
                 self.vList.pop(videoIndex)
 
-        print(f"Get {len(self.vList)} video info")
+        print(f"Get {len(self.vList)} file info")
 
 
     # ffmpeg encoder related
@@ -1203,8 +1213,8 @@ class VideoScripy():
         if not isdir(outputFolder):
             mkdir(outputFolder)
             
-        # skip not video type
-        if video["type"] not in self.vType:
+        # skip not video or picture type
+        if video["type"] not in self.vType + self.pType:
             printC('Skipped', "yellow")
             return "skip"
         
@@ -1216,6 +1226,35 @@ class VideoScripy():
         widthUpscale = width * upscaleFactor
         heightUpscale = height * upscaleFactor
         print(f'{width}x{height} --> {widthUpscale}x{heightUpscale}')
+
+
+
+        # shortcut for picture type
+        gpuNumber = 0
+        if self.gpu:
+            gpuNumber = self.selectedDevice["id"]+1
+        
+        if video["type"] in self.pType:
+            command = (
+                f' realesrgan-ncnn-vulkan.exe'
+                f' -i "{video["path"]}"'
+                f' -o "{process.name}\\{name}"'
+                f' -n realesr-animevideov3 -s {upscaleFactor}'
+                f' -f jpg -g {gpuNumber}'
+            )
+            result = self._runProc(command, process.value[1])
+
+            # stop whole process if killProc() called
+            if self.killed:
+                return "stop"
+            
+            # skip next steps if process not correctly ended
+            if not result:
+                return "err"
+            
+            return "end"
+
+
 
         self.pre_compress(video, widthUpscale, heightUpscale, quality)
 
