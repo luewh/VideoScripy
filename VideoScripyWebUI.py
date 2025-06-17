@@ -985,12 +985,12 @@ def getFrameModalBody(videoIndex):
     prevent_initial_call=True,
 )
 def openFrameModal(n_clicks):
-    global vs
+    global allVideoList
     # avoid dynamic button creation click : None/[]
     for click in n_clicks:
         if click is not None:
             videoIndex = int(ctx.triggered_id["id"].split(" ")[0])
-            videoName = vs.vList[videoIndex]["name"]
+            videoName = allVideoList[videoIndex]["name"]
             return True, videoName, getFrameModalBody(videoIndex), ""
     
     raise PreventUpdate
