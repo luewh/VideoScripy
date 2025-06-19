@@ -168,6 +168,13 @@
     <ins>2 分钟倒计时视频的 3x2 预览 </ins>
     
     ![demo_preview](./doc/demo_preview.png)
+    
+- frame  
+    绘制每一帧的比特率图
+
+    <ins>266x200， 时长 10 秒的视频</ins>
+
+    ![demo_preview](./doc/demo_frame.png)
 
 
 - 视频流  

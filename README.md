@@ -167,6 +167,13 @@ Run the `VideoScripyWebUI.py`
 
     ![demo_preview](./doc/demo_preview.png)
 
+- frame  
+    Graph each frame's size of a video 
+
+    <ins>266x200 10s long video</ins>
+
+    ![demo_preview](./doc/demo_frame.png)
+
 - stream  
     Merge selected stream of multiple videos into one video.  
     And also modify metadata as tile and language.  
