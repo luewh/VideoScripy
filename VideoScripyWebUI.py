@@ -976,6 +976,7 @@ def getFrameModalBody(videoIndex):
 
     fig.update_yaxes(title_text="size (byte)")
     fig.update_yaxes(tickformat=",.0f")
+    fig.update_layout(separators="*_.*")
 
     videoBitrate = allVideoList[videoIndex]["bitRate"]/8
     fig.add_hline(
