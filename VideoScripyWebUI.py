@@ -968,9 +968,9 @@ def getFrameModalBody(videoIndex):
 
     duration = allVideoList[videoIndex]["duration"]
     if duration < timedelta(hours=1):
-        fig.update_xaxes(tickformat="%M:%S")
+        fig.update_xaxes(tickformat="%M:%S.%f")
     elif duration < timedelta(days=1):
-        fig.update_xaxes(tickformat="%H:%M:%S")
+        fig.update_xaxes(tickformat="%H:%M:%S.%f")
     else:
         pass
 
