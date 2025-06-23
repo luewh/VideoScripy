@@ -2,6 +2,7 @@
 import os
 from sys import stdout, stderr
 from time import sleep
+from datetime import timedelta
 from webbrowser import open_new
 from threading import Timer
 
@@ -927,43 +928,62 @@ def update_div_FrameResultUI(clicks):
 def getFrameModalBody(videoIndex):
     global allVideoList
 
+    scatterProp = {
+        # "fill":"tozeroy", #slow
+        "opacity":0.5,
+        "mode":"lines+markers",
+        "marker":{"size":3},
+    }
+
     fig = go.Figure(
         data=[
-            go.Bar(
+            go.Scattergl(
                 x=allVideoList[videoIndex]["frameBytePerPacket"]["pts_time"],
                 y=allVideoList[videoIndex]["frameBytePerPacket"]["size"],
                 name="Per Packet",
+                **scatterProp,
             ),
-            go.Bar(
+            go.Scattergl(
                 x=allVideoList[videoIndex]["frameBytePerSecond"]["pts_time"],
                 y=allVideoList[videoIndex]["frameBytePerSecond"]["size"],
                 name="Per Second",
+                **scatterProp,
             ),
         ],
         layout={
-            "barmode":"stack",
             "hovermode":"x",
             "autosize":True,
             "margin":go.layout.Margin(t=30,b=30,r=30),
+            "dragmode":"pan",
+            "legend":{
+                "yanchor":"top",
+                "y":0.99,
+                "xanchor":"left",
+                "x":0.01
+            },
         },
     )
-    fig.update_xaxes(title_text="picture timestamp (s)")
+    fig.update_xaxes(title_text="picture timestamp (time)")
+    fig.update_xaxes(showspikes=True, spikecolor="grey", spikemode="across", spikethickness=1)
+
+    duration = allVideoList[videoIndex]["duration"]
+    if duration < timedelta(hours=1):
+        fig.update_xaxes(tickformat="%M:%S")
+    elif duration < timedelta(days=1):
+        fig.update_xaxes(tickformat="%H:%M:%S")
+    else:
+        pass
+
     fig.update_yaxes(title_text="size (byte)")
-    fig.update_layout(legend=dict(
-        yanchor="top",
-        y=0.99,
-        xanchor="left",
-        x=0.01
-    ))
-    fig.update_layout(dragmode="pan")
+    fig.update_yaxes(tickformat=",.0f")
+
     videoBitrate = allVideoList[videoIndex]["bitRate"]/8
     fig.add_hline(
         y=videoBitrate,
         line_dash="dash",
-        line_color="gray",
-        annotation_text=f'videoBitrate {videoBitrate}Kbyte',
+        line_color="green",
+        annotation_text=f'videoBitrate {videoBitrate:_.0f} Kbyte/s',
     )
-
     return dcc.Graph(
         id="graph",
         figure=fig,

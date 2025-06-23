@@ -6,7 +6,7 @@
 
 **Quality preserved, Storage saved.**
 
-Collection of video processes such as compression, upscale, interpolation and stream manipulation.
+Collection of video processing module such as compression, upscale, interpolation and stream manipulation.
 
 ![demo.gif](./doc/demo_upscale.gif)
 
@@ -19,7 +19,7 @@ Collection of video processes such as compression, upscale, interpolation and st
 - [Requirements](#requirements)
 - [Embedded version](#embedded-version)
 - [Self setup version](#self-setup-version)
-- [Processes Description](#processes-description)
+- [Processing module](#processing-module)
 - [Benchmarking](#benchmarking)
 - [Credits](#credits)
 
@@ -106,7 +106,7 @@ Run the `VideoScripyWebUI.py`
 
 
 
-## Processes Description
+## Processing module
 
 - compress  
     Reduce the video biteRate in order to gain storage space.  

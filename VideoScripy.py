@@ -4,7 +4,7 @@ import json
 import re
 from threading import Thread
 from pathlib import Path
-from datetime import timedelta
+from datetime import timedelta, datetime
 from shutil import rmtree
 from os import walk, mkdir, remove, listdir, getcwd, rmdir, rename
 from os.path import isdir, isfile
@@ -80,7 +80,7 @@ class StreamInfo(TypedDict):
 
 class FrameByte(TypedDict):
     # picture timestamp
-    pts_time : float
+    pts_time : datetime
     # size in byte
     size : int
 
@@ -191,6 +191,8 @@ class VideoScripy():
         self.setEncoder(h265=True)
 
         self.checkTools()
+
+        self.DAY_ZERO = datetime.strptime("2000/01/01", "%Y/%m/%d")
     
     def checkTools(self) -> None:
         """
@@ -1555,11 +1557,11 @@ class VideoScripy():
         
         processTime = time()
 
-        print(video["duration"], "x", video["fps"])
-        print(
-            "=>", video["duration"].total_seconds()*video["fps"],
-            "=", video["nbFrames"]
-        )
+        # print(video["duration"], "x", video["fps"])
+        # print(
+        #     "=>", video["duration"].total_seconds()*video["fps"],
+        #     "=", video["nbFrames"]
+        # )
 
         # run probe
         command = (
@@ -1643,6 +1645,10 @@ class VideoScripy():
         second_data_new = {}
         second_data_new["pts_time"] = [x["pts_time"] for x in second_data]
         second_data_new["size"] = [x["size"] for x in second_data]
+
+        # float to datetime
+        packet_data_new["pts_time"] = [self.DAY_ZERO + timedelta(seconds=f) for f in packet_data_new["pts_time"]]
+        second_data_new["pts_time"] = [self.DAY_ZERO + timedelta(seconds=f) for f in second_data_new["pts_time"]]
 
         # write info
         video["frameBytePerPacket"] = packet_data_new
