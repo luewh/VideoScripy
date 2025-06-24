@@ -1615,6 +1615,7 @@ class VideoScripy():
                     "red"
                 )
                 return "err"
+            pts_time_prev = p_d["pts_time"]
         
         # per packet to per second
         second_data = []
@@ -1714,10 +1715,6 @@ class VideoScripy():
             print(video['name'])
             commandInputs += f'-i "{video["path"]}" '
             
-            # remove time codec for mp4
-            if videoType == "mp4":
-                commandMap += f'-map -{videoIndex}:d? '
-            
             for stream in video["streams"]:
                 if stream["codec_type"] == "video":
                     orderedStreams[0].append({
@@ -1756,6 +1753,10 @@ class VideoScripy():
             if stream["stream"]["selected"]:
 
                 commandMap += f'-map {stream["videoIndex"]}:{stream["stream"]["index"]} '
+
+                # remove time codec for mp4
+                if stream["fileType"] == "mp4":
+                    commandMap += f'-map -{videoIndex}:d? '
 
                 # set picture disposition to attached_pic
                 if stream["fileType"] in self.pType and stream["fileType"] != "webp":

@@ -983,7 +983,7 @@ def getFrameModalBody(videoIndex):
         y=videoBitrate,
         line_dash="dash",
         line_color="green",
-        annotation_text=f'videoBitrate {videoBitrate:_.0f} Kbyte/s',
+        annotation_text=f'bitrate: {videoBitrate:_.0f} byte/s',
     )
     return dcc.Graph(
         id="graph",
