@@ -16,12 +16,89 @@ Collection of video processing module such as compression, upscale, interpolatio
 
 ## Table of contents
 
+- [Processing module](#processing-module)
 - [Requirements](#requirements)
 - [Embedded version](#embedded-version)
 - [Self setup version](#self-setup-version)
-- [Processing module](#processing-module)
-- [Benchmarking](#benchmarking)
 - [Credits](#credits)
+<!-- - [Benchmarking](#benchmarking) -->
+
+
+
+## Processing module
+
+- compress  
+    Reduce the video biteRate in order to gain storage space.  
+    <details>
+    <summary>expand more</summary>
+        The processed videos will have a bitRate = width * height * quality, quality=3 is generally the lowest value before appearance of artifacts (bad images, blurry...). In other words, humain won't notice the visual difference between video of quality 3 and 6.
+    </details>
+
+    ![demo_upscale_s](./doc/demo_compress_illus.png)
+
+- resize  
+    Reduce the video width and height.
+
+    ![demo_upscale_s](./doc/demo_resize_illus.png)
+
+- upscale  
+    Increase video size by factor of 2,3 or 4 with AI, enhance video quality.  
+    It has the ability to start from last upscal progress if the "_upscaledx?_frame" wasn't deleted. 
+    <details>
+    <summary>expand more</summary>
+        Begin with a transformation of video to image frames, then upscale each frames, finally reassemble to video.  
+    </details>
+
+    <ins>Original : 266x200</ins>
+
+    ![demo_upscale_s](./doc/demo.gif)
+
+    <ins>Upscal x2 : 532x400</ins>
+
+    ![demo_upscale_b](./doc/demo_upscale_x2.gif)
+
+    <ins>Upscal x3 : 798x600</ins>
+    
+    ![demo_upscale_b](./doc/demo_upscale_x3.gif)
+
+    <ins>Upscal x4 1064x800</ins>
+    
+    ![demo_upscale_b](./doc/demo_upscale_x4.gif)
+
+- interpolate  
+    Increase video frame rate (FPS), smooth video.  
+    <details>
+    <summary>expand more</summary>
+        Begin with a transformation of video to image frames, then interpolate between frames, finally reassemble to video.
+    </details>
+    
+    <ins>interpolate 25fps -> 60fps</ins>
+
+    ![demo_upscale_s](./doc/demo.gif)
+    ![demo_upscale_s](./doc/demo_interpolate_60fps.gif)
+
+    (The 60fps gif may be slowed down due to markdown, use a proper viewer may solve the problem)
+
+- preview  
+    Generate a grid of images.  
+
+    <ins>3x2 grid of 2min countdown video</ins>
+
+    ![demo_preview](./doc/demo_preview.png)
+
+- frame  
+    Graph each frame's size of a video 
+
+    <ins>266x200 10s long video</ins>
+
+    ![demo_preview](./doc/demo_frame.png)
+
+- stream  
+    Merge selected stream of multiple videos into one video.  
+    And also modify metadata as tile and language.  
+    Then use media player as PotPlayer to switch between video/audio/subtitle.
+
+    ![demo_upscale_s](./doc/demo_stream_illus.png)
 
 
 
@@ -104,82 +181,6 @@ Advantage : **Freedom**
 
 Run the `VideoScripyWebUI.py`
 
-
-
-## Processing module
-
-- compress  
-    Reduce the video biteRate in order to gain storage space.  
-    <details>
-    <summary>expand more</summary>
-        The processed videos will have a bitRate = width * height * quality, quality=3 is generally the lowest value before appearance of artifacts (bad images, blurry...). In other words, humain won't notice the visual difference between video of quality 3 and 6.
-    </details>
-
-    ![demo_upscale_s](./doc/demo_compress_illus.png)
-
-- resize  
-    Reduce the video width and height.
-
-    ![demo_upscale_s](./doc/demo_resize_illus.png)
-
-- upscale  
-    Increase video size by factor of 2,3 or 4 with AI, enhance video quality.  
-    It has the ability to start from last upscal progress if the "_upscaledx?_frame" wasn't deleted. 
-    <details>
-    <summary>expand more</summary>
-        Begin with a transformation of video to image frames, then upscale each frames, finally reassemble to video.  
-    </details>
-
-    <ins>Original : 266x200</ins>
-
-    ![demo_upscale_s](./doc/demo.gif)
-
-    <ins>Upscal x2 : 532x400</ins>
-
-    ![demo_upscale_b](./doc/demo_upscale_x2.gif)
-
-    <ins>Upscal x3 : 798x600</ins>
-    
-    ![demo_upscale_b](./doc/demo_upscale_x3.gif)
-
-    <ins>Upscal x4 1064x800</ins>
-    
-    ![demo_upscale_b](./doc/demo_upscale_x4.gif)
-
-- interpolate  
-    Increase video frame rate (FPS), smooth video.  
-    <details>
-    <summary>expand more</summary>
-        Begin with a transformation of video to image frames, then interpolate between frames, finally reassemble to video.
-    </details>
-    
-    <ins>interpolate 25fps -> 60fps</ins>
-
-    ![demo_upscale_s](./doc/demo.gif)
-    ![demo_upscale_s](./doc/demo_interpolate_60fps.gif)
-
-    (The 60fps gif may be slowed down due to markdown, use a proper viewer may solve the problem)
-
-- preview  
-    Generate a grid of images.  
-
-    <ins>3x2 grid of 2min countdown video</ins>
-
-    ![demo_preview](./doc/demo_preview.png)
-
-- frame  
-    Graph each frame's size of a video 
-
-    <ins>266x200 10s long video</ins>
-
-    ![demo_preview](./doc/demo_frame.png)
-
-- stream  
-    Merge selected stream of multiple videos into one video.  
-    And also modify metadata as tile and language.  
-    Then use media player as PotPlayer to switch between video/audio/subtitle.
-
-    ![demo_upscale_s](./doc/demo_stream_illus.png)
 
 
 <!-- 

@@ -16,11 +16,91 @@
 
 ## 目录
 
+- [视频处理模块说明](#视频处理模块说明)
 - [环境要求](#环境要求)
 - [整合安装](#整合安装)
 - [手动安装](#手动安装)
-- [视频处理模块说明](#视频处理模块说明)
 - [致谢](#致谢)
+
+
+
+## 视频处理模块说明
+
+- 压缩  
+    降低视频码率，节省存储空间
+    <details>
+    <summary>点击展开</summary>
+        处理后的视频将具有以下比特率：比特率 = 宽 × 高 × 质量。
+        通常， 质量=3 是画质不会出现明显下降的最小值，质量3与6在人眼下无显著差异。 
+    </details>
+    
+    ![demo_upscale_s](./doc/demo_compress_illus.png)
+
+- 尺寸调整  
+    降低视频的宽度和高度。
+    
+    ![demo_upscale_s](./doc/demo_resize_illus.png)
+
+
+- AI放大  
+    使用 AI 将视频尺寸按2、3、4倍提升，同时增强画质。  
+    支持从上次未完成的帧继续处理，如果 "_upscaledx?_frame" 文件夹未删除。
+    <details>
+    <summary>点击展开</summary>
+        先将视频转为图像帧，逐帧放大后再重新合成为视频。 
+    </details>
+    
+    <ins>原视频 : 266x200</ins>
+
+    ![demo_upscale_s](./doc/demo.gif)
+
+    <ins>2倍放大 : 532x400</ins>
+
+    ![demo_upscale_b](./doc/demo_upscale_x2.gif)
+
+    <ins>3倍放大 : 798x600</ins>
+    
+    ![demo_upscale_b](./doc/demo_upscale_x3.gif)
+
+    <ins>4倍放大 1064x800</ins>
+    
+    ![demo_upscale_b](./doc/demo_upscale_x4.gif)
+    
+- AI插帧  
+    提高视频帧率，使视频更流畅 
+    <details>
+    <summary>点击展开</summary>
+        先将视频转为图像帧，在帧之间插入中间帧，最后重新合成为视频。
+    </details>
+
+    <ins>插帧：25帧 -> 60帧</ins>
+    
+    ![demo_upscale_s](./doc/demo.gif)
+    ![demo_upscale_s](./doc/demo_interpolate_60fps.gif)
+    
+    由于 markdown 限制，60帧 动图可能会以0.5倍速播放，请使用合适播放器查看。
+
+- 预览  
+    生成图像网格预览
+
+    <ins>2 分钟倒计时视频的 3x2 预览 </ins>
+    
+    ![demo_preview](./doc/demo_preview.png)
+    
+- frame  
+    绘制每一帧的比特率图
+
+    <ins>266x200， 时长 10 秒的视频</ins>
+
+    ![demo_preview](./doc/demo_frame.png)
+
+
+- 视频流  
+    合并多个视频的不同流（视频、音频、字幕）为一个文件。  
+    并可修改标题、语言等元信息。  
+    使用 PotPlayer 等播放器可切换音视频流。 
+
+    ![demo_upscale_s](./doc/demo_stream_illus.png) 
 
 
 
@@ -103,86 +183,6 @@
 ### 使用方式
 
 运行 `VideoScripyWebUI.py` 文件
-
-
-
-## 视频处理模块说明
-
-- 压缩  
-    降低视频码率，节省存储空间
-    <details>
-    <summary>点击展开</summary>
-        处理后的视频将具有以下比特率：比特率 = 宽 × 高 × 质量。
-        通常， 质量=3 是画质不会出现明显下降的最小值，质量3与6在人眼下无显著差异。 
-    </details>
-    
-    ![demo_upscale_s](./doc/demo_compress_illus.png)
-
-- 尺寸调整  
-    降低视频的宽度和高度。
-    
-    ![demo_upscale_s](./doc/demo_resize_illus.png)
-
-
-- AI放大  
-    使用 AI 将视频尺寸按2、3、4倍提升，同时增强画质。  
-    支持从上次未完成的帧继续处理，如果 "_upscaledx?_frame" 文件夹未删除。
-    <details>
-    <summary>点击展开</summary>
-        先将视频转为图像帧，逐帧放大后再重新合成为视频。 
-    </details>
-    
-    <ins>原视频 : 266x200</ins>
-
-    ![demo_upscale_s](./doc/demo.gif)
-
-    <ins>2倍放大 : 532x400</ins>
-
-    ![demo_upscale_b](./doc/demo_upscale_x2.gif)
-
-    <ins>3倍放大 : 798x600</ins>
-    
-    ![demo_upscale_b](./doc/demo_upscale_x3.gif)
-
-    <ins>4倍放大 1064x800</ins>
-    
-    ![demo_upscale_b](./doc/demo_upscale_x4.gif)
-    
-- AI插帧  
-    提高视频帧率，使视频更流畅 
-    <details>
-    <summary>点击展开</summary>
-        先将视频转为图像帧，在帧之间插入中间帧，最后重新合成为视频。
-    </details>
-
-    <ins>插帧：25帧 -> 60帧</ins>
-    
-    ![demo_upscale_s](./doc/demo.gif)
-    ![demo_upscale_s](./doc/demo_interpolate_60fps.gif)
-    
-    由于 markdown 限制，60帧 动图可能会以0.5倍速播放，请使用合适播放器查看。
-
-- 预览  
-    生成图像网格预览
-
-    <ins>2 分钟倒计时视频的 3x2 预览 </ins>
-    
-    ![demo_preview](./doc/demo_preview.png)
-    
-- frame  
-    绘制每一帧的比特率图
-
-    <ins>266x200， 时长 10 秒的视频</ins>
-
-    ![demo_preview](./doc/demo_frame.png)
-
-
-- 视频流  
-    合并多个视频的不同流（视频、音频、字幕）为一个文件。  
-    并可修改标题、语言等元信息。  
-    使用 PotPlayer 等播放器可切换音视频流。 
-
-    ![demo_upscale_s](./doc/demo_stream_illus.png) 
 
 
 
