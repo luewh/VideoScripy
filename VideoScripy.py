@@ -95,6 +95,7 @@ class VideoInfo(TypedDict):
     name: str
     duration: timedelta
     bitRate: int
+    quality: float
     width: int
     height: int
     fps: float
@@ -498,6 +499,10 @@ class VideoScripy():
                     self.vList[videoIndex]['duration'] = timedelta(seconds=float(videoStream['duration']))
                     self.vList[videoIndex]['bitRate'] = int(videoStream['bit_rate'])
                     self.vList[videoIndex]['nbFrames'] = int(videoStream['nb_frames'])
+                    self.vList[videoIndex]["quality"] = round(
+                        self.vList[videoIndex]['bitRate']
+                        /(self.vList[videoIndex]['width']*self.vList[videoIndex]["height"]),1
+                    )
                 # mkv
                 elif self.vList[videoIndex]["type"] == "mkv":
                     self.vList[videoIndex]['duration'] = timedelta(seconds=float(results[videoIndex]['format']['duration']))
@@ -505,6 +510,10 @@ class VideoScripy():
                     self.vList[videoIndex]['nbFrames'] = ceil(
                         self.vList[videoIndex]['fps'] 
                         * self.vList[videoIndex]['duration'].total_seconds()
+                    )
+                    self.vList[videoIndex]["quality"] = round(
+                        self.vList[videoIndex]['bitRate']
+                        /(self.vList[videoIndex]['width']*self.vList[videoIndex]["height"]),1
                     )
                 # picture
                 elif self.vList[videoIndex]["type"] in self.pType:
@@ -514,6 +523,7 @@ class VideoScripy():
                     self.vList[videoIndex]['width'] = int(videoStream[0]['width'])
                     self.vList[videoIndex]['height'] = int(videoStream[0]['height'])
                     self.vList[videoIndex]['fps'] = 1.0
+                    self.vList[videoIndex]["quality"] = 0.0
                 # audio
                 elif self.vList[videoIndex]["type"] in self.aType:
                     self.vList[videoIndex]['duration'] = timedelta(seconds=float(results[videoIndex]['format']['duration']))
@@ -522,6 +532,7 @@ class VideoScripy():
                     self.vList[videoIndex]['width'] = 0
                     self.vList[videoIndex]['height'] = 0
                     self.vList[videoIndex]['fps'] = 0.0
+                    self.vList[videoIndex]["quality"] = 0.0
                 # subtitle and other
                 elif self.vList[videoIndex]["type"] in self.sType + ["other"]:
                     self.vList[videoIndex]['duration'] = timedelta(seconds=0)
@@ -530,12 +541,13 @@ class VideoScripy():
                     self.vList[videoIndex]['width'] = 0
                     self.vList[videoIndex]['height'] = 0
                     self.vList[videoIndex]['fps'] = 0.0
+                    self.vList[videoIndex]["quality"] = 0.0
                 else:
                     printC(
                         f'Uncovered type "{self.vList[videoIndex]["type"]}" at "{self.vList[videoIndex]["name"]}"',
                         "red"
                     )
-            
+
             except Exception as e:
                 printC(f'Unexpected erro "{e.with_traceback(None)}"', "red")
                 printC(f'Can not get video info of "{self.vList[videoIndex]["name"]}"', "red")

@@ -433,6 +433,10 @@ def clientClose(_):
     raise PreventUpdate
 
 
+##########################
+# region process callbacks
+
+
 
 @callback(
     Output("dropdown_encoder", 'value'),
@@ -925,6 +929,7 @@ def update_div_FrameResultUI(clicks):
     return getFrameResult()
 
 
+
 def getFrameModalBody(videoIndex):
     global allVideoList
 
@@ -996,7 +1001,6 @@ def getFrameModalBody(videoIndex):
         },
     )
 
-
 @callback(
     Output('modal_frame', 'is_open'),
     Output('modal_frame_title', 'children'),
@@ -1015,6 +1019,7 @@ def openFrameModal(n_clicks):
             return True, videoName, getFrameModalBody(videoIndex), ""
     
     raise PreventUpdate
+
 
 
 @callback(
@@ -1069,6 +1074,16 @@ def switchVideoSize(_, width, height):
 )
 def switchPreviewColRow(_, col, row):
     return row, col
+
+
+
+# endregion
+##########################
+
+
+
+##############################
+# region video items callbacks
 
 
 
@@ -1132,12 +1147,14 @@ def getVideoItem(video:VideoInfo, index:int, prefix:str=""):
     frameRate = (str(video["fps"])+" fps").rjust(10)
     duration = str(video["duration"]).split(".")[0].rjust(8)
     bitRate = (f'{video["bitRate"]/1_000:_.0f}'+" Kbits/s").rjust(16)
+    quality = str(video["quality"]).rjust(5)
     fileSize = (f'{video["fileSize"]/1_024:_.0f}'+" Ko").rjust(13)
     videoInfoText = (
         f'|{width}x{height}|'
         f'{frameRate} |'
         f'{duration} |'
         f'{bitRate} |'
+        f'{quality} Q |'
         f'{fileSize} |'
     )
 
@@ -1715,6 +1732,11 @@ def setTitleToDefault(n_clicks):
     
     # defaultTitle = 0 | 1 | 2
     return getStreamInput(defaultTitle=n_clicks%3), f"DEFAULT TITLE ({n_clicks%3})"
+
+
+
+# endregion
+##############################
 
 
 
