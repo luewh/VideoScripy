@@ -337,7 +337,7 @@ class VideoScripy():
     
     def getVideo(self, folderDepthLimit:int=0) -> bool:
         """
-        Set attributes vList's path and name by os.walk().\n
+        Set attribute vList's path and name by os.walk().\n
         Return false if self.path do not exist anymore.
 
         Parameters:
@@ -820,7 +820,12 @@ class VideoScripy():
             else:
                 if not silence:
                     printC(f'Process end with return code {returnCode}', "red")
+                
+                # real esrgan can not read/write special character named folder/file eg: ⋟﹏⋞
+                if returnCode == -1073740791:
+                    printC(f'Real-ESRGAN can not read/write special character named folder/file eg: ⋟﹏⋞', "red")
                 return False
+
 
     def _runProcAsync(self, command:str) -> None:
         """
