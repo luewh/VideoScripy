@@ -170,7 +170,7 @@ class VideoScripy():
         self.sType = ["smi", "srt"]
         self.scanType = self.vType + self.pType + self.aType + self.sType
         self.folderSkip = [p.name for p in VideoProcess]
-        self.COMPRESS_TOLERENCE = 1.15
+        self.COMPRESS_TOLERENCE = 0.1
 
         self.proc:subprocess.Popen = None
         self.killed = False
@@ -1020,7 +1020,7 @@ class VideoScripy():
         )
 
         # check if compression needed
-        if video["compressBitRate"] * self.COMPRESS_TOLERENCE > video['bitRate']:
+        if round(video["quality"] - quality,1) < self.COMPRESS_TOLERENCE:
             return False
         else:
             return True
@@ -1101,8 +1101,7 @@ class VideoScripy():
         # show current process changing info
         print('{}x{}'.format(width, height))
 
-        compressNeed = self.pre_compress(video, width, height, quality)
-        if not compressNeed:
+        if not self.pre_compress(video, width, height, quality):
             printC('Skipped', "yellow")
             return "skip"
 
