@@ -28,7 +28,7 @@ Collection of video processing module such as compression, upscale, interpolatio
 ## Processing module
 
 - compress  
-    Reduce the video biteRate in order to gain storage space.  
+    Reduce the video bitRate in order to gain storage space.  
     <details>
     <summary>expand more</summary>
         The processed videos will have a bitRate = width * height * quality, quality=3 is generally the lowest value before appearance of artifacts (bad images, blurry...). In other words, humain won't notice the visual difference between video of quality 3 and 6.

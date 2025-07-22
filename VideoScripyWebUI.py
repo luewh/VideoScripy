@@ -1,7 +1,7 @@
 # built-in
 import os
 from sys import stdout, stderr
-from time import sleep
+from time import sleep, time
 from datetime import timedelta
 from webbrowser import open_new
 from threading import Timer
@@ -1813,11 +1813,6 @@ def runProcess(_, selectedProcess, inputValues):
         print(f'Not configured process : "{selectedProcess}"')
         raise PreventUpdate
 
-    if vs.killed:
-        print(f"Process {selectedProcess} STOP")
-    else:
-        print(f"Process {selectedProcess} END")
-
     raise PreventUpdate
 
 @callback(
@@ -1832,14 +1827,83 @@ def stopProcess(_):
 
 
 class StdoutIntercept(object):
+    """
+    alive-progress stdout :
+
+    'Remain to progress : 2002/3673'
+    '\n'
+    '\x1b[?25l'
+    '\r'
+    '|██████████████████▎                     |'
+    ' '
+    '▁▃▅'
+    ' '
+    '1671/3673 [45%] '
+    'in 0s '
+    '(~0s, 0.0/s) '
+    ''
+    '\r'
+    '|██████████████████▎                     |'
+    ' '
+    '▂▄▆'
+    ' '
+    '1671/3673 [45%] '
+    'in 0s '
+    '(~0s, 0.0/s) '
+    ''
+    '\x1b[2K\r'
+    '\x1b[J'
+    'on 1673: Took : 0:00:04.991'
+    '\n'
+    '\x1b[2K\r'
+    '\x1b[J'
+    'on 1671: \x1b[31mProcess stoped\x1b[0m'
+    '\n'
+    '\r'
+    '|██████████████████▎                     |'
+    ' '
+    '▂▂▄'
+    ' '
+    '1671/3673 [45%] '
+    'in 1s '
+    '(~0s, 0.0/s) '
+    ''
+    '\x1b[?25h'
+    '\x1b[J'
+    '\r'
+    '|██████████████████▎⚠︎                    |'
+    ' '
+    '(!) 1671/3673 [45%] '
+    'in 1.5s '
+    '(0.00/s) '
+    '\x1b[K'
+    ''
+    '\n'
+    'SUMMARY :'
+    ''
+    '\n------------------------------------'
+
+    """
     def __init__(self):
         self.stdoutW = stdout.write
         self.stderrW = stderr.write
         stdout.write = self.write
         stderr.write = self.write
-        self.queue = []
-        self.QUEUE_LIMIT = 200
-        self.carriage = False
+
+        self.queueLines = ['']
+        self.QUEUE_LIMIT = 512
+        # min
+        if self.QUEUE_LIMIT < 256:
+            self.QUEUE_LIMIT = 256
+
+        self.AP_ANSI_ESCAPE_CODE = [
+            '\x1b[?25l',
+            # it appears as '\x1b[2K\r' before 'on xxxx:' line
+            '\x1b[2K',
+            '\x1b[J',
+            '\x1b[?25h',
+            '\x1b[K',
+        ]
 
     def __del__(self):
         stdout.write = self.stdoutW
@@ -1847,52 +1911,29 @@ class StdoutIntercept(object):
 
     def write(self, msg:str):
         self.stdoutW(msg)
-        
-        if "\x1b[2K\x1b[J" in msg:
-            msg.replace("\x1b[2K\x1b[J", "")
 
-        if msg == "\r":
-            # init carriage line
-            if not self.carriage:
-                # alive-progress remove ANSI Escape Code (hide the cursor on terminal)
-                if "\x1b[?25l" in self.queue[-1]:
-                    self.queue[-1] = self.queue[-1].replace("\x1b[?25l", "")
-                if "\x1b[?25h" in self.queue[-1]:
-                    self.queue[-1] = self.queue[-1].replace("\x1b[?25h", "")
-                else:
-                    self.queue.append("")
-            # rewrite carriage line
-            else:
-                self.queue[-1] = ""
-            
-            self.carriage = True
+        # skip ANSI Escape Code
+        if msg in self.AP_ANSI_ESCAPE_CODE:
             return
         
-        if msg == "\n":
-            # stop carriage
-            if self.carriage:
-                self.carriage = False
-                # alive-progress remove ANSI clears line from cursor
-                if "\x1b[K" in self.queue[-1]:
-                    self.queue[-1] = self.queue[-1].replace("\x1b[K", "")
+        self.queueLines[-1] += msg
 
-        # append carriage line
-        if self.carriage:
-            # for print during bar progress
-            if "on " in msg:
-                self.queue[-1] = msg
-            else:
-                if "\x1b[\x1b[J" in msg:
-                    msg.replace("\x1b[\x1b[J", "")
-                self.queue[-1] += msg
-        # append line
-        else:
-            self.queue.append(msg)
+        if msg == '\n':
+            self.queueLines.append('')
+        elif msg == '\r':
+            self.queueLines[-1] = ''
+        # elif ('\n' in msg) and ('\r' in msg):
+        # elif '\n' in msg:
+        elif '\r' in msg:
+            self.queueLines[-1] = msg.split('\r')[-1]
         
         # limit queue size
-        if len(self.queue) > self.QUEUE_LIMIT:
-            self.queue = self.queue[-self.QUEUE_LIMIT:]
+        if len(self.queueLines) > self.QUEUE_LIMIT:
+            # remove first 50 element
+            del self.queueLines[:50]
+        
 stdout = StdoutIntercept()
+
 @callback(
     Output('div_processRunning', 'children'),
     Input('interval_log', 'n_intervals'),
@@ -1901,27 +1942,29 @@ def logConsole(_):
     global stdout, colorAnsi
 
     # skip if no stdout
-    if stdout.queue == []:
+    if stdout.queueLines == ['']:
         raise PreventUpdate
     
-    msgs = ''.join(stdout.queue).split("\n")
     children = []
-    for msg in msgs[::-1]:
+    queueLines = stdout.queueLines
+    
+    # represent queue line
+    for queueLine in queueLines[::-1]:
         hasAnsiColor = False
         # check if has ansi color code
         for color, ansi in colorAnsi.items():
-            if ansi in msg:
+            if ansi in queueLine:
                 hasAnsiColor = True
                 # remove ansi color code
-                msg = msg.replace(ansi, "")
+                queueLine = queueLine.replace(ansi, "")
                 if color != "reset":
                     children.append(html.Span(
-                        msg,
+                        queueLine,
                         style={"color":color}
                     ))
         # no color append
         if not hasAnsiColor:
-            children.append(html.Span(msg))
+            children.append(html.Span(queueLine))
 
     return children
 

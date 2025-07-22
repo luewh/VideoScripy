@@ -51,13 +51,15 @@ def printC(text, color:str=None):
     """
     print with color : red green blue yellow
     """
+    if color is None:
+        print(text)
+        return
+    
     global colorAnsi
     try:
-        print(colorAnsi[color], end='')
+        print(colorAnsi[color] + text + colorAnsi["reset"])
     except:
-        print(f'"{color}" not avalable', end='')
-
-    print(text + colorAnsi["reset"])
+        print(f'"{color}" not avalable when printing "{text}"')
 
 
 
@@ -880,7 +882,7 @@ class VideoScripy():
             if alreadyProgressed != 0:
                 bar(alreadyProgressed, skipped=True)
             while len(listdir(outDir)) < total:
-                sleep(0)
+                sleep(1)
                 progressed = len(listdir(outDir)) - alreadyProgressed
                 bar(progressed - progressedPrev)
                 progressedPrev = progressed
@@ -960,7 +962,7 @@ class VideoScripy():
         obtainedFrames = len(listdir(getFramesOutputPath))
         if obtainedFrames != video["nbFrames"]:
             printC(
-                f'Warning, obtained frames {obtainedFrames}'
+                f'Warning, obtained frames {obtainedFrames} '
                 f'is not equal to video frames {video["nbFrames"]}',
                 "yellow"
             )
@@ -1043,13 +1045,14 @@ class VideoScripy():
             if len(results)%5 != 0:
                 results += [" "]*(5-len(results)%5)
             # show SUMMARY
-            print("SUMMARY :", end='')
-            for index, result in enumerate(results):
-                if index%5 == 0:
-                    print("\n"+"-"*36)
-                    print("|", end='')
-                print(result.center(6,' ')+"|", end='')
-            print("\n"+"-"*36)
+            if len(results) != 0:
+                print("SUMMARY :", end='')
+                for index, result in enumerate(results):
+                    if index%5 == 0:
+                        print("\n"+"-"*36)
+                        print("|", end='')
+                    print(result.center(6,' ')+"|", end='')
+                print("\n"+"-"*36)
                 
         return wrapper
 

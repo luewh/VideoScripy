@@ -87,7 +87,7 @@
     
     ![demo_preview](./doc/demo_preview.png)
     
-- frame  
+- 帧  
     绘制每一帧的比特率图
 
     <ins>266x200， 时长 10 秒的视频</ins>
