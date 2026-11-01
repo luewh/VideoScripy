@@ -50,7 +50,7 @@ videoSortBy = [
     "fileSize",
 ]
 langDict = [
-    {"label": "Undifined | undifined", "value": "und"},
+    {"label": "Undefined | undifined", "value": "und"},
     {"label": "English | english", "value": "eng"},
     {"label": "Chinese | 中文", "value": "zho"},
     {"label": "Japanese | 日本語", "value": "jpn"},

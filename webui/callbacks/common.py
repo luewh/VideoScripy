@@ -4,8 +4,8 @@ from dash.exceptions import PreventUpdate
 from ..state import IP, PORT
 
 @callback(
-    Output("button_clientClose", "children"),
-    Input("button_clientClose", "n_clicks"),
+    Output('button_clientClose', 'children'),
+    Input('button_clientClose', 'n_clicks'),
     prevent_initial_call=True,
 )
 def clientClose(_):
@@ -15,6 +15,3 @@ def clientClose(_):
     print("| "+text+" |")
     print("-"*(len(text)+4))
     raise PreventUpdate
-
-
-##########################

@@ -14,6 +14,7 @@ env/
 .vscode/
 .idea/
 
+.qwen/
 tools/
 presentation/
 assets/typewriter_button_slide.mp3
