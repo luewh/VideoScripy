@@ -10,7 +10,7 @@ app = Dash(
     assets_folder=str(PROJECT_ROOT / "assets"),
     external_stylesheets=[],
     title="VS WebUI",
-    update_title="VS WebUI",
+    update_title="Running...",
     meta_tags=[{"name": "viewport", "content": "width=device-width, initial-scale=1.0"}],
     suppress_callback_exceptions=True,
 )
