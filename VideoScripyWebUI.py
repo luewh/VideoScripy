@@ -60,6 +60,7 @@ videoItemColor = {
     False:"dark",
 }
 videoSortBy = [
+    "quality",
     "name",
     "width", "height", "w x h",
     "fps",
