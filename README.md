@@ -28,22 +28,32 @@ Collection of video processing module such as compression, upscale, interpolatio
 ## Processing module
 
 - compress  
-    Reduce the video bitRate in order to gain storage space.  
-    <details>
-    <summary>expand more</summary>
-        The processed videos will have a bitRate = width * height * quality, quality=3 is generally the lowest value before appearance of artifacts (bad images, blurry...). In other words, humain won't notice the visual difference between video of quality 3 and 6.
-    </details>
+    **Reduce the video bitRate in order to gain storage space.**
+
+    Each video will have an attribute *quality* which is defined by this formular :
+
+    $ bitRate = width * height * quality $
+
+    For *quality* = 3,  
+    we have 6 000 Kbits/s bitRate for a 1080p (1920x1080) video,  
+    we have 24 000 Kbits/s bitRate for a 4K (3840x2160) video,
+
+    I call 3 the standard quality as it ensures losseless visual quality for humain eyes for most of videos.
+
+    For some anime video, *quality* = 1.5 is enough.
+
+    <!-- The encoder is variable bitrate mode (**VBR**) -->
 
     ![demo_upscale_s](./doc/demo_compress_illus.png)
 
 - resize  
-    Reduce the video width and height.
+    **Reduce the video width and height.**
 
     ![demo_upscale_s](./doc/demo_resize_illus.png)
 
 - upscale  
     Increase video size by factor of 2,3 or 4 with AI, enhance video quality.  
-    It has the ability to start from last upscal progress if the "_upscaledx?_frame" wasn't deleted. 
+    It has the ability to start from last upscal progress if the "_upscaledx?_frame" folder isn't deleted. 
     <details>
     <summary>expand more</summary>
         Begin with a transformation of video to image frames, then upscale each frames, finally reassemble to video.  

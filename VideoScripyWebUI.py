@@ -168,7 +168,7 @@ app.layout = html.Div(
                                             clearable=False,
                                             className="dcc_dropdown",
                                             persistence_type="local",
-                                            persistence=True,
+                                            persistence=False,
                                         ),
                                         width=6,
                                     ),
@@ -329,7 +329,7 @@ app.layout = html.Div(
                                     ),
                                     dbc.Col(
                                         html.Button(
-                                            "SELCT",
+                                            "SELECT",
                                             id="button_selectDir",
                                             className="html_button_big",
                                         ),

@@ -1343,8 +1343,8 @@ class VideoScripy():
         if not result:
             return "err"
 
-        # remove frames
-        rmtree(getFramesOutputPath)
+        # # remove frames
+        # rmtree(getFramesOutputPath)
         
         # upscaled frames to video
         command = self._getCommand(video, process.name, substep=2)
@@ -1358,8 +1358,8 @@ class VideoScripy():
         if not result:
             return "err"
         
-        # remove upscaled frames
-        rmtree(upscaleOutputPath)
+        # # remove upscaled frames
+        # rmtree(upscaleOutputPath)
 
         self.removeEmptyFolder(outputFolder)
         return "end"
