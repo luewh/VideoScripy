@@ -56,15 +56,22 @@ class _ProcessingMixin(VideoScripyContext):
     @classmethod
     def _display_ffmpeg_progress(cls, connection: socket.socket, silence: bool) -> bool:
         if silence:
-            while connection.recv(4096):
-                pass
+            while True:
+                try:
+                    if not connection.recv(4096):
+                        break
+                except ConnectionResetError:
+                    break
             return False
 
         buffer = ""
         fields: dict[str, str] = {}
         displayed = False
         while True:
-            chunk = connection.recv(4096)
+            try:
+                chunk = connection.recv(4096)
+            except ConnectionResetError:
+                break
             if not chunk:
                 break
 

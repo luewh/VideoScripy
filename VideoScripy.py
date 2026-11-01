@@ -101,7 +101,7 @@ def _run_manual_debug() -> None:
         # print()
 
     # Uncomment an operation to debug it against the scanned media:
-    # video_scripy.compress(0.3)
+    video_scripy.compress(0.3)
     # video_scripy.resize(setWidth=1920, setHeight=-1)
     # video_scripy.upscale(upscaleFactor=2)
     # video_scripy.interpolate(fpsInterp=60.0)

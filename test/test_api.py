@@ -518,6 +518,36 @@ class VideoScripyApiTests(unittest.TestCase):
         self.assertIn("24710", output.getvalue())
         self.assertIn("speed=10.3x", output.getvalue())
 
+    def test_ffmpeg_progress_handles_connection_reset(self):
+        progress_record = b"frame=267\nprogress=continue\n"
+        connection = Mock()
+        connection.recv.side_effect = [
+            progress_record,
+            ConnectionResetError(10054, "Connection reset"),
+        ]
+        output = io.StringIO()
+
+        with redirect_stdout(output):
+            displayed = self.video_scripy._display_ffmpeg_progress(
+                connection,
+                False,
+            )
+
+        self.assertTrue(displayed)
+        self.assertIn("267", output.getvalue())
+
+        silent_connection = Mock()
+        silent_connection.recv.side_effect = [
+            progress_record,
+            ConnectionResetError(10054, "Connection reset"),
+        ]
+        self.assertFalse(
+            self.video_scripy._display_ffmpeg_progress(
+                silent_connection,
+                True,
+            )
+        )
+
     @unittest.skipUnless(
         os.name == "nt"
         and (Path(__file__).resolve().parents[1] / "tools" / "ffmpeg-full_build" / "bin" / "ffmpeg.exe").is_file(),
