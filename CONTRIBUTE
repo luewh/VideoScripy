@@ -1,0 +1,132 @@
+# Contributing
+
+## Project structure
+
+`VideoScripy.py` remains the public import facade. Its implementation is split
+into the `videoscripy` package:
+
+- `_core.py` handles setup, device selection, file discovery, and metadata.
+- `_processing.py` builds commands and manages subprocesses and frame extraction.
+- `_operations.py` implements compression, resizing, upscaling, interpolation,
+  previews, frame analysis, and stream merging.
+- `_types.py` and `_utilities.py` hold shared types and console output helpers.
+
+## CLI and manual-debug call flow
+
+Running `python VideoScripyCLI.py` follows this order:
+
+1. The CLI script calls its `run()` function.
+2. The CLI parses and validates `--path` and `--depth`.
+3. The CLI constructs `VideoScripy()`. Initialization runs:
+   1. Set the working path and project root; add existing project tool folders
+      to this process's `PATH`.
+   2. Initialize media lists, process state, and the CPU device entry.
+   3. `checkGPUs()` resolves NVEncC, runs `--check-device`, and, for each
+      detected GPU, runs `--check-features` to collect codecs. These commands
+      use `_runProcAsync()` and `_runProcAsyncWait()`.
+   4. `selectDevice()` selects device 0 or falls back to CPU, then calls
+      `setEncoder()` for the current H.265 setting.
+   5. `setEncoder(h265=True)` configures the initial encoder.
+   6. `checkTools()` runs version/help checks for FFmpeg, FFprobe, Real-ESRGAN,
+      IFRNet, and NVEncC using `_runProcAsync()` and `_runProcAsyncWait()`.
+   7. Set the reference date used for frame timestamps.
+4. The CLI calls `setPath(args.path)`, then `getVideo(folderDepthLimit=...)`.
+   `getVideo()` clears the previous list, validates the directory, walks it to
+   the requested depth, skips generated-process folders, selects supported
+   media types, and sorts the results by name.
+5. `getVideoInfo()` starts an FFprobe command for each selected file, waits for
+   the results, parses the metadata, and removes files that could not be read.
+6. The CLI lists the media. If none remain it exits; otherwise it prompts for
+   a `VideoProcess`, asks for that operation's options, and calls the matching
+   public method.
+
+The process menu order comes from `VideoProcess`: `compress`, `resize`,
+`upscale`, `interpolate`, `preview`, `frame`, then `stream`.
+
+Running `python VideoScripy.py` directly does not start the CLI. Its manual
+debug entry point constructs `VideoScripy()`, calls `getVideo()` and
+`getVideoInfo()` on the current folder, then prints the discovered media.
+Example calls for all operations are left commented in that entry point so a
+developer can uncomment only the operation being debugged. The CLI can also be
+started by calling the public `VideoScripy.run()` function.
+
+## Operation call flows
+
+The first six operations below use the `_serial` wrapper. For each file in
+`vList`, the wrapper plays the start notification, prints the current item,
+calls the operation implementation, and stops early if it returns `"stop"`.
+After the loop it plays the end notification, removes empty generated folders,
+and prints a result summary. The operation's internal steps below describe one
+file; the wrapper repeats them for each file.
+
+- **Compress** — create the output folder → skip unsupported media → call
+  `pre_compress()` to calculate the target bitrate and decide whether work is
+  needed → build the FFmpeg command with `_getCommand()` → run it with
+  `_runProc()` → remove the output folder if empty.
+- **Resize** — create the output folder → skip unsupported media → calculate
+  the target dimensions and make them even → skip if the dimensions would not
+  change the video or would enlarge both dimensions → set resize metadata and
+  call `pre_compress()` → build the FFmpeg command with `_getCommand()` → run
+  it with `_runProc()` → remove the output folder if empty.
+- **Upscale** — create the output folder → skip unsupported media → for an
+  image, run Real-ESRGAN directly with `_runProc()`. For a video, calculate
+  output dimensions and bitrate → extract frames with `_getFrames()` (which
+  builds an FFmpeg command with `_getCommand()` and runs it with `_runProc()`)
+  → prepare/resume the upscaled-frame folder → start `_frameWatchStart()` →
+  build and run the Real-ESRGAN command via `_getCommand()` and `_runProc()` →
+  stop the watcher with `_frameWatchStop()` → build and run the final
+  FFmpeg command via `_getCommand()` and `_runProc()` → remove the output
+  folder if empty.
+- **Interpolate** — create the output folder → skip unsupported media or a
+  target FPS below the source FPS → calculate the target frame count and
+  bitrate → extract frames with `_getFrames()` → create the interpolation
+  output folder and start `_frameWatchStart()` → build and run the IFRNet
+  command via `_getCommand()` and `_runProc()` → stop the watcher →
+  remove extracted frames → build and run the final FFmpeg command via
+  `_getCommand()` and `_runProc()` → remove generated frame folders and the
+  output folder if empty.
+- **Preview** — create the output folder → skip unsupported media → start one
+  FFmpeg frame-extraction command per grid cell with `_runProcAsync()` →
+  `_runProcAsyncWait()` → combine the extracted images with Pillow → save the
+  contact sheet → remove temporary images and the output folder if empty.
+- **Frame analysis** — skip unsupported media → run FFprobe asynchronously
+  with `_runProcAsync()` and `_runProcAsyncWait()` → parse and sort packet
+  timestamps and sizes → store per-packet and per-second data on the video.
+- **Stream** — play the start notification → create the output folder → if
+  there is no video, clean up and play the end notification → otherwise
+  assemble the FFmpeg input, stream-map, and metadata arguments → run FFmpeg
+  with `_runProc()` → remove the output folder if empty → play the end
+  notification.
+
+`_runProc()` is the common synchronous command runner: it launches the
+platform-specific shell command, waits for it, then calls `_checkExitCode()`.
+The asynchronous helpers start commands and later collect their return codes
+and output.
+
+## Running tests
+
+The test suite uses Python's built-in `unittest` runner. From the repository
+root, create and activate a virtual environment, then install the project
+dependencies:
+
+```powershell
+py -3.13 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+```
+
+Run all tests with:
+
+```powershell
+python -m unittest discover -s test -v
+```
+
+To run one test module, pass its filename as the discovery pattern. For example:
+
+```powershell
+python -m unittest discover -s test -p "test_api.py" -v
+```
+
+The portable-bundle tests expect a built bundle at `dist\VideoScripyWebUI`.
+Build it first with `.\build_portable.ps1`; the build requires 64-bit Python
+3.13 and the portable release tools in `tools`.

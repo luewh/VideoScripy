@@ -1,5 +1,7 @@
 # built-in
 import os
+import subprocess
+import sys
 from sys import stdout, stderr
 from time import sleep, time
 from datetime import timedelta
@@ -16,23 +18,22 @@ import plotly.graph_objects as go
 from tkinter import Tk, filedialog
 
 # own class
-from VideoScripy import *
+from VideoScripy import (
+    StreamInfo,
+    VideoInfo as VideoInfoBase,
+    VideoProcess,
+    VideoScripy,
+    colorAnsi,
+    printC,
+)
 
-
-addPath = []
-addPath.append("./tools/ffmpeg-full_build/bin")
-addPath.append("./tools/Real-ESRGAN")
-addPath.append("./tools/Ifrnet")
-addPath.append("./tools/NVEncC")
-for index, path in enumerate(addPath):
-    addPath[index] = os.path.abspath(path)
-os.environ["PATH"] += os.pathsep.join(addPath)
 
 IP = "localhost"
 PORT = "8848"
+PORTABLE_MODE = os.environ.get("VIDEOSCRIPY_PORTABLE") == "1"
 
 # extend VideoInfo
-class VideoInfo(VideoInfo):
+class VideoInfo(VideoInfoBase):
     selected: bool
 
 vs = VideoScripy()
@@ -108,7 +109,7 @@ app = Dash(
     __name__,
     external_stylesheets=[],
     title="VS WebUI",
-    update_title=None,
+    update_title="VS WebUI",
     # rescale layout for mobile device
     meta_tags=[{
         'name':'viewport',
@@ -216,7 +217,7 @@ app.layout = html.Div(
                                                     "value" : devices["id"],
                                                 } for devices in vs.devices
                                             ],
-                                            value=vs.selectedDevice["id"],
+                                            value=vs.selectedDevice["id"] if vs.selectedDevice is not None else None,
                                             placeholder="Select a hardware ...",
                                             id="dropdown_device",
                                             maxHeight=233,
@@ -1118,7 +1119,14 @@ def selectDir(_):
 )
 def openDir(_):
     global vs
-    os.startfile(vs.path)
+    if hasattr(os, "startfile"):
+        os.startfile(vs.path)
+    elif os.name == "nt":
+        os.system(f'start "" "{vs.path}"')
+    elif sys.platform == "darwin":
+        subprocess.run(["open", vs.path], check=False)
+    else:
+        subprocess.run(["xdg-open", vs.path], check=False)
 
 @callback(
     Output('input_path', 'disabled', allow_duplicate=True),
@@ -1142,13 +1150,22 @@ def setPath(_, enteredPath):
 
 def getVideoItem(video:VideoInfo, index:int, prefix:str=""):
     global videoItemColor
-    width = str(video["width"]).rjust(6)
-    height = str(video["height"]).ljust(6)
-    frameRate = (str(video["fps"])+" fps").rjust(10)
-    duration = str(video["duration"]).split(".")[0].rjust(8)
-    bitRate = (f'{video["bitRate"]/1_000:_.0f}'+" Kbits/s").rjust(16)
-    quality = str(video["quality"]).rjust(5)
-    fileSize = (f'{video["fileSize"]/1_024:_.0f}'+" Ko").rjust(13)
+    video_data: dict[str, object] = dict(video)
+    width_raw = video_data.get("width")
+    height_raw = video_data.get("height")
+    fps_raw = video_data.get("fps")
+    duration_raw = video_data.get("duration")
+    bitrate_raw = video_data.get("bitRate")
+    quality_raw = video_data.get("quality")
+    file_size_raw = video_data.get("fileSize")
+
+    width = str(width_raw if width_raw is not None else "?").rjust(6)
+    height = str(height_raw if height_raw is not None else "?").ljust(6)
+    frameRate = (str(fps_raw if fps_raw is not None else "?")+" fps").rjust(10)
+    duration = str(duration_raw if duration_raw is not None else "?").split(".")[0].rjust(8)
+    bitRate = (f'{float(bitrate_raw) / 1_000:_.0f}' + " Kbits/s").rjust(16) if bitrate_raw is not None else "?".rjust(16)
+    quality = str(quality_raw if quality_raw is not None else "?").rjust(5)
+    fileSize = (f'{float(file_size_raw) / 1_024:_.0f}' + " Ko").rjust(13) if file_size_raw is not None else "?".rjust(13)
     videoInfoText = (
         f'|{width}x{height}|'
         f'{frameRate} |'
@@ -1158,7 +1175,7 @@ def getVideoItem(video:VideoInfo, index:int, prefix:str=""):
         f'{fileSize} |'
     )
 
-    streams = video["streams"]
+    streams = video_data.get("streams") or []
     # sort by codec type
     streamInfo = {
         "video": {key:[] for key in StreamInfo.__annotations__.keys()},
@@ -2006,7 +2023,10 @@ def loadPageRefresh(_):
 if __name__ == '__main__':
 
     def open_browser():
-        if not os.environ.get("WERKZEUG_RUN_MAIN"):
+        if (
+            not os.environ.get("VIDEOSCRIPY_NO_BROWSER")
+            and (PORTABLE_MODE or not os.environ.get("WERKZEUG_RUN_MAIN"))
+        ):
             open_new(f'http://{IP}:{PORT}/')
 
     Timer(1, open_browser).start()
@@ -2014,9 +2034,7 @@ if __name__ == '__main__':
     app.run(
         host=IP,
         port=PORT,
-        debug=True,
+        debug=not PORTABLE_MODE and not getattr(sys, "frozen", False),
         dev_tools_silence_routes_logging=True,
     )
     
-
-

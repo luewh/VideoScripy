@@ -117,35 +117,52 @@ Collection of video processing module such as compression, upscale, interpolatio
 - Windows OS
 - NVIDIA GPU for faster video process
 - Atleast 50 Go disk space free for Upscale process | 10 Go for Interpolate process
-- Python 3.10
+- Python 3.13 (source setup only)
 - [Tools](#installation-1)
+
 
 
 ## Embedded version
 
-Simplest. Python, Tools are already setup.  
+The portable release includes the Python runtime, Python packages, and tools. Python does not need to be installed on the target PC.
 Advantage : **Beginner-friendly**
 
 ### Installation
 
-Download and extract the [Embedded release](https://github.com/luewh/Video-Script/releases/latest)
+Download the portable folder from the [latest release](https://github.com/luewh/Video-Script/releases/latest), then run its launcher.
 
 ### Usage
 
-Run the `VideoScripyWebUI.bat`
+Run `Run VideoScripyWebUI.bat`. It starts the included Python runtime and opens the WebUI. No app-specific executable is required. NVIDIA GPU features require a compatible driver.
+
+### Build a portable release
+
+On the build PC, install 64-bit Python 3.13 and ensure the required tools are present in the `tools` folder as shown under [Self setup version](#self-setup-version). The builder downloads the embeddable Python runtime and installs the dependencies into the output folder.
+
+```powershell
+.\build_portable.ps1
+```
+
+The portable folder is created at `dist\VideoScripyWebUI`. Copy that complete folder to another Windows x64 PC; Python does not need to be installed there. The folder is not automatically archived.
+
+Run the portable regression checks after building with:
+
+```powershell
+python -m unittest discover -s test -v
+```
 
 
 
 ## Self setup version
 
-Need to download the source codes, install Python and its dependencies, download tools and include them to tools folder or add them to PATH.    
+Download the source code, install Python and its dependencies, and place the tools in the project `tools` folder. The application adds those local tool folders to its own PATH when it starts; no system PATH changes are needed.
 Advantage : **Freedom**
 
 ### Installation
 
 1. Download the source code and extract.
 
-1. Download and install Python 3.10 if you dont have.
+1. Download and install Python 3.13 if you don't have it.
 
 2. Install dependencies
     ```shell
@@ -178,18 +195,19 @@ Advantage : **Freedom**
     │   └───Ifrnet
     │   │   │   ...
     │   │   │   ifrnet-ncnn-vulkan.exe
+    │   └───NVEncC
+    │   │   │   NVEncC64.exe
     |...
     ```
 
-    Or add them in the environment variable *PATH*
-    - `<pathTo>\ffmpeg-full_build\bin`
-    - `<pathTo>\Real-ESRGAN`
-    - `<pathTo>\Ifrnet`
-    - `<pathTo>\NVEnc`
-
 ### Usage
 
-Run the `VideoScripyWebUI.py`
+Run `python VideoScripyWebUI.py` to open the Dash web UI, or run
+`python VideoScripyCLI.py --path "<folder>"` for the interactive CLI. The CLI
+scans the current folder by default; use `--depth -1` to scan subfolders
+recursively. Running `python VideoScripy.py` directly initializes and scans the
+current folder for manual debugging; uncomment an operation call in its
+`__main__` block to run one.
 
 
 
@@ -217,5 +235,3 @@ This project relies on the following software and projects :
 
 Sounds come from :
 - [Pixabay](https://pixabay.com/sound-effects/search/typewriter/)
-
-

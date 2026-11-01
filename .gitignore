@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+
+tools/
+presentation/
+assets/typewriter_button_slide.mp3
+assets/typewriter_carriage_reset.mp3
+doc/flat-ui__data-Mon Jan 06 2025.json
+doc/gtx1650ti_mobile_windows.txt
+doc/NVENC_VideoEncoder_API_ProgGuide.pdf
+demo.mp4
+demo2.mp4

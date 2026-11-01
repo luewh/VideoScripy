@@ -109,36 +109,52 @@
 - Windows 操作系统
 - NVIDIA 显卡（加速视频处理）
 - 至少 50GB 硬盘空间用于AI放大处理 | AI插帧处理需 10GB
-- Python 3.10
+- Python 3.13（仅源码安装需要）
 - [工具](#下载与安装-1)
 
 
 
 ## 整合安装
 
-最简单的方式，Python 和工具都已配置好。  
+整合包已包含 Python 运行时、Python 依赖和工具，目标电脑无需安装 Python。
 优点：**适合小白**
 
 ### 下载与安装
 
-下载并解压 [整合包](https://github.com/luewh/Video-Script/releases/latest)
+从[最新版本](https://github.com/luewh/Video-Script/releases/latest)下载便携文件夹，然后运行其中的启动脚本。
 
 ### 使用方式
 
-运行 `VideoScripyWebUI.bat` 文件
+运行 `Run VideoScripyWebUI.bat`，它会启动内置 Python 并打开 WebUI，不需要应用专用的 exe。使用 NVIDIA GPU 功能需要安装兼容的显卡驱动。
+
+### 构建便携版
+
+在构建电脑上安装 64 位 Python 3.13，并按[手动安装](#手动安装)中的目录结构准备 `tools` 文件夹。构建脚本会下载 Python 嵌入式运行时，并将依赖安装到输出文件夹。
+
+```powershell
+.\build_portable.ps1
+```
+
+便携文件夹会生成在 `dist\VideoScripyWebUI`。复制整个文件夹到其他 Windows x64 电脑即可运行；目标电脑无需安装 Python。构建脚本不会自动打包为压缩文件。
+
+构建完成后运行以下回归测试：
+
+```powershell
+python -m unittest discover -s test -v
+```
 
 
 
 ## 手动安装
 
-需要下载源码、安装 Python 及其依赖，下载工具并放入 tools 文件夹或添加到系统 PATH。  
+需要下载源码、安装 Python 及其依赖，并将工具放入项目的 `tools` 文件夹。程序启动时会将本地工具目录加入自身进程的 PATH，无需修改系统 PATH。
 优点：**自由**
 
 ### 下载与安装
 
 1. 下载源码并解压。
 
-2. 如果未安装 Python 3.10，请安装。
+2. 如果未安装 Python 3.13，请安装。
 
 3. 安装依赖：
     ```shell
@@ -171,18 +187,18 @@
     │   └───Ifrnet
     │   │   │   ...
     │   │   │   ifrnet-ncnn-vulkan.exe
+    │   └───NVEncC
+    │   │   │   NVEncC64.exe
     |...
     ```
 
-    或者添加到系统环境变量*PATH*中，具体如下：
-    - `<pathTo>\ffmpeg-full_build\bin`
-    - `<pathTo>\Real-ESRGAN`
-    - `<pathTo>\Ifrnet`
-    - `<pathTo>\NVEnc`
-
 ### 使用方式
 
-运行 `VideoScripyWebUI.py` 文件
+运行 `python VideoScripyWebUI.py` 启动 Dash 网页界面，或运行
+`python VideoScripyCLI.py --path "<文件夹>"` 使用交互式命令行。
+命令行默认扫描当前文件夹；使用 `--depth -1` 可递归扫描子文件夹。
+直接运行 `python VideoScripy.py` 会初始化并扫描当前文件夹以便手动调试；
+可在其 `__main__` 代码块中取消注释某个操作调用来执行相应操作。
 
 
 
@@ -199,5 +215,3 @@
 
 音效素材来源：
 - [Pixabay](https://pixabay.com/sound-effects/search/typewriter/)
-
-
