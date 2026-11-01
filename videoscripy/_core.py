@@ -49,74 +49,186 @@ class _CoreMixin(VideoScripyContext):
             else:
                 printC(f'{tool} not found, please check the project tools folder or environment "PATH"', 'red')
 
-    def checkGPUs(self) -> None:
-        """
-        Fill up self.devices by each GPU's info.
-        """
-        # get gpu device
+    def getEncoders(self) -> None:
+        """Discover FFmpeg software encoders and available GPU encoders."""
+        cpu_device: GPUInfo = next(
+            (device for device in self.devices if device["id"] == -1),
+            {"id": -1, "name": "CPU", "codecs": []},
+        )
+        cpu_device["codecs"] = []
+        self.devices = [cpu_device]
+
+        ffmpeg = self._resolve_tool("ffmpeg") or "ffmpeg"
+        self._runProcAsync(f'{ffmpeg} -hide_banner -encoders')
+        ffmpeg_result = self._runProcAsyncWait()[0]
+        self.availableEncoders = {
+            match.group(1)
+            for line in ffmpeg_result["stdout"].decode("utf-8").splitlines()
+            if (match := re.match(r"\s*V\S*\s+([A-Za-z0-9_-]+)", line))
+        } if ffmpeg_result["returnCode"] == 0 else set()
+
+        software_encoders = {
+            "h264": ("libx264", "H.264/AVC"),
+            "h265": ("libx265", "H.265/HEVC"),
+            "av1": ("libaom-av1", "AV1"),
+        }
+        for encoder, label in software_encoders.values():
+            if encoder in self.availableEncoders:
+                cpu_device["codecs"].append(label)
+        if ffmpeg_result["returnCode"] != 0:
+            printC("Unable to query FFmpeg video encoders", "red")
+
+        # Discover GPUs and their hardware codec support.
         command = (self._resolve_tool("NVEncC64") or "NVEncC64") + " --check-device"
         self._runProcAsync(command)
         gpu_device_result = self._runProcAsyncWait()[0]
-        gpu_lines = gpu_device_result["stdout"].decode('utf-8').split("\r\n")
+        gpu_lines = gpu_device_result["stdout"].decode("utf-8").splitlines()
         for resultStr in gpu_lines:
-            if "DeviceId" in resultStr:
-                id = re.findall("#.+:", resultStr)[0].replace("#", "").replace(":", "")
-                try:
-                    id = int(id)
-                except:
-                    printC("Unexpected int conversion error at self.checkGPUs()", "red")
-                
-                name = re.split("#.+:", resultStr)[-1].strip()
-
+            match = re.search(r"DeviceId\s+#(\d+):\s*(.+)", resultStr)
+            if match:
                 self.devices.append({
-                    "id" : id,
-                    "name" : name,
-                    "codecs" : [],
+                    "id": int(match.group(1)),
+                    "name": match.group(2).strip(),
+                    "codecs": [],
                 })
 
         # get codec of each gpu
         for device in self.devices:
+            if device["id"] != -1:  # skip CPU-only slot
+                command = (self._resolve_tool("NVEncC64") or "NVEncC64") + f' --check-features {device["id"]}'
+                self._runProcAsync(command)
+                codec_result = self._runProcAsyncWait()[0]
+                codec_lines = codec_result["stdout"].decode("utf-8").splitlines()
+                for resultStr in codec_lines:
+                    if "Codec:" in resultStr:
+                        label = resultStr.split(":")[-1].strip()
+                        gpu_encoder = {
+                            "H.264/AVC": "h264_nvenc",
+                            "H.265/HEVC": "hevc_nvenc",
+                            "AV1": "av1_nvenc",
+                        }.get(label)
+                        if gpu_encoder in self.availableEncoders:
+                            device["codecs"].append(label)
 
-            # skip CPU
-            if device["id"] == -1:
-                continue
-
-            command = (self._resolve_tool("NVEncC64") or "NVEncC64") + f' --check-features {device["id"]}'
-            self._runProcAsync(command)
-            codec_result = self._runProcAsyncWait()[0]
-            codec_lines = codec_result["stdout"].decode('utf-8').split("\r\n")
-            for resultStr in codec_lines:
-                if "Codec:" in resultStr:
-                    device["codecs"].append(resultStr.split(":")[-1].strip())
-
-    def selectDevice(self, deviceId:int=0) -> None:
-        """
-        Set self.selectedDevice to corresponding element of self.devices.\n
-        Re setEncoder() with self.h265 as argument.\n
-        Set self.gpu to True if selected device's id is not -1.\n
-        If wrong id entered, will use -1 as default which correspond to CPU.\n
-        """
+    def setDevice(self, deviceId: int = 0) -> None:
         # check device id availability
-        if deviceId not in [device["id"] for device in self.devices]:
-            printC(f'Wrong device id "{deviceId}" is entered, available id are:', "red")
-            for device in self.devices:
-                print(f'    {device["id"]} : {device["name"]}')
-            printC("Using CPU as default device", "yellow")
+        if not self.devices:
+            printC("No devices configured", "red")
+            return
+
+        # find matching device or use CPU
+        setted_device = next(
+            (d for d in self.devices if d["id"] == deviceId),
+            self.devices[0]
+        )
+
+        if setted_device["id"] == -1:
+            printC('Using CPU as default device', "yellow")
             deviceId = -1
 
-        # select device
-        for device in self.devices:
-            if deviceId == device["id"]:
-                self.selectedDevice = device
-                printC(f'Selecting device {self.selectedDevice["id"]} : {self.selectedDevice["name"]}', "blue")
-                printC(f'Available codec : {" | ".join(self.selectedDevice["codecs"])}', "blue")
-        
+        self.settedDevice = setted_device
+        printC(f'Selecting device {setted_device["id"]} : {setted_device["name"]}', "blue")
+        printC(f'Available codec : {" | ".join(setted_device["codecs"])}', "blue")
+
         # set gpu state
         self.gpu = deviceId != -1
-        
-        # set encoder according to selected device ability
-        # print("Need to reset the video encoder")
-        self.setEncoder(self.h265)
+
+        preferred_codec = getattr(self, "videoCodec", "h265")
+        for codec in dict.fromkeys((preferred_codec, "h264", "av1")):
+            try:
+                self.setEncoder(codec)
+                if codec != preferred_codec:
+                    printC(
+                        f'{preferred_codec.upper()} is unavailable; using {codec.upper()} instead',
+                        "yellow",
+                    )
+                break
+            except ValueError:
+                continue
+        else:
+            raise ValueError("No supported video encoder is available")
+
+    def setEncoder(self, codec: str = "h265") -> None:
+        """Configure an available H.264, H.265, or software AV1 encoder."""
+        if self.settedDevice is None:
+            self.settedDevice = {
+                "id": -1,
+                "name": "CPU",
+                "codecs": [],
+            }
+            self.gpu = False
+
+        codec = codec.lower()
+        if codec not in {"h264", "h265", "av1"}:
+            raise ValueError(f'Unsupported video codec "{codec}"')
+
+        software_encoders = {
+            "h264": ("libx264", "H.264/AVC"),
+            "h265": ("libx265", "H.265/HEVC"),
+            "av1": ("libaom-av1", "AV1"),
+        }
+        hardware_encoders = {
+            "h264": ("h264_nvenc", "H.264/AVC"),
+            "h265": ("hevc_nvenc", "H.265/HEVC"),
+            "av1": ("av1_nvenc", "AV1"),
+        }
+        software_encoder, software_label = software_encoders[codec]
+        available_encoders = getattr(self, "availableEncoders", set())
+        cpu_device = next(
+            (device for device in self.devices if device["id"] == -1),
+            {"codecs": []},
+        )
+        use_gpu_encoder = False
+        if self.settedDevice["id"] != -1 and codec in hardware_encoders:
+            hardware_encoder, hardware_label = hardware_encoders[codec]
+            use_gpu_encoder = (
+                hardware_encoder in available_encoders
+                and hardware_label in self.settedDevice["codecs"]
+            )
+
+        use_software_encoder = (
+            software_encoder in available_encoders
+            and software_label in cpu_device["codecs"]
+        )
+        if not use_gpu_encoder and not use_software_encoder:
+            raise ValueError(f'No available encoder for video codec "{codec}"')
+
+        # summary
+        self.videoCodec = codec
+        self.videoEncoderOnGpu = use_gpu_encoder
+        encoder_device = "(gpu)" if use_gpu_encoder else "(cpu)"
+        printC(f'Using ({codec}) and {encoder_device} as video encoder', "blue")
+
+        # cpu
+        if not use_gpu_encoder:
+            if codec == "h264":
+                self.encoder = ' libx264 -crf 1'
+            elif codec == "h265":
+                self.encoder = ' libx265 -crf 0'
+            else:
+                self.encoder = ' libaom-av1 -cpu-used 6'
+
+            if codec != "av1":
+                self.encoder += ' -preset medium'
+        # gpu
+        else:
+            if codec == "h264":
+                self.encoder = ' h264_nvenc -b_ref_mode middle'
+            elif codec == "h265":
+                self.encoder = ' hevc_nvenc'
+            else:
+                self.encoder = ' av1_nvenc -pix_fmt yuv420p'
+
+            self.encoder += (
+                f' -gpu {self.settedDevice["id"]}'
+                ' -preset p6'
+                ' -tune hq'
+                ' -rc vbr'
+                ' -rc-lookahead 32'
+                ' -multipass fullres'
+                ' -spatial_aq 1'
+                ' -cq 1'
+            )
 
     def removeEmptyFolder(self, folderName: str | Path | None = None):
         if folderName is not None:
@@ -456,57 +568,3 @@ class _CoreMixin(VideoScripyContext):
                 self.vList.pop(videoIndex)
 
         print(f"Get {len(self.vList)} file info")
-
-    def setEncoder(self, h265=True) -> None:
-        """
-        Set encoder parameters according h265 and GPU usage.\n
-        Make sure to be called after self.checkGPUs() and self.selectDevice().
-
-        Parameters:
-            h265 (bool):
-                _
-        """        
-        if self.selectedDevice is None:
-            self.selectedDevice = {
-                "id": -1,
-                "name": "CPU",
-                "codecs": ["H.264/AVC", "H.265/HEVC"],
-            }
-            self.gpu = False
-
-        # check h265 possibility
-        if (h265) and ("265" not in " ".join(self.selectedDevice["codecs"])):
-            printC("Selected device do not has H265 video encoder", "yellow")
-            h265 = False
-
-        # summary
-        self.h265 = h265
-        printC(f'Using {"(h265)" if h265 else "(h264)"} and {"(gpu)" if self.gpu else "(cpu)"} as video encoder', "blue")
-        
-        # cpu
-        if not self.gpu:
-            if not h265:
-                self.encoder = ' libx264 -crf 1'
-            else:
-                self.encoder = ' libx265 -crf 0'
-            
-            self.encoder += (
-                ' -preset medium'
-            )
-        # gpu
-        else:
-            if not h265:
-                self.encoder = ' h264_nvenc -b_ref_mode middle'
-            else:
-                self.encoder = ' hevc_nvenc'
-
-            self.encoder += (
-                f' -gpu {self.selectedDevice["id"]}'
-                ' -preset p6'
-                ' -tune hq'
-                ' -rc vbr'
-                ' -rc-lookahead 32'
-                ' -multipass fullres'
-                ' -spatial_aq 1'
-                ' -cq 1'
-            )

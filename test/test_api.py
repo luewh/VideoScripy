@@ -21,8 +21,8 @@ from VideoScripy import VideoScripy
 class VideoScripyApiTests(unittest.TestCase):
     PUBLIC_METHODS = {
         "checkTools",
-        "checkGPUs",
-        "selectDevice",
+        "getEncoders",
+        "setDevice",
         "removeEmptyFolder",
         "noticeProcessBegin",
         "noticeProcessEnd",
@@ -66,16 +66,24 @@ class VideoScripyApiTests(unittest.TestCase):
         self.video_scripy.killed = False
         self.video_scripy.stop_threads = False
         self.video_scripy.EXIT_CODE_FILE_NAME = "exitCode.txt"
-        self.video_scripy.h265 = False
         self.video_scripy.gpu = False
         self.video_scripy.devices = [
             {
                 "id": -1,
                 "name": "CPU",
-                "codecs": ["H.264/AVC", "H.265/HEVC"],
+                "codecs": ["H.264/AVC", "H.265/HEVC", "AV1"],
             }
         ]
-        self.video_scripy.selectedDevice = self.video_scripy.devices[0]
+        self.video_scripy.availableEncoders = {
+            "libx264",
+            "libx265",
+            "libaom-av1",
+            "h264_nvenc",
+            "hevc_nvenc",
+            "av1_nvenc",
+        }
+        self.video_scripy.settedDevice = self.video_scripy.devices[0]
+        self.video_scripy.videoEncoderOnGpu = False
         self.video_scripy.DAY_ZERO = datetime(2000, 1, 1)
 
     def make_probe_result(self, width=266, height=200):
@@ -165,18 +173,16 @@ class VideoScripyApiTests(unittest.TestCase):
     def test_constructor_initializes_and_checks_tools(self):
         with (
             patch.object(VideoScripy, "_add_project_tools_to_path"),
-            patch.object(VideoScripy, "checkGPUs") as check_gpus,
-            patch.object(VideoScripy, "selectDevice") as select_device,
-            patch.object(VideoScripy, "setEncoder") as set_encoder,
+            patch.object(VideoScripy, "getEncoders") as get_encoders,
+            patch.object(VideoScripy, "setDevice") as set_device,
             patch.object(VideoScripy, "checkTools") as check_tools,
         ):
             video_scripy = VideoScripy()
 
         self.assertEqual(video_scripy.vList, [])
         self.assertEqual(video_scripy.devices[0]["id"], -1)
-        check_gpus.assert_called_once_with()
-        select_device.assert_called_once_with()
-        set_encoder.assert_called_once_with(h265=True)
+        get_encoders.assert_called_once_with()
+        set_device.assert_called_once_with()
         check_tools.assert_called_once_with()
 
     def test_check_tools_runs_all_tools_and_reports_results(self):
@@ -219,9 +225,19 @@ class VideoScripyApiTests(unittest.TestCase):
         self.assertIn("FFprobe not found", output.getvalue())
         self.assertIn("NVEncC found", output.getvalue())
 
-    def test_check_gpus_discovers_devices_and_codecs(self):
+    def test_get_encoders_discovers_cpu_and_gpu_codecs_without_printing(self):
         self.video_scripy.devices = [self.video_scripy.devices[0].copy()]
         results = [
+            [{
+                "returnCode": 0,
+                "stdout": (
+                    b" V....D libx264 H.264\r\n"
+                    b" V....D libx265 H.265\r\n"
+                    b" V....D libaom-av1 AV1\r\n"
+                    b" V....D h264_nvenc H.264 hardware\r\n"
+                    b" V....D hevc_nvenc H.265 hardware\r\n"
+                ),
+            }],
             [{"returnCode": 0, "stdout": b"DeviceId #0: Test GPU\r\n"}],
             [
                 {
@@ -231,6 +247,7 @@ class VideoScripyApiTests(unittest.TestCase):
             ],
         ]
 
+        output = io.StringIO()
         with (
             patch.object(self.video_scripy, "_runProcAsync") as run_proc_async,
             patch.object(
@@ -238,9 +255,18 @@ class VideoScripyApiTests(unittest.TestCase):
                 "_runProcAsyncWait",
                 side_effect=results,
             ),
+            redirect_stdout(output),
         ):
-            self.video_scripy.checkGPUs()
+            self.video_scripy.getEncoders()
 
+        self.assertEqual(
+            self.video_scripy.devices[0]["codecs"],
+            ["H.264/AVC", "H.265/HEVC", "AV1"],
+        )
+        self.assertEqual(
+            self.video_scripy.availableEncoders,
+            {"libx264", "libx265", "libaom-av1", "h264_nvenc", "hevc_nvenc"},
+        )
         self.assertEqual(
             self.video_scripy.devices[1],
             {
@@ -249,30 +275,37 @@ class VideoScripyApiTests(unittest.TestCase):
                 "codecs": ["H.264/AVC", "H.265/HEVC"],
             },
         )
-        self.assertEqual(run_proc_async.call_count, 2)
+        self.assertEqual(run_proc_async.call_count, 3)
+        self.assertNotIn("Available codec", output.getvalue())
+        self.assertNotIn("Available CPU encoder", output.getvalue())
 
-    def test_select_device_sets_gpu_and_resets_encoder(self):
+    def test_set_device_sets_gpu_prints_codecs_and_resets_encoder(self):
         gpu = {"id": 0, "name": "GPU", "codecs": ["H.264/AVC"]}
         self.video_scripy.devices.append(gpu)
-        with patch.object(self.video_scripy, "setEncoder") as set_encoder:
-            self.video_scripy.selectDevice(0)
-
-        self.assertIs(self.video_scripy.selectedDevice, gpu)
-        self.assertTrue(self.video_scripy.gpu)
-        set_encoder.assert_called_once_with(False)
-
-    def test_select_device_falls_back_to_cpu_for_unknown_id(self):
         output = io.StringIO()
         with (
             patch.object(self.video_scripy, "setEncoder") as set_encoder,
             redirect_stdout(output),
         ):
-            self.video_scripy.selectDevice(42)
+            self.video_scripy.setDevice(0)
 
-        self.assertEqual(self.video_scripy.selectedDevice["id"], -1)
+        self.assertIs(self.video_scripy.settedDevice, gpu)
+        self.assertTrue(self.video_scripy.gpu)
+        self.assertIn("Available codec : H.264/AVC", output.getvalue())
+        set_encoder.assert_called_once_with("h265")
+
+    def test_set_device_falls_back_to_cpu_for_unknown_id(self):
+        output = io.StringIO()
+        with (
+            patch.object(self.video_scripy, "setEncoder") as set_encoder,
+            redirect_stdout(output),
+        ):
+            self.video_scripy.setDevice(42)
+
+        self.assertEqual(self.video_scripy.settedDevice["id"], -1)
         self.assertFalse(self.video_scripy.gpu)
         self.assertIn("Using CPU as default device", output.getvalue())
-        set_encoder.assert_called_once_with(False)
+        set_encoder.assert_called_once_with("h265")
 
     def test_remove_empty_folder_removes_only_empty_directory(self):
         empty = self.root / "empty"
@@ -303,6 +336,43 @@ class VideoScripyApiTests(unittest.TestCase):
     def test_set_path_empty_value_uses_current_directory(self):
         self.assertTrue(self.video_scripy.setPath(""))
         self.assertEqual(self.video_scripy.path, str(Path.cwd().resolve()))
+
+    def test_webui_encoder_options_follow_selected_device(self):
+        from webui import state
+
+        cpu = {
+            "id": -1,
+            "name": "CPU",
+            "codecs": ["H.264/AVC", "H.265/HEVC", "AV1"],
+        }
+        gpu = {
+            "id": 0,
+            "name": "GPU",
+            "codecs": ["H.264/AVC", "AV1"],
+        }
+        available_encoders = {
+            "libx264",
+            "libx265",
+            "libaom-av1",
+            "h264_nvenc",
+            "av1_nvenc",
+        }
+
+        with (
+            patch.object(state.vs, "devices", [cpu, gpu]),
+            patch.object(state.vs, "availableEncoders", available_encoders),
+        ):
+            cpu_options = state.getEncoderOptions(-1)
+            gpu_options = state.getEncoderOptions(0)
+
+        self.assertEqual(
+            {option["value"] for option in cpu_options},
+            {"h264", "h265", "av1"},
+        )
+        self.assertEqual(
+            {option["value"] for option in gpu_options},
+            {"h264", "av1"},
+        )
 
     def test_get_video_scans_supported_files(self):
         (self.root / "clip.MP4").write_bytes(b"")
@@ -448,18 +518,98 @@ class VideoScripyApiTests(unittest.TestCase):
         self.assertEqual(video["quality"], 0.0)
 
     def test_set_encoder_configures_cpu_and_gpu(self):
-        self.video_scripy.setEncoder(h265=False)
+        self.video_scripy.setEncoder("h264")
         self.assertEqual(self.video_scripy.encoder, " libx264 -crf 1 -preset medium")
 
         self.video_scripy.devices.append(
             {"id": 1, "name": "GPU", "codecs": ["H.264/AVC", "H.265/HEVC"]}
         )
-        self.video_scripy.selectedDevice = self.video_scripy.devices[1]
+        self.video_scripy.settedDevice = self.video_scripy.devices[1]
         self.video_scripy.gpu = True
-        self.video_scripy.setEncoder(h265=True)
+        self.video_scripy.setEncoder("h265")
         self.assertIn("hevc_nvenc", self.video_scripy.encoder)
         self.assertNotIn("weighted_pred", self.video_scripy.encoder)
         self.assertIn("-gpu 1", self.video_scripy.encoder)
+
+    def test_set_encoder_configures_software_av1(self):
+        self.video_scripy.gpu = True
+
+        self.video_scripy.setEncoder("av1")
+
+        self.assertEqual(self.video_scripy.videoCodec, "av1")
+        self.assertIn("libaom-av1", self.video_scripy.encoder)
+        self.assertNotIn("av1_nvenc", self.video_scripy.encoder)
+        self.assertFalse(self.video_scripy.videoEncoderOnGpu)
+
+    def test_set_encoder_uses_software_av1_without_gpu(self):
+        self.video_scripy.gpu = False
+
+        self.video_scripy.setEncoder("av1")
+
+        self.assertEqual(self.video_scripy.videoCodec, "av1")
+        self.assertIn("libaom-av1", self.video_scripy.encoder)
+
+    def test_set_encoder_prefers_selected_gpu_av1_encoder(self):
+        gpu = {"id": 0, "name": "GPU", "codecs": ["AV1"]}
+        self.video_scripy.devices.append(gpu)
+        self.video_scripy.settedDevice = gpu
+        self.video_scripy.gpu = True
+
+        self.video_scripy.setEncoder("av1")
+
+        self.assertIn("av1_nvenc", self.video_scripy.encoder)
+        self.assertIn("-pix_fmt yuv420p", self.video_scripy.encoder)
+        self.assertIn("-gpu 0", self.video_scripy.encoder)
+        self.assertTrue(self.video_scripy.videoEncoderOnGpu)
+
+    def test_av1_compression_uses_target_bitrate_and_software_frames(self):
+        self.video_scripy.setEncoder("av1")
+        self.video_scripy.gpu = True
+        video = {
+            "path": str(self.root / "clip.mp4"),
+            "name": "clip.mp4",
+            "bitRate": 2_000_000,
+            "quality": 5.0,
+            "type": "mp4",
+        }
+
+        self.video_scripy.pre_compress(video, 320, 240, 3.0)
+        command = self.video_scripy._getCommand(video, "compress")
+
+        self.assertIn("-b:v 230400", video["compressBitRateParam"])
+        self.assertIn("libaom-av1", command)
+        self.assertNotIn("-hwaccel cuda", command)
+
+    def test_av1_nvenc_compression_uses_software_decode_and_supported_pixel_format(self):
+        gpu = {"id": 0, "name": "GPU", "codecs": ["AV1"]}
+        self.video_scripy.devices.append(gpu)
+        self.video_scripy.settedDevice = gpu
+        self.video_scripy.gpu = True
+        self.video_scripy.setEncoder("av1")
+        video = {
+            "path": str(self.root / "clip.mp4"),
+            "name": "clip.mp4",
+            "bitRate": 2_000_000,
+            "quality": 5.0,
+            "type": "mp4",
+        }
+
+        self.video_scripy.pre_compress(video, 320, 240, 3.0)
+        command = self.video_scripy._getCommand(video, "compress")
+
+        self.assertNotIn("-hwaccel cuda", command)
+        self.assertIn("av1_nvenc -pix_fmt yuv420p", command)
+
+    def test_set_encoder_uses_cpu_when_gpu_lacks_requested_codec(self):
+        gpu = {"id": 0, "name": "GPU", "codecs": ["H.264/AVC"]}
+        self.video_scripy.settedDevice = gpu
+        self.video_scripy.gpu = True
+
+        self.video_scripy.setEncoder("h265")
+
+        self.assertEqual(self.video_scripy.videoCodec, "h265")
+        self.assertIn("libx265", self.video_scripy.encoder)
+        self.assertNotIn("-gpu", self.video_scripy.encoder)
 
     def test_kill_proc_kills_children_of_active_processes(self):
         child = SimpleNamespace(kill=Mock())
@@ -490,6 +640,20 @@ class VideoScripyApiTests(unittest.TestCase):
 
         self.assertFalse(result)
         self.assertIn("encoder initialization failed", output.getvalue())
+
+    def test_check_exit_code_handles_empty_exit_file_after_stop(self):
+        exit_code_path = self.root / "exitCode.txt"
+        exit_code_path.write_text("", encoding="utf-8")
+
+        self.assertFalse(self.video_scripy._checkExitCode())
+        self.assertFalse(exit_code_path.exists())
+
+    def test_check_exit_code_reports_non_numeric_exit_file(self):
+        exit_code_path = self.root / "exitCode.txt"
+        exit_code_path.write_text("not-an-exit-code", encoding="utf-8")
+
+        self.assertFalse(self.video_scripy._checkExitCode())
+        self.assertFalse(exit_code_path.exists())
 
     def test_displays_structured_ffmpeg_progress_record(self):
         output = io.StringIO()

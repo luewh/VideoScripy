@@ -117,13 +117,18 @@ class _ProcessingMixin(VideoScripyContext):
         if substep == 2 and process == VideoProcess.interpolate.name:
             videoFps = video_data.get("interpolateFps", videoFps)
 
+        use_gpu_video = (
+            self.gpu
+            and getattr(self, "videoEncoderOnGpu", False)
+            and getattr(self, "videoCodec", "h265") != "av1"
+        )
         hwaccel = ''
-        if self.gpu:
-            if self.selectedDevice is None:
+        if use_gpu_video:
+            if self.settedDevice is None:
                 return None
             hwaccel = (
                 ' -hwaccel cuda'
-                f' -hwaccel_device {self.selectedDevice["id"]}'
+                f' -hwaccel_device {self.settedDevice["id"]}'
                 ' -hwaccel_output_format cuda'
             )
 
@@ -149,7 +154,7 @@ class _ProcessingMixin(VideoScripyContext):
         elif process == VideoProcess.resize.name:
             
             resizeFilter = "scale"
-            if self.gpu:
+            if use_gpu_video:
                 resizeFilter = "scale_cuda"
             
             command = (
@@ -176,9 +181,9 @@ class _ProcessingMixin(VideoScripyContext):
             else:
                 gpuNumber = 0
                 if self.gpu:
-                    if self.selectedDevice is None:
+                    if self.settedDevice is None:
                         return None
-                    gpuNumber = self.selectedDevice["id"] + 1
+                    gpuNumber = self.settedDevice["id"] + 1
 
                 if process == VideoProcess.upscale.name:
                     processOutputPath = video_data.get("upscaleOutputPath")
@@ -221,7 +226,7 @@ class _ProcessingMixin(VideoScripyContext):
                     if processOutputPath is None:
                         return None
                     imgDecoder = "mjpeg"
-                    if self.gpu:
+                    if use_gpu_video:
                         imgDecoder = "mjpeg_cuvid"
                     command = (
                         f' ffmpeg'
@@ -413,8 +418,18 @@ class _ProcessingMixin(VideoScripyContext):
 
         else:
             with open(filePath, "r") as f:
-                returnCode = int(f.readline().replace("\n",""))
+                exitCode = f.readline().strip()
             remove(filePath)
+
+            try:
+                returnCode = int(exitCode)
+            except ValueError:
+                if not silence:
+                    if exitCode:
+                        printC(f'Invalid process exit code "{exitCode}"', "red")
+                    else:
+                        printC("Process stopped before writing its exit code", "red")
+                return False
 
             if returnCode in [0, -1]:
                 if not silence:
@@ -614,8 +629,9 @@ class _ProcessingMixin(VideoScripyContext):
         print(f'{current_bitrate/1_000:_.0f} Kbits/s --> {compressBitRate/1_000:_.0f} Kbits/s')
 
         video['compressBitRate'] = compressBitRate
+        video_bitrate = f' -b:v {compressBitRate}' if getattr(self, "videoCodec", "h265") == "av1" else ""
         video['compressBitRateParam'] = (
-            f' -maxrate:v {compressBitRate}'
+            f'{video_bitrate} -maxrate:v {compressBitRate}'
             f' -bufsize:v {compressBitRate*2} '
         )
 

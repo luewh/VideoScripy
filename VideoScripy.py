@@ -60,20 +60,19 @@ class VideoScripy(_OperationsMixin, _ProcessingMixin, _CoreMixin):
 
         self.EXIT_CODE_FILE_NAME = "exitCode.txt"
 
-        self.h265 = False
-        self.gpu = False
+        self.videoCodec = "h265"
+        self.gpu = True
         self.devices: list[GPUInfo] = [
             {
                 "id": -1,
                 "name": "CPU",
-                "codecs": ["H.264/AVC", "H.265/HEVC"],
+                "codecs": [],
             }
         ]
-        # TODO: Check CPU H.265 availability.
-        self.checkGPUs()
-        self.selectedDevice: GPUInfo | None = None
-        self.selectDevice()
-        self.setEncoder(h265=True)
+        self.availableEncoders: set[str] = set()
+        self.getEncoders()
+        self.settedDevice: GPUInfo | None = None
+        self.setDevice()
 
         self.checkTools()
 

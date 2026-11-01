@@ -251,9 +251,9 @@ class _OperationsMixin(VideoScripyContext):
         # shortcut for picture type
         gpuNumber = 0
         if self.gpu:
-            if self.selectedDevice is None:
+            if self.settedDevice is None:
                 return "skip"
-            gpuNumber = self.selectedDevice["id"]+1
+            gpuNumber = self.settedDevice["id"]+1
         
         if video["type"] in self.pType:
             command = (

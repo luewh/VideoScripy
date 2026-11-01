@@ -33,6 +33,7 @@ foreach ($requiredPath in @(
     (Join-Path $root "VideoScripyWebUI.py"),
     (Join-Path $root "VideoScripy.py"),
     (Join-Path $root "VideoScripyCLI.py"),
+    (Join-Path $root "webui"),
     (Join-Path $root "videoscripy"),
     (Join-Path $root "requirements.txt"),
     (Join-Path $root "LICENSE"),
@@ -107,6 +108,7 @@ try {
         Copy-Item -LiteralPath (Join-Path $root $sourceFile) -Destination $portableDirectory
     }
     Copy-Item -LiteralPath (Join-Path $root "videoscripy") -Destination $portableDirectory -Recurse
+    Copy-Item -LiteralPath (Join-Path $root "webui") -Destination $portableDirectory -Recurse
     Copy-Item -LiteralPath (Join-Path $root "assets") -Destination $portableDirectory -Recurse
     Copy-Item -LiteralPath $tools -Destination $portableDirectory -Recurse
 

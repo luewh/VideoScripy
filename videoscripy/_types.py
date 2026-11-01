@@ -95,10 +95,12 @@ class VideoScripyContext(Protocol):
     killed: bool
     stop_threads: bool
     EXIT_CODE_FILE_NAME: str
-    h265: bool
+    videoCodec: str
     gpu: bool
+    availableEncoders: set[str]
     devices: list[GPUInfo]
-    selectedDevice: GPUInfo | None
+    settedDevice: GPUInfo | None
+    videoEncoderOnGpu: bool
     encoder: str
     DAY_ZERO: datetime
     watch: Thread
@@ -120,7 +122,11 @@ class VideoScripyContext(Protocol):
 
     def noticeProcessEnd(self) -> None: ...
 
-    def setEncoder(self, h265: bool = True) -> None: ...
+    def getEncoders(self) -> None: ...
+
+    def setDevice(self, deviceId: int = 0) -> None: ...
+
+    def setEncoder(self, codec: str = "h265") -> None: ...
 
     def _getCommand(
         self, video: VideoInfo, process: str, substep: int = 0
