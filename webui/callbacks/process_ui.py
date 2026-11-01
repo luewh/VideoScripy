@@ -17,8 +17,6 @@ from ..state import (
     getEncoderOptions,
 )
 
-# region process callbacks
-
 
 
 @callback(
@@ -246,16 +244,18 @@ def previewInputUI():
 
 def getFrameResult() -> list:
 
-    hasResult = False
+    hasFrameResult = False
     for video in state.allVideoList:
         if video["selected"] and "frameBytePerPacket" in video:
-            hasResult = True
+            hasFrameResult = True
             break
     
-    if not hasResult:
+    if not hasFrameResult:
+        state.hasFrameResult = []
         return ["No result"]
     else:
         results = []
+        state.hasFrameResult = []
         for index, video in enumerate(state.allVideoList):
             if video["selected"] and "frameBytePerPacket" in video:
                 results.append(
@@ -267,6 +267,7 @@ def getFrameResult() -> list:
                         className="psu_stream_button",
                     )
                 )
+                state.hasFrameResult.append(index)
         return results
 
 def frameResultUI():
@@ -517,7 +518,49 @@ def update_div_FrameResultUI(clicks):
     
     return getFrameResult()
 
+def getFrameModalFooter(videoIndex:int) -> html.Div:
+    try:
+        currentIndex = state.hasFrameResult.index(videoIndex)
+    except ValueError:
+        print("Incorrect videoIndex, not in hasFrameResult")
+        return html.Div("Incorrect videoIndex, not in hasFrameResult")
 
+    hasPrev = currentIndex > 0
+    hasNext = currentIndex < len(state.hasFrameResult) - 1
+
+    return html.Div([
+        dbc.Stack(
+            [
+                dbc.Col(
+                    html.Button(
+                        state.allVideoList[state.hasFrameResult[currentIndex-1]]["name"] if hasPrev else "None", 
+                        id={
+                            'type':'spec_frame_nav',
+                            'id': f'{state.hasFrameResult[currentIndex-1] if hasPrev else None} prev'
+                        },
+                        disabled=not hasPrev,
+                        className="html_button_big",
+                    ),
+                    width=6,
+                ),
+                dbc.Col(
+                    html.Button(
+                        state.allVideoList[state.hasFrameResult[currentIndex+1]]["name"] if hasNext else "None", 
+                        id={
+                            'type':'spec_frame_nav',
+                            'id': f'{state.hasFrameResult[currentIndex+1] if hasNext else None} next'
+                        },
+                        disabled=not hasNext,
+                        className="html_button_big",
+                    ),
+                width=6,
+                ),
+            ],
+            direction="horizontal",
+        )
+    ],
+    className="modal_foot",
+    )
 
 def getFrameModalBody(videoIndex):
 
@@ -604,10 +647,33 @@ def openFrameModal(n_clicks):
         if click is not None:
             videoIndex = int(ctx.triggered_id["id"].split(" ")[0])
             videoName = state.allVideoList[videoIndex]["name"]
-            return True, videoName, getFrameModalBody(videoIndex), ""
-    
+            return True, videoName, getFrameModalBody(videoIndex), getFrameModalFooter(videoIndex)
     raise PreventUpdate
 
+@callback(
+    Output('modal_frame', 'is_open', allow_duplicate=True),
+    Output('modal_frame_title', 'children', allow_duplicate=True),
+    Output('modal_frame_body', 'children', allow_duplicate=True),
+    Output('modal_frame_footer', 'children', allow_duplicate=True),
+    Input({'type':'spec_frame_nav','id': ALL}, 'n_clicks'),
+    Input({'type':'spec_frame_nav','id': ALL}, 'n_clicks'),
+    prevent_initial_call=True,
+)
+def navFrameModal(n_clicks_prev, n_clicks_next):
+
+    # avoid dynamic button creation click : None/[]
+    for click in n_clicks_prev + n_clicks_next:
+        if click is not None:
+            videoIndex = int(ctx.triggered_id["id"].split(" ")[0])
+            prevNext = ctx.triggered_id["id"].split(" ")[1]
+            if prevNext == "prev":
+                videoName = state.allVideoList[videoIndex]["name"]
+                return True, videoName, getFrameModalBody(videoIndex), getFrameModalFooter(videoIndex)
+            elif prevNext == "next":
+                videoName = state.allVideoList[videoIndex]["name"]
+                return True, videoName, getFrameModalBody(videoIndex), getFrameModalFooter(videoIndex)
+    
+    raise PreventUpdate
 
 
 @callback(
@@ -664,10 +730,3 @@ def switchPreviewColRow(_, col, row):
     return row, col
 
 
-
-# endregion
-##########################
-
-
-
-##############################

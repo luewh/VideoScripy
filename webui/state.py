@@ -22,6 +22,7 @@ class VideoInfo(VideoInfoBase):
 vs = VideoScripy()
 process_lock = Lock()
 allVideoList: list[VideoInfo] = []
+hasFrameResult: list[int] = []
 processes = [process.name for process in VideoProcess]
 videoSizesDict = [
     {"label": "240p/SD", "width": 426, "height": 240},
