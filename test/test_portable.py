@@ -9,10 +9,12 @@ from urllib.request import urlopen
 
 
 ROOT = Path(__file__).resolve().parents[1]
+
+_APP_VERSION = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
 PORTABLE_DIR = Path(
     os.environ.get(
         "VIDEOSCRIPY_PORTABLE_DIR",
-        ROOT / "dist" / "VideoScripyWebUI",
+        ROOT / "dist" / f"VideoScripy-v{_APP_VERSION}",
     )
 )
 PYTHON_EXE = PORTABLE_DIR / "python" / "python.exe"

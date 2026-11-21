@@ -127,6 +127,6 @@ To run one test module, pass its filename as the discovery pattern. For example:
 python -m unittest discover -s test -p "test_api.py" -v
 ```
 
-The portable-bundle tests expect a built bundle at `dist\VideoScripyWebUI`.
-Build it first with `.\build_portable.ps1`; the build requires 64-bit Python
+The portable-bundle tests expect a built bundle at `VideoScripy-v0.7.4`.
+Build it first with `.\build_portable.py`; the build requires 64-bit Python
 3.13 and the portable release tools in `tools`.

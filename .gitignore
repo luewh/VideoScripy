@@ -1,20 +1,13 @@
 # Python
 __pycache__/
-*.py[cod]
-*.egg-info/
-dist/
-build/
 
 # Virtual environments
 .venv/
-venv/
-env/
 
 # IDE
 .vscode/
-.idea/
 
-.qwen/
+VideoScripy-*
 tools/
 presentation/
 assets/typewriter_button_slide.mp3

@@ -119,31 +119,11 @@
 整合包已包含 Python 运行时、Python 依赖和工具，目标电脑无需安装 Python。
 优点：**适合小白**
 
-### 下载与安装
+### 使用方式
 
 从[最新版本](https://github.com/luewh/Video-Script/releases/latest)下载便携文件夹，然后运行其中的启动脚本。
 
-### 使用方式
-
 运行 `Run VideoScripyWebUI.bat`，它会启动内置 Python 并打开 WebUI，不需要应用专用的 exe。使用 NVIDIA GPU 功能需要安装兼容的显卡驱动。
-
-### 构建便携版
-
-在构建电脑上安装 64 位 Python 3.13，并按[手动安装](#手动安装)中的目录结构准备 `tools` 文件夹。构建脚本会下载 Python 嵌入式运行时，并将依赖安装到输出文件夹。
-
-```powershell
-.\build_portable.ps1
-```
-
-便携文件夹会生成在 `dist\VideoScripyWebUI`。复制整个文件夹到其他 Windows x64 电脑即可运行；目标电脑无需安装 Python。构建脚本不会自动打包为压缩文件。
-
-构建完成后运行以下回归测试：
-
-```powershell
-python -m unittest discover -s test -v
-```
-
-
 
 ## 手动安装
 

@@ -135,23 +135,6 @@ Download the portable folder from the [latest release](https://github.com/luewh/
 
 Run `Run VideoScripyWebUI.bat`. It starts the included Python runtime and opens the WebUI. No app-specific executable is required. NVIDIA GPU features require a compatible driver.
 
-### Build a portable release
-
-On the build PC, install 64-bit Python 3.13 and ensure the required tools are present in the `tools` folder as shown under [Self setup version](#self-setup-version). The builder downloads the embeddable Python runtime and installs the dependencies into the output folder.
-
-```powershell
-.\build_portable.ps1
-```
-
-The portable folder is created at `dist\VideoScripyWebUI`. Copy that complete folder to another Windows x64 PC; Python does not need to be installed there. The folder is not automatically archived.
-
-Run the portable regression checks after building with:
-
-```powershell
-python -m unittest discover -s test -v
-```
-
-
 
 ## Self setup version
 
