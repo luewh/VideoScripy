@@ -19,7 +19,6 @@ Output defaults to ./dist folder (not project root).
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import os
 import shutil
@@ -27,7 +26,6 @@ import struct
 import subprocess
 import sys
 import tempfile
-import time
 import urllib.request
 import zipfile
 from pathlib import Path
@@ -327,15 +325,38 @@ def main() -> None:
 
         # --- Install dependencies using system pip into embedded site-packages
         log("Installing dependencies into embedded runtime...", args.verbose)
+        
+        # Use pip with optimizations for smaller, faster installs:
+        # --only-binary=:all: forces pre-built wheels (smaller, no source builds)
+        # --prefer-binary prefers wheels over source even when not strictly required
+        # --disable-pip-version-check avoids network calls to check pip version
         run([
             python_cmd, "-m", "pip", "install",
+            "--only-binary=:all:",  # Use only pre-built wheels (much smaller)
+            "--prefer-binary",      # Prefer wheels when available
             "--disable-pip-version-check",
             "--no-warn-script-location",
-            "--no-compile",
-            "--no-cache-dir",
+            "--no-compile",         # Skip .pyc files for faster startup
+            "--no-cache-dir",       # Don't cache downloaded files (smaller final build)
             "--target", str(site_packages),
             "-r", str(root / "requirements.txt"),
         ], verbose=args.verbose)
+
+        # --- Cleanup site-packages from unnecessary cached/wheel files
+        log("Cleaning up site-packages...", args.verbose)
+        
+        # Remove any wheel cache or empty directories left in site-packages
+        try:
+            # Clean up any __pycache__ directories (already handled by --no-compile, but be safe)
+            for pycache_dir in site_packages.glob("*/__pycache__"):
+                shutil.rmtree(pycache_dir)
+            
+            # Remove any wheel cache subdirectories that might exist
+            for wheel_cache in site_packages.glob("*/*.dist-info/wheels*"):
+                if wheel_cache.is_dir():
+                    shutil.rmtree(wheel_cache)
+        except Exception as e:
+            log(f"Cleanup warning: {e}", args.verbose)  # Don't fail on cleanup errors
 
         # --- Copy application files ------------------------------------------
         for source_file in COPY_FILES:
@@ -423,13 +444,17 @@ def main() -> None:
 
             # Count all files first for progress tracking
             base = output_dir / archive_path.stem  # This is the portable_dir (e.g., dist/VideoScripy-v0.7.4)
+            
+            # List files to verify we're zipping only the right content
+            log(f"Archiving folder contents from {base}...", args.verbose)
             file_list = []
             for root, dirs, files in os.walk(base):
                 dirs.sort()  # Process directories in alphabetical order
                 for filename in sorted(files):
                     file_path = Path(root) / filename
                     if file_path.is_file():
-                        arcname = file_path.relative_to(base)  # Relative to portable_dir, not output_dir
+                        arcname = file_path.relative_to(base)  # Relative to portable_dir
+                        log(f"  - {arcname}", args.verbose)
                         file_list.append((str(arcname), file_path))
             
             total_files = len(file_list)
