@@ -158,7 +158,6 @@ class VideoScripyApiTests(unittest.TestCase):
                 "GIF_DITHERS",
                 "GIF_DEFAULT_DITHER",
                 "GIF_DEFAULT_MAX_COLORS",
-                "run",
             ],
         )
 

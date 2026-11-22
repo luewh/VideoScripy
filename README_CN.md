@@ -186,9 +186,7 @@
 
 ### 使用方式
 
-运行 `python VideoScripyWebUI.py` 启动 Dash 网页界面，或运行
-`python VideoScripyCLI.py --path "<文件夹>"` 使用交互式命令行。
-命令行默认扫描当前文件夹；使用 `--depth -1` 可递归扫描子文件夹。
+运行 `python VideoScripyWebUI.py` 启动 Dash 网页界面。
 直接运行 `python VideoScripy.py` 会初始化并扫描当前文件夹以便手动调试；
 可在其 `__main__` 代码块中取消注释某个操作调用来执行相应操作。
 

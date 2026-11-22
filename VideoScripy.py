@@ -37,7 +37,6 @@ __all__ = [
     "GIF_DITHERS",
     "GIF_DEFAULT_DITHER",
     "GIF_DEFAULT_MAX_COLORS",
-    "run",
 ]
 
 
@@ -83,16 +82,6 @@ class VideoScripy(_OperationsMixin, _ProcessingMixin, _CoreMixin):
         self.checkTools()
 
         self.DAY_ZERO = datetime(2000, 1, 1)
-
-
-def run() -> None:
-    """Run the interactive command-line interface."""
-    from VideoScripyCLI import run as run_cli
-
-    run_cli(
-        video_scripy_type=VideoScripy,
-        process_type=VideoProcess,
-    )
 
 
 def _run_manual_debug() -> None:

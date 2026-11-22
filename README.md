@@ -198,12 +198,10 @@ Advantage : **Freedom**
 
 ### Usage
 
-Run `python VideoScripyWebUI.py` to open the Dash web UI, or run
-`python VideoScripyCLI.py --path "<folder>"` for the interactive CLI. The CLI
-scans the current folder by default; use `--depth -1` to scan subfolders
-recursively. Running `python VideoScripy.py` directly initializes and scans the
-current folder for manual debugging; uncomment an operation call in its
-`__main__` block to run one.
+Run `python VideoScripyWebUI.py` to open the Dash web UI. Running
+`python VideoScripy.py` directly initializes and scans the current folder for
+manual debugging; uncomment an operation call in its `__main__` block to run
+one.
 
 
 

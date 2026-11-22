@@ -35,7 +35,6 @@ class PortableBundleTests(unittest.TestCase):
             PORTABLE_DIR / "videoscripy" / "_processing.py",
             PORTABLE_DIR / "videoscripy" / "_types.py",
             PORTABLE_DIR / "videoscripy" / "_utilities.py",
-            PORTABLE_DIR / "VideoScripyCLI.py",
             PORTABLE_DIR / "Run VideoScripyWebUI.bat",
             PORTABLE_DIR / "assets" / "style.css",
             PORTABLE_DIR / "tools" / "ffmpeg-full_build" / "bin" / "ffmpeg.exe",

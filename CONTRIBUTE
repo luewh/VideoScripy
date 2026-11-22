@@ -11,48 +11,45 @@ into the `videoscripy` package:
   previews, frame analysis, and stream merging.
 - `_types.py` and `_utilities.py` hold shared types and console output helpers.
 
-## CLI and manual-debug call flow
+## Application and manual-debug call flow
 
-Running `python VideoScripyCLI.py` follows this order:
+The WebUI entry point is `VideoScripyWebUI.py`; it starts the Dash app in the
+`webui` package. Selecting a process and pressing RUN calls the matching public
+method on a `VideoScripy` instance. Construction of `VideoScripy()` runs:
 
-1. The CLI script calls its `run()` function.
-2. The CLI parses and validates `--path` and `--depth`.
-3. The CLI constructs `VideoScripy()`. Initialization runs:
-   1. Set the working path and project root; add existing project tool folders
-      to this process's `PATH`.
-   2. Initialize media lists, process state, and the CPU device entry.
-   3. `checkGPUs()` resolves NVEncC, runs `--check-device`, and, for each
-      detected GPU, runs `--check-features` to collect codecs. These commands
-      use `_runProcAsync()` and `_runProcAsyncWait()`.
-   4. `selectDevice()` selects device 0 or falls back to CPU, then calls
-      `setEncoder()` for the current H.265 setting.
-   5. `setEncoder(h265=True)` configures the initial encoder.
-   6. `checkTools()` runs version/help checks for FFmpeg, FFprobe, Real-ESRGAN,
-      IFRNet, and NVEncC using `_runProcAsync()` and `_runProcAsyncWait()`.
-   7. Set the reference date used for frame timestamps.
-4. The CLI calls `setPath(args.path)`, then `getVideo(folderDepthLimit=...)`.
-   `getVideo()` clears the previous list, validates the directory, walks it to
-   the requested depth, skips generated-process folders, selects supported
-   media types, and sorts the results by name.
-5. `getVideoInfo()` starts an FFprobe command for each selected file, waits for
-   the results, parses the metadata, and removes files that could not be read.
-6. The CLI lists the media. If none remain it exits; otherwise it prompts for
-   a `VideoProcess`, asks for that operation's options, and calls the matching
-   public method.
+1. Set the working path and project root; add existing project tool folders
+   to this process's `PATH`.
+2. Initialize media lists, process state, and the CPU device entry.
+3. `checkGPUs()` resolves NVEncC, runs `--check-device`, and, for each
+   detected GPU, runs `--check-features` to collect codecs. These commands
+   use `_runProcAsync()` and `_runProcAsyncWait()`.
+4. `selectDevice()` selects device 0 or falls back to CPU, then calls
+   `setEncoder()` for the current H.265 setting.
+5. `setEncoder(h265=True)` configures the initial encoder.
+6. `checkTools()` runs version/help checks for FFmpeg, FFprobe, Real-ESRGAN,
+   IFRNet, and NVEncC using `_runProcAsync()` and `_runProcAsyncWait()`.
+7. Set the reference date used for frame timestamps.
 
-The process menu order comes from `VideoProcess`: `compress`, `resize`,
+Before running an operation the application calls `setPath(path)`, then
+`getVideo(folderDepthLimit=...)`. `getVideo()` clears the previous list,
+validates the directory, walks it to the requested depth, skips
+generated-process folders, selects supported media types, and sorts the
+results by name. `getVideoInfo()` then starts an FFprobe command for each
+selected file, waits for the results, parses the metadata, and removes files
+that could not be read.
+
+The process menu order comes from `VideoProcess`: `compress`, `resize`, `gif`,
 `upscale`, `interpolate`, `preview`, `frame`, then `stream`.
 
-Running `python VideoScripy.py` directly does not start the CLI. Its manual
-debug entry point constructs `VideoScripy()`, calls `getVideo()` and
-`getVideoInfo()` on the current folder, then prints the discovered media.
-Example calls for all operations are left commented in that entry point so a
-developer can uncomment only the operation being debugged. The CLI can also be
-started by calling the public `VideoScripy.run()` function.
+Running `python VideoScripy.py` directly starts the manual debug entry point.
+It constructs `VideoScripy()`, calls `getVideo()` and `getVideoInfo()` on the
+current folder, then prints the discovered media. Example calls for all
+operations are left commented in that entry point so a developer can uncomment
+only the operation being debugged.
 
 ## Operation call flows
 
-The first six operations below use the `_serial` wrapper. For each file in
+The first seven operations below use the `_serial` wrapper. For each file in
 `vList`, the wrapper plays the start notification, prints the current item,
 calls the operation implementation, and stops early if it returns `"stop"`.
 After the loop it plays the end notification, removes empty generated folders,
@@ -68,6 +65,10 @@ file; the wrapper repeats them for each file.
   change the video or would enlarge both dimensions → set resize metadata and
   call `pre_compress()` → build the FFmpeg command with `_getCommand()` → run
   it with `_runProc()` → remove the output folder if empty.
+- **GIF** — create the output folder → skip unsupported media → validate the
+  size, FPS, palette color count, and dither mode → compute the aspect-preserving
+  output size → build the FFmpeg command with `_getCommand()` (palettegen /
+  paletteuse) → run it with `_runProc()` → remove the output folder if empty.
 - **Upscale** — create the output folder → skip unsupported media → for an
   image, run Real-ESRGAN directly with `_runProc()`. For a video, calculate
   output dimensions and bitrate → extract frames with `_getFrames()` (which

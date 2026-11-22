@@ -55,7 +55,6 @@ REQUIRED_TOOLS = [
 
 COPY_FILES = [
     "VideoScripy.py",
-    "VideoScripyCLI.py",
     "VideoScripyWebUI.py",
     "LICENSE",
     "VERSION",
