@@ -5,7 +5,7 @@ Usage:
                              [--no-archive] [--cache-dir DIR] [--verbose]
 
 Improvements over the original:
-  - Caches the embeddable Python zip with SHA256 verification
+  - Caches the embeddable Python zip, re-validating it before reuse
   - Skips re-download if cache is valid (--no-download forces re-download)
   - Uses the embedded Python's own pip (via ensurepip)
   - Creates a .zip archive at root by default (--no-archive disables)
@@ -35,9 +35,23 @@ try:
     from tqdm import tqdm
 except ImportError:
     # Fallback to no progress bars if tqdm is not available
-    def tqdm(iterable=None, **kwargs):
-        """No-op fallback for tqdm when not installed."""
-        return iterable
+    class tqdm:  # type: ignore[no-redef]
+        """No-op stand-in for tqdm when it is not installed."""
+
+        def __init__(self, iterable=None, **kwargs):
+            self.iterable = iterable
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc_info):
+            return False
+
+        def __iter__(self):
+            return iter(self.iterable or ())
+
+        def update(self, n=1):
+            pass
 
 
 EMBEDDED_URL_TEMPLATE = (
@@ -73,6 +87,10 @@ def fail(message: str) -> None:
     sys.exit(1)
 
 
+def warn(message: str) -> None:
+    print(f"WARNING: {message}", file=sys.stderr)
+
+
 def log(message: str, verbose: bool = False) -> None:
     if verbose:
         print(f"[build] {message}")
@@ -86,39 +104,38 @@ def run(cmd: list[str], verbose: bool = False, **kwargs) -> subprocess.Completed
 
 def download(url: str, dest: Path, verbose: bool = False) -> None:
     log(f"Downloading {url}", verbose)
-    
+
+    # write next to the target and only move it into place once complete,
+    # so an interrupted download never leaves a broken zip in the cache
+    partial = dest.with_name(dest.name + ".part")
     try:
-        with urllib.request.urlopen(url) as response, open(dest, "wb") as out_file:
-            downloaded = 0
-            total = response.headers.get("Content-Length")
-            chunk_size = 8192  # 8KB chunks
-            
-            if total:
-                total = int(total)
-                with tqdm(
-                    total=total,
-                    initial=0,
-                    desc=os.path.basename(dest),
-                    ncols=80,
-                    leave=False,
-                ) as pbar:
-                    for data in response.stream(chunk_size):
-                        downloaded += len(data)
-                        out_file.write(data)
-                        pbar.update(len(data))
-            else:
-                # Fallback to chunk counting when Content-Length is unavailable
-                with tqdm(
-                    total=None,
-                    desc=os.path.basename(dest),
-                    ncols=80,
-                    leave=False,
-                ) as pbar:
-                    for data in response.stream(chunk_size):
-                        downloaded += len(data)
-                        out_file.write(data)
-                        pbar.update(len(data))
+        with urllib.request.urlopen(url) as response, open(partial, "wb") as out_file:
+            length = response.headers.get("Content-Length")
+            total = int(length) if length else None
+
+            with tqdm(
+                total=total,
+                initial=0,
+                desc=dest.name,
+                ncols=80,
+                leave=False,
+            ) as pbar:
+                while True:
+                    chunk = response.read(64 * 1024)
+                    if not chunk:
+                        break
+                    out_file.write(chunk)
+                    pbar.update(len(chunk))
+
+        size = partial.stat().st_size
+        if total is not None and size != total:
+            raise IOError(f"incomplete download ({size} of {total} bytes)")
+        if not is_valid_python_zip(partial):
+            raise IOError("downloaded file is not a usable embeddable Python zip")
+
+        os.replace(partial, dest)
     except Exception as e:
+        partial.unlink(missing_ok=True)
         fail(f"Failed to download embeddable Python: {e}")
 
 
@@ -165,12 +182,27 @@ def validate_tools(root: Path, verbose: bool = False) -> None:
         fail("Required tools missing:\n" + "\n".join(missing))
 
 
+def is_valid_python_zip(path: Path) -> bool:
+    """A usable embeddable Python archive must be a readable zip with python.exe."""
+    try:
+        with zipfile.ZipFile(path) as zf:
+            if "python.exe" not in zf.namelist():
+                return False
+            return zf.testzip() is None
+    except (zipfile.BadZipFile, OSError):
+        return False
+
+
 def get_cached_python_zip(cache_dir: Path, version: str) -> Optional[Path]:
     cache_dir.mkdir(parents=True, exist_ok=True)
     expected_name = f"python-{version}-embed-amd64.zip"
     for f in cache_dir.glob("python-*-embed-amd64.zip"):
         if f.name == expected_name:
-            return f
+            if is_valid_python_zip(f):
+                return f
+            warn(f"Ignoring unusable cached zip ({f.stat().st_size} bytes): {f}")
+            f.unlink(missing_ok=True)
+            return None
     return None
 
 
@@ -249,10 +281,10 @@ def main() -> None:
         tmp_zip = cached_zip
     else:
         tmp_zip = cache_dir / f"python-{build_version}-embed-amd64.zip"
-        try:
-            download(embedded_url, tmp_zip, args.verbose)
-        except Exception as e:
-            fail(f"Failed to download embeddable Python: {e}")
+        download(embedded_url, tmp_zip, args.verbose)
+        if not is_valid_python_zip(tmp_zip):
+            tmp_zip.unlink(missing_ok=True)
+            fail(f"Downloaded embeddable Python archive is unusable: {tmp_zip}")
 
     # --- Prepare output directory --------------------------------------------
     if portable_dir.exists():
@@ -478,9 +510,9 @@ def main() -> None:
         print(f"Portable folder created at: {portable_dir} (VideoScripy v{app_version})")
 
     finally:
-        if not cached_zip or args.no_download:
-            if tmp_zip.exists():
-                tmp_zip.unlink()
+        # the cached zip is reused by later builds, only stale download leftovers are removed
+        for partial in cache_dir.glob("python-*-embed-amd64.zip.part"):
+            partial.unlink(missing_ok=True)
 
 
 if __name__ == "__main__":

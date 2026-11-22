@@ -440,6 +440,25 @@ class VideoScripyApiTests(unittest.TestCase):
 
         self.assertEqual(scores["none"], {"compression": 10, "speed": 10, "note": "no dithering, smallest files, harsh bands"})
 
+    def test_webui_gif_dither_options_show_their_scores(self):
+        from webui.callbacks import process_ui
+
+        options = process_ui.gifDitherOptions()
+
+        self.assertEqual(
+            [option["value"] for option in options],
+            list(public_api.GIF_DITHERS),
+        )
+        for option, dither in zip(options, public_api.GIF_DITHERS):
+            score = public_api.GIF_DITHER_SCORES[dither]
+            name, scores = option["label"].children
+            with self.subTest(dither=dither):
+                self.assertEqual(name.children, dither)
+                self.assertEqual(
+                    scores.children,
+                    f"comp {score['compression']}/10 · speed {score['speed']}/10",
+                )
+
     def test_get_video_scans_supported_files(self):
         (self.root / "clip.MP4").write_bytes(b"")
         (self.root / "song.mp3").write_bytes(b"")

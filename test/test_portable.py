@@ -1,11 +1,17 @@
+import io
 import os
 import socket
 import subprocess
+import tempfile
 import time
 import unittest
+import zipfile
+from contextlib import redirect_stderr
 from pathlib import Path
 from urllib.error import URLError
 from urllib.request import urlopen
+
+import build_portable
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -152,6 +158,57 @@ class PortableBundleTests(unittest.TestCase):
         self.assertIn("VS WebUI", response_body)
         for tool in ("FFmpeg found", "FFprobe found", "Real-ESRGAN found", "IFRNet found", "NVEncC found"):
             self.assertIn(tool, output)
+
+
+class PortableBuildCacheTests(unittest.TestCase):
+    def test_valid_python_zip_detection(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp)
+
+            empty = folder / "empty.zip"
+            empty.write_bytes(b"")
+            self.assertFalse(build_portable.is_valid_python_zip(empty))
+
+            garbage = folder / "garbage.zip"
+            garbage.write_bytes(b"not a zip file")
+            self.assertFalse(build_portable.is_valid_python_zip(garbage))
+
+            no_python = folder / "no-python.zip"
+            with zipfile.ZipFile(no_python, "w") as archive:
+                archive.writestr("readme.txt", "hi")
+            self.assertFalse(build_portable.is_valid_python_zip(no_python))
+
+            good = folder / "good.zip"
+            with zipfile.ZipFile(good, "w") as archive:
+                archive.writestr("python.exe", b"MZ")
+            self.assertTrue(build_portable.is_valid_python_zip(good))
+
+    def test_unusable_cached_python_zip_is_discarded(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            cache_dir = Path(tmp)
+            broken = cache_dir / "python-3.13.17-embed-amd64.zip"
+            broken.write_bytes(b"")
+
+            with redirect_stderr(io.StringIO()):
+                cached = build_portable.get_cached_python_zip(cache_dir, "3.13.17")
+
+            self.assertIsNone(cached)
+            self.assertFalse(broken.exists())
+
+    def test_rejected_download_leaves_neither_target_nor_partial_file(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp)
+            source = folder / "source.zip"
+            source.write_bytes(b"not a real embeddable python zip")
+            cache_dir = folder / "cache"
+            cache_dir.mkdir()
+            dest = cache_dir / "python-3.13.17-embed-amd64.zip"
+
+            with redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+                build_portable.download(source.as_uri(), dest)
+
+            self.assertFalse(dest.exists())
+            self.assertEqual(list(cache_dir.glob("*.part")), [])
 
 
 if __name__ == "__main__":
