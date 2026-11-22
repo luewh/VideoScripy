@@ -63,6 +63,24 @@ def _prompt_float(
         return value
 
 
+def _prompt_str(
+    message: str,
+    default: str,
+    *,
+    choices: Sequence[str],
+) -> str:
+    options = ", ".join(choices)
+    while True:
+        entered = input(f"{message} ({options}) [{default}]: ").strip()
+        if not entered:
+            return default
+
+        if entered not in choices:
+            print(f"Choose one of: {options}.")
+            continue
+        return entered
+
+
 def _select_process(process_type: type[VideoProcess]) -> VideoProcess:
     processes = list(process_type)
     print("\nAvailable processes:")
@@ -91,6 +109,8 @@ def _run_process(
         quality = _prompt_float("Quality", 3.0, minimum=0.1)
         video_scripy.resize(setWidth=width, setHeight=height, quality=quality)
     elif process is process_type.gif:
+        from VideoScripy import GIF_DEFAULT_DITHER, GIF_DEFAULT_MAX_COLORS, GIF_DITHERS
+
         width = _prompt_int("GIF width", -1, minimum=1, allow_minus_one=True)
         height = _prompt_int(
             "GIF height (-1 keeps the aspect ratio)",
@@ -99,7 +119,23 @@ def _run_process(
             allow_minus_one=True,
         )
         fps = _prompt_float("GIF FPS", 10.0, minimum=0.1)
-        video_scripy.convertToGif(setWidth=width, setHeight=height, fps=fps)
+        maxColors = _prompt_int(
+            "GIF max colors (lower means a smaller file)",
+            GIF_DEFAULT_MAX_COLORS,
+            minimum=2,
+        )
+        dither = _prompt_str(
+            "GIF dither ('none' gives the smallest file)",
+            GIF_DEFAULT_DITHER,
+            choices=GIF_DITHERS,
+        )
+        video_scripy.convertToGif(
+            setWidth=width,
+            setHeight=height,
+            fps=fps,
+            maxColors=maxColors,
+            dither=dither,
+        )
     elif process is process_type.upscale:
         factor = _prompt_int("Upscale factor", 2, choices=[2, 3, 4])
         quality = _prompt_float("Quality", 3.0, minimum=0.1)

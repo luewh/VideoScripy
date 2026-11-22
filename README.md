@@ -54,6 +54,16 @@ Collection of video processing module such as compression, upscale, interpolatio
 - gif
     **Convert a video to an animated GIF.** By default, the original dimensions and 10 FPS are used. Set either dimension to `-1` to preserve the aspect ratio.
 
+    GIF stores every frame without inter-frame compression, so a long, high resolution video produces a huge file.
+    Four parameters control the size: output `width x height`, `FPS`, palette `max colors` (2-256) and `dither`.
+    Measured on a 1080x1920, 2 minute source:
+
+    | width x height | FPS | max colors | dither | size |
+    | --- | --- | --- | --- | --- |
+    | 1080x1920 (original) | 10 | 256 | sierra2_4a | ~800 MB |
+    | 540x960 | 8 | 128 | bayer | ~170 MB |
+    | 360x640 | 8 | 64 | none | ~45 MB |
+
 - upscale  
     Increase video size by factor of 2,3 or 4 with AI, enhance video quality.  
     It has the ability to start from last upscal progress if the "_upscaledx?_frame" folder isn't deleted. 

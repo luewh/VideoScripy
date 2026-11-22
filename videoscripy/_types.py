@@ -10,6 +10,23 @@ from typing import NotRequired, Protocol, Required, TypedDict
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 
+# dithering modes accepted by FFmpeg's paletteuse filter
+GIF_DITHERS: tuple[str, ...] = (
+    "sierra2_4a",
+    "bayer",
+    "none",
+    "floyd_steinberg",
+    "sierra2",
+    "sierra3",
+    "burkes",
+    "atkinson",
+    "heckbert",
+)
+
+# paletteuse `dither=none` does no error diffusion, which keeps GIF frames tiny
+GIF_DEFAULT_DITHER = "sierra2_4a"
+GIF_DEFAULT_MAX_COLORS = 256
+
 
 class GPUInfo(TypedDict):
     id: int
@@ -58,6 +75,8 @@ class VideoInfo(TypedDict):
     gifWidth: NotRequired[int]
     gifHeight: NotRequired[int]
     gifFps: NotRequired[float]
+    gifMaxColors: NotRequired[int]
+    gifDither: NotRequired[str]
     getFramesOutputPath: NotRequired[str]
     upscaleOutputPath: NotRequired[str]
     upscaleFactor: NotRequired[int | str]

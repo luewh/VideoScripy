@@ -5,7 +5,7 @@ from dash.exceptions import PreventUpdate
 import dash_bootstrap_components as dbc
 import plotly.graph_objects as go
 
-from VideoScripy import VideoProcess
+from VideoScripy import GIF_DEFAULT_DITHER, GIF_DEFAULT_MAX_COLORS, GIF_DITHERS, VideoProcess
 from .. import state
 from ..state import (
     StreamInfo,
@@ -216,6 +216,40 @@ def gifInputUI():
             persistence=True,
             className="dcc_input",
             style={"width":"65px"},
+        ),
+        html.Div(
+            "colors",
+            className="div_text_simple",
+            disable_n_clicks=True,
+        ),
+        dcc.Input(
+            id={"type": "input", "id": "gifMaxColors"},
+            type="number",
+            value=GIF_DEFAULT_MAX_COLORS,
+            min=2,
+            max=256,
+            step=1,
+            persistence_type="local",
+            persistence=True,
+            className="dcc_input",
+            style={"width":"65px"},
+        ),
+        html.Div(
+            "dither",
+            className="div_text_simple",
+            disable_n_clicks=True,
+        ),
+        dcc.Dropdown(
+            list(GIF_DITHERS),
+            GIF_DEFAULT_DITHER,
+            id={"type": "input", "id": "gifDither"},
+            persistence_type="local",
+            persistence=True,
+            searchable=False,
+            clearable=False,
+            optionHeight=19,
+            className="dcc_dropdown",
+            style={"width":"130px"},
         ),
     ]
 

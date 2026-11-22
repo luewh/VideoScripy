@@ -155,6 +155,9 @@ class VideoScripyApiTests(unittest.TestCase):
                 "VideoInfo",
                 "VideoProcess",
                 "VideoScripy",
+                "GIF_DITHERS",
+                "GIF_DEFAULT_DITHER",
+                "GIF_DEFAULT_MAX_COLORS",
                 "run",
             ],
         )
@@ -782,6 +785,8 @@ class VideoScripyApiTests(unittest.TestCase):
         self.assertEqual(video["gifWidth"], 50)
         self.assertEqual(video["gifHeight"], 30)
         self.assertEqual(video["gifFps"], 12.5)
+        self.assertEqual(video["gifMaxColors"], 256)
+        self.assertEqual(video["gifDither"], "sierra2_4a")
         run_proc.assert_called_once_with("ffmpeg", "gif")
 
     def test_convert_to_gif_defaults_to_original_size_and_10_fps(self):
@@ -797,6 +802,21 @@ class VideoScripyApiTests(unittest.TestCase):
         self.assertEqual(video["gifFps"], 10.0)
         run_proc.assert_called_once_with("ffmpeg", "gif")
 
+    def test_convert_to_gif_rejects_invalid_palette_settings(self):
+        for maxColors, dither in ((1, "none"), (257, "none"), (64, "spline")):
+            with self.subTest(maxColors=maxColors, dither=dither):
+                video = self.make_video(width=100, height=60)
+                with (
+                    patch.object(self.video_scripy, "_getCommand", return_value="ffmpeg"),
+                    patch.object(self.video_scripy, "_runProc", return_value=True) as run_proc,
+                ):
+                    self.call_serial_api(
+                        "convertToGif", video, -1, -1, 10.0, maxColors, dither
+                    )
+
+                run_proc.assert_not_called()
+                self.assertNotIn("gifMaxColors", video)
+
     def test_gif_command_uses_palette_filter_and_gif_extension(self):
         video: VideoInfo = {
             "type": "mp4",
@@ -805,6 +825,8 @@ class VideoScripyApiTests(unittest.TestCase):
             "gifWidth": 50,
             "gifHeight": 50,
             "gifFps": 12.5,
+            "gifMaxColors": 64,
+            "gifDither": "none",
         }
 
         command = self.video_scripy._getCommand(video, "gif")
@@ -812,11 +834,28 @@ class VideoScripyApiTests(unittest.TestCase):
         if command is None:
             self.fail("GIF command was not generated")
         self.assertIn("fps=12.5,scale=50:50:flags=lanczos", command)
-        self.assertIn("palettegen", command)
-        self.assertIn("paletteuse", command)
+        self.assertIn("palettegen=max_colors=64", command)
+        self.assertIn("paletteuse=dither=none", command)
         self.assertIn("-loop 0 -an", command)
         expected_output = self.root / "gif" / "clip.gif"
         self.assertIn(f'"{expected_output}"', command)
+
+    def test_gif_command_defaults_to_full_palette_and_sierra2_4a_dither(self):
+        video: VideoInfo = {
+            "type": "mp4",
+            "path": str(self.root / "clip.mp4"),
+            "name": "clip.mp4",
+            "width": 100,
+            "height": 60,
+        }
+
+        command = self.video_scripy._getCommand(video, "gif")
+
+        if command is None:
+            self.fail("GIF command was not generated")
+        self.assertIn("fps=10.0,scale=100:60", command)
+        self.assertIn("palettegen=max_colors=256", command)
+        self.assertIn("paletteuse=dither=sierra2_4a", command)
 
     def test_upscale_runs_image_upscaler(self):
         video = self.make_video(type="png", path=str(self.root / "image.png"))

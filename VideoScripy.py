@@ -10,6 +10,9 @@ from videoscripy._core import _CoreMixin
 from videoscripy._operations import _OperationsMixin
 from videoscripy._processing import _ProcessingMixin
 from videoscripy._types import (
+    GIF_DEFAULT_DITHER,
+    GIF_DEFAULT_MAX_COLORS,
+    GIF_DITHERS,
     ROOT_DIR,
     FrameByte,
     GPUInfo,
@@ -31,6 +34,9 @@ __all__ = [
     "VideoInfo",
     "VideoProcess",
     "VideoScripy",
+    "GIF_DITHERS",
+    "GIF_DEFAULT_DITHER",
+    "GIF_DEFAULT_MAX_COLORS",
     "run",
 ]
 

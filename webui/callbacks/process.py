@@ -70,6 +70,8 @@ def _runProcess(selectedProcess, inputValues):
             "upscaleFactor",
             "videoFPS",
             "gifFPS",
+            "gifMaxColors",
+            "gifDither",
             "previewCol",
             "previewRow",
         }:
@@ -107,12 +109,20 @@ def _runProcess(selectedProcess, inputValues):
             processInputs["videoQuality"],
         )
     elif selectedProcess == VideoProcess.gif.name:
-        if not {"videoWidth", "videoHeight", "gifFPS"} <= processInputs.keys():
+        if not {
+            "videoWidth",
+            "videoHeight",
+            "gifFPS",
+            "gifMaxColors",
+            "gifDither",
+        } <= processInputs.keys():
             raise PreventUpdate
         vs.convertToGif(
             processInputs["videoWidth"],
             processInputs["videoHeight"],
             processInputs["gifFPS"],
+            processInputs["gifMaxColors"],
+            processInputs["gifDither"],
         )
     elif selectedProcess == VideoProcess.upscale.name:
         if not {"upscaleFactor", "videoQuality"} <= processInputs.keys():

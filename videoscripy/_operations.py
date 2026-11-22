@@ -12,7 +12,14 @@ from typing import Any, Callable
 
 from PIL import Image
 
-from ._types import VideoInfo, VideoProcess, VideoScripyContext
+from ._types import (
+    GIF_DEFAULT_DITHER,
+    GIF_DEFAULT_MAX_COLORS,
+    GIF_DITHERS,
+    VideoInfo,
+    VideoProcess,
+    VideoScripyContext,
+)
 from ._utilities import printC
 
 
@@ -218,8 +225,15 @@ class _OperationsMixin(VideoScripyContext):
         setWidth: int = -1,
         setHeight: int = -1,
         fps: float = 10.0,
+        maxColors: int = GIF_DEFAULT_MAX_COLORS,
+        dither: str = GIF_DEFAULT_DITHER,
     ) -> str:
-        """Convert a video to an animated GIF at the requested size and frame rate."""
+        """
+        Convert a video to an animated GIF at the requested size and frame rate.
+
+        File size is driven by size, FPS, palette size and dithering:
+        ``maxColors`` below 256 and ``dither="none"`` shrink the output a lot.
+        """
         process = VideoProcess.gif.name
         outputFolder = self._path(process)
         if not isdir(outputFolder):
@@ -234,6 +248,17 @@ class _OperationsMixin(VideoScripyContext):
             return "err"
         if not isfinite(fps) or fps <= 0:
             printC("GIF FPS must be a positive number", "red")
+            return "err"
+        try:
+            maxColors = int(maxColors)
+        except (TypeError, ValueError):
+            printC("GIF max colors must be an integer between 2 and 256", "red")
+            return "err"
+        if maxColors < 2 or maxColors > 256:
+            printC("GIF max colors must be an integer between 2 and 256", "red")
+            return "err"
+        if dither not in GIF_DITHERS:
+            printC(f'GIF dither must be one of: {", ".join(GIF_DITHERS)}', "red")
             return "err"
 
         width = int(video.get("width", 0) or 0)
@@ -254,6 +279,8 @@ class _OperationsMixin(VideoScripyContext):
         video["gifWidth"] = gifWidth
         video["gifHeight"] = gifHeight
         video["gifFps"] = fps
+        video["gifMaxColors"] = maxColors
+        video["gifDither"] = dither
 
         command = self._getCommand(video, process)
         if command is None:

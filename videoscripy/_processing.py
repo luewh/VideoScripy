@@ -17,7 +17,14 @@ from typing import Any
 import psutil
 from alive_progress import alive_bar
 
-from ._types import ProcAsyncReturn, VideoInfo, VideoProcess, VideoScripyContext
+from ._types import (
+    GIF_DEFAULT_DITHER,
+    GIF_DEFAULT_MAX_COLORS,
+    ProcAsyncReturn,
+    VideoInfo,
+    VideoProcess,
+    VideoScripyContext,
+)
 from ._utilities import printC
 
 
@@ -123,7 +130,9 @@ class _ProcessingMixin(VideoScripyContext):
                 f' -filter_complex "[0:v:0]fps={video_data.get("gifFps", 10.0)},'
                 f'scale={video_data.get("gifWidth", video_data.get("width", -1))}:'
                 f'{video_data.get("gifHeight", video_data.get("height", -1))}:flags=lanczos,'
-                f'split[gif][palette];[palette]palettegen[colors];[gif][colors]paletteuse"'
+                f'split[gif][palette];'
+                f'[palette]palettegen=max_colors={video_data.get("gifMaxColors", GIF_DEFAULT_MAX_COLORS)}[colors];'
+                f'[gif][colors]paletteuse=dither={video_data.get("gifDither", GIF_DEFAULT_DITHER)}"'
                 f' -loop 0 -an -y'
                 f' "{output_path}"'
             )
