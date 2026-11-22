@@ -113,6 +113,21 @@ class _ProcessingMixin(VideoScripyContext):
         videoName = video['name']
         command: str | None = None
 
+        if process == VideoProcess.gif.name:
+            output_path = str(
+                Path(self.path) / process / f'{Path(videoName).stem}.gif'
+            )
+            return (
+                f' ffmpeg'
+                f' -i "{videoPath}"'
+                f' -filter_complex "[0:v:0]fps={video_data.get("gifFps", 10.0)},'
+                f'scale={video_data.get("gifWidth", video_data.get("width", -1))}:'
+                f'{video_data.get("gifHeight", video_data.get("height", -1))}:flags=lanczos,'
+                f'split[gif][palette];[palette]palettegen[colors];[gif][colors]paletteuse"'
+                f' -loop 0 -an -y'
+                f' "{output_path}"'
+            )
+
         videoFps = video_data.get('fps', 0.0)
         if substep == 2 and process == VideoProcess.interpolate.name:
             videoFps = video_data.get("interpolateFps", videoFps)

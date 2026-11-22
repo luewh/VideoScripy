@@ -15,7 +15,7 @@ from unittest.mock import Mock, call, patch
 from PIL import Image
 
 import VideoScripy as public_api
-from VideoScripy import VideoScripy
+from VideoScripy import VideoInfo, VideoScripy
 
 
 class VideoScripyApiTests(unittest.TestCase):
@@ -34,6 +34,7 @@ class VideoScripyApiTests(unittest.TestCase):
         "pre_compress",
         "compress",
         "resize",
+        "convertToGif",
         "upscale",
         "interpolate",
         "preview",
@@ -769,6 +770,53 @@ class VideoScripyApiTests(unittest.TestCase):
         self.assertEqual(video["resizeWidth"], 50)
         self.assertEqual(video["resizeHeight"], 50)
         run_proc.assert_called_once_with("ffmpeg", "resize")
+
+    def test_convert_to_gif_resizes_preserving_aspect_ratio_and_runs(self):
+        video = self.make_video(width=100, height=60)
+        with (
+            patch.object(self.video_scripy, "_getCommand", return_value="ffmpeg"),
+            patch.object(self.video_scripy, "_runProc", return_value=True) as run_proc,
+        ):
+            self.call_serial_api("convertToGif", video, 50, -1, 12.5)
+
+        self.assertEqual(video["gifWidth"], 50)
+        self.assertEqual(video["gifHeight"], 30)
+        self.assertEqual(video["gifFps"], 12.5)
+        run_proc.assert_called_once_with("ffmpeg", "gif")
+
+    def test_convert_to_gif_defaults_to_original_size_and_10_fps(self):
+        video = self.make_video(width=100, height=60)
+        with (
+            patch.object(self.video_scripy, "_getCommand", return_value="ffmpeg"),
+            patch.object(self.video_scripy, "_runProc", return_value=True) as run_proc,
+        ):
+            self.call_serial_api("convertToGif", video)
+
+        self.assertEqual(video["gifWidth"], 100)
+        self.assertEqual(video["gifHeight"], 60)
+        self.assertEqual(video["gifFps"], 10.0)
+        run_proc.assert_called_once_with("ffmpeg", "gif")
+
+    def test_gif_command_uses_palette_filter_and_gif_extension(self):
+        video: VideoInfo = {
+            "type": "mp4",
+            "path": str(self.root / "clip.mp4"),
+            "name": "clip.mp4",
+            "gifWidth": 50,
+            "gifHeight": 50,
+            "gifFps": 12.5,
+        }
+
+        command = self.video_scripy._getCommand(video, "gif")
+
+        if command is None:
+            self.fail("GIF command was not generated")
+        self.assertIn("fps=12.5,scale=50:50:flags=lanczos", command)
+        self.assertIn("palettegen", command)
+        self.assertIn("paletteuse", command)
+        self.assertIn("-loop 0 -an", command)
+        expected_output = self.root / "gif" / "clip.gif"
+        self.assertIn(f'"{expected_output}"', command)
 
     def test_upscale_runs_image_upscaler(self):
         video = self.make_video(type="png", path=str(self.root / "image.png"))

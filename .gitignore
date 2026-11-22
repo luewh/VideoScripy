@@ -17,3 +17,11 @@ doc/gtx1650ti_mobile_windows.txt
 doc/NVENC_VideoEncoder_API_ProgGuide.pdf
 demo.mp4
 demo2.mp4
+compress/
+resize/
+upscale/
+interpolate/
+preview/
+frame/
+stream/
+gif/

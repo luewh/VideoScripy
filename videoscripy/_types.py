@@ -55,6 +55,9 @@ class VideoInfo(TypedDict):
     compressBitRateParam: NotRequired[str]
     resizeWidth: NotRequired[int]
     resizeHeight: NotRequired[int]
+    gifWidth: NotRequired[int]
+    gifHeight: NotRequired[int]
+    gifFps: NotRequired[float]
     getFramesOutputPath: NotRequired[str]
     upscaleOutputPath: NotRequired[str]
     upscaleFactor: NotRequired[int | str]
@@ -75,6 +78,7 @@ class VideoProcess(Enum):
     preview = "preview"
     frame = "frame"
     stream = "stream"
+    gif = "gif"
 
 
 class VideoScripyContext(Protocol):

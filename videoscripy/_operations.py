@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from datetime import timedelta
-from math import ceil, gcd
+from math import ceil, gcd, isfinite
 from os import mkdir, remove, rename, walk
 from os.path import isdir
 from pathlib import Path
@@ -208,6 +208,63 @@ class _OperationsMixin(VideoScripyContext):
         if not result:
             return "err"
         
+        self.removeEmptyFolder(outputFolder)
+        return "end"
+
+    @_serial
+    def convertToGif(
+        self,
+        video: VideoInfo,
+        setWidth: int = -1,
+        setHeight: int = -1,
+        fps: float = 10.0,
+    ) -> str:
+        """Convert a video to an animated GIF at the requested size and frame rate."""
+        process = VideoProcess.gif.name
+        outputFolder = self._path(process)
+        if not isdir(outputFolder):
+            mkdir(outputFolder)
+
+        if video["type"] not in self.vType:
+            printC("Skipped", "yellow")
+            return "skip"
+
+        if (setWidth != -1 and setWidth <= 0) or (setHeight != -1 and setHeight <= 0):
+            printC("GIF width and height must be positive or -1", "red")
+            return "err"
+        if not isfinite(fps) or fps <= 0:
+            printC("GIF FPS must be a positive number", "red")
+            return "err"
+
+        width = int(video.get("width", 0) or 0)
+        height = int(video.get("height", 0) or 0)
+        if width <= 0 or height <= 0:
+            printC(f'Cannot determine video dimensions for {video["name"]}', "red")
+            return "err"
+
+        if setWidth == -1 and setHeight == -1:
+            gifWidth, gifHeight = width, height
+        elif setWidth == -1:
+            gifWidth, gifHeight = ceil(width * setHeight / height), setHeight
+        elif setHeight == -1:
+            gifWidth, gifHeight = setWidth, ceil(height * setWidth / width)
+        else:
+            gifWidth, gifHeight = setWidth, setHeight
+
+        video["gifWidth"] = gifWidth
+        video["gifHeight"] = gifHeight
+        video["gifFps"] = fps
+
+        command = self._getCommand(video, process)
+        if command is None:
+            return "err"
+        result = self._runProc(command, process)
+
+        if self.killed:
+            return "stop"
+        if not result:
+            return "err"
+
         self.removeEmptyFolder(outputFolder)
         return "end"
 

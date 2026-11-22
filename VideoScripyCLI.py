@@ -90,6 +90,16 @@ def _run_process(
         height = _prompt_int("Height (-1 keeps the aspect ratio)", -1, minimum=1, allow_minus_one=True)
         quality = _prompt_float("Quality", 3.0, minimum=0.1)
         video_scripy.resize(setWidth=width, setHeight=height, quality=quality)
+    elif process is process_type.gif:
+        width = _prompt_int("GIF width", -1, minimum=1, allow_minus_one=True)
+        height = _prompt_int(
+            "GIF height (-1 keeps the aspect ratio)",
+            -1,
+            minimum=1,
+            allow_minus_one=True,
+        )
+        fps = _prompt_float("GIF FPS", 10.0, minimum=0.1)
+        video_scripy.convertToGif(setWidth=width, setHeight=height, fps=fps)
     elif process is process_type.upscale:
         factor = _prompt_int("Upscale factor", 2, choices=[2, 3, 4])
         quality = _prompt_float("Quality", 3.0, minimum=0.1)

@@ -99,7 +99,7 @@ def qualityInputUI():
         ),
     ]
 
-def resizeInputUI():
+def resizeInputUI(defaultWidth=1920, defaultHeight=1080):
     global videoSizesDict
     return [
         html.Div(
@@ -112,7 +112,7 @@ def resizeInputUI():
                 dcc.Input(
                     id={"type": "input", "id": "videoWidth"},
                     type="number",
-                    value=1920,
+                    value=defaultWidth,
                     persistence_type="local",
                     persistence=True,
                     min=-1,
@@ -131,7 +131,7 @@ def resizeInputUI():
                 dcc.Input(
                     id={"type": "input", "id": "videoHeight"},
                     type="number",
-                    value=1080,
+                    value=defaultHeight,
                     persistence_type="local",
                     persistence=True,
                     min=-1,
@@ -191,6 +191,27 @@ def interpolateInputUI():
             value=30.0,
             min=1.0,
             max=240.0,
+            persistence_type="local",
+            persistence=True,
+            className="dcc_input",
+            style={"width":"65px"},
+        ),
+    ]
+
+def gifInputUI():
+    return [
+        html.Div(
+            "GIF FPS",
+            className="div_text_simple",
+            disable_n_clicks=True,
+        ),
+        dcc.Input(
+            id={"type": "input", "id": "gifFPS"},
+            type="number",
+            value=10.0,
+            min=0.1,
+            max=60.0,
+            step=0.1,
             persistence_type="local",
             persistence=True,
             className="dcc_input",
@@ -458,6 +479,11 @@ def update_div_processParamUI(selectedProcess:str):
         processParamUI.extend([
             *resizeInputUI(),
             *qualityInputUI(),
+        ])
+    elif selectedProcess == VideoProcess.gif.name:
+        processParamUI.extend([
+            *resizeInputUI(defaultWidth=-1, defaultHeight=-1),
+            *gifInputUI(),
         ])
     elif selectedProcess == VideoProcess.upscale.name:
         processParamUI.extend([

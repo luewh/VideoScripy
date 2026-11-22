@@ -1,3 +1,5 @@
+from typing import Any
+
 from dash import ALL, Input, Output, State, callback, ctx
 from dash.exceptions import PreventUpdate
 
@@ -57,25 +59,24 @@ def _runProcess(selectedProcess, inputValues):
     global vs
     # get inputs values
     values = ctx.states_list[1]
+    processInputs: dict[str, Any] = {}
     
     for value in values:
-        if value["id"]["id"] == "videoQuality":
-            videoQuality = value["value"]
-        elif value["id"]["id"] == "videoWidth":
-            videoWidth = value["value"]
-        elif value["id"]["id"] == "videoHeight":
-            videoHeight = value["value"]
-        elif value["id"]["id"] == "upscaleFactor":
-            upscaleFactor = value["value"]
-        elif value["id"]["id"] == "videoFPS":
-            videoFPS = value["value"]
-        elif value["id"]["id"] == "previewCol":
-            previewCol = value["value"]
-        elif value["id"]["id"] == "previewRow":
-            previewRow = value["value"]
+        inputId = value["id"]["id"]
+        if inputId in {
+            "videoQuality",
+            "videoWidth",
+            "videoHeight",
+            "upscaleFactor",
+            "videoFPS",
+            "gifFPS",
+            "previewCol",
+            "previewRow",
+        }:
+            processInputs[inputId] = value["value"]
         # set stream metadata for stream process
-        elif len(value["id"]["id"].split(" ")) == 3:
-            [vIndex, sIndex, metaData] = value["id"]["id"].split(" ")
+        elif len(inputId.split(" ")) == 3:
+            [vIndex, sIndex, metaData] = inputId.split(" ")
             vIndex = int(vIndex)
             sIndex = int(sIndex)
             # set if has value
@@ -94,15 +95,37 @@ def _runProcess(selectedProcess, inputValues):
     
     # run process
     if selectedProcess == VideoProcess.compress.name:
-        vs.compress(videoQuality)
+        if "videoQuality" not in processInputs:
+            raise PreventUpdate
+        vs.compress(processInputs["videoQuality"])
     elif selectedProcess == VideoProcess.resize.name:
-        vs.resize(videoWidth, videoHeight, videoQuality)
+        if not {"videoWidth", "videoHeight", "videoQuality"} <= processInputs.keys():
+            raise PreventUpdate
+        vs.resize(
+            processInputs["videoWidth"],
+            processInputs["videoHeight"],
+            processInputs["videoQuality"],
+        )
+    elif selectedProcess == VideoProcess.gif.name:
+        if not {"videoWidth", "videoHeight", "gifFPS"} <= processInputs.keys():
+            raise PreventUpdate
+        vs.convertToGif(
+            processInputs["videoWidth"],
+            processInputs["videoHeight"],
+            processInputs["gifFPS"],
+        )
     elif selectedProcess == VideoProcess.upscale.name:
-        vs.upscale(upscaleFactor, videoQuality)
+        if not {"upscaleFactor", "videoQuality"} <= processInputs.keys():
+            raise PreventUpdate
+        vs.upscale(processInputs["upscaleFactor"], processInputs["videoQuality"])
     elif selectedProcess == VideoProcess.interpolate.name:
-        vs.interpolate(videoFPS, videoQuality)
+        if not {"videoFPS", "videoQuality"} <= processInputs.keys():
+            raise PreventUpdate
+        vs.interpolate(processInputs["videoFPS"], processInputs["videoQuality"])
     elif selectedProcess == VideoProcess.preview.name:
-        vs.preview(previewCol, previewRow)
+        if not {"previewCol", "previewRow"} <= processInputs.keys():
+            raise PreventUpdate
+        vs.preview(processInputs["previewCol"], processInputs["previewRow"])
     elif selectedProcess == VideoProcess.frame.name:
         vs.frame()
     elif selectedProcess == VideoProcess.stream.name:

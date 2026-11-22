@@ -51,6 +51,9 @@ Collection of video processing module such as compression, upscale, interpolatio
 
     ![demo_upscale_s](./doc/demo_resize_illus.png)
 
+- gif
+    **Convert a video to an animated GIF.** By default, the original dimensions and 10 FPS are used. Set either dimension to `-1` to preserve the aspect ratio.
+
 - upscale  
     Increase video size by factor of 2,3 or 4 with AI, enhance video quality.  
     It has the ability to start from last upscal progress if the "_upscaledx?_frame" folder isn't deleted. 
