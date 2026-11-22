@@ -12,9 +12,13 @@ from videoscripy._processing import _ProcessingMixin
 from videoscripy._types import (
     GIF_DEFAULT_DITHER,
     GIF_DEFAULT_MAX_COLORS,
+    GIF_DITHER_SCORES,
     GIF_DITHERS,
+    GIF_MAX_COLORS,
+    GIF_MIN_RECOMMENDED_COLORS,
     ROOT_DIR,
     FrameByte,
+    GIFDitherScore,
     GPUInfo,
     ProcAsyncReturn,
     StreamInfo,
@@ -34,9 +38,13 @@ __all__ = [
     "VideoInfo",
     "VideoProcess",
     "VideoScripy",
+    "GIFDitherScore",
     "GIF_DITHERS",
+    "GIF_DITHER_SCORES",
     "GIF_DEFAULT_DITHER",
     "GIF_DEFAULT_MAX_COLORS",
+    "GIF_MIN_RECOMMENDED_COLORS",
+    "GIF_MAX_COLORS",
 ]
 
 

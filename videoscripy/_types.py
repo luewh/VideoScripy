@@ -12,20 +12,45 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 
 # dithering modes accepted by FFmpeg's paletteuse filter
 GIF_DITHERS: tuple[str, ...] = (
-    "sierra2_4a",
-    "bayer",
     "none",
-    "floyd_steinberg",
-    "sierra2",
-    "sierra3",
-    "burkes",
     "atkinson",
+    "sierra3",
+    "sierra2",
+    "burkes",
+    "sierra2_4a",
+    "floyd_steinberg",
     "heckbert",
+    "bayer",
 )
 
 # paletteuse `dither=none` does no error diffusion, which keeps GIF frames tiny
 GIF_DEFAULT_DITHER = "sierra2_4a"
 GIF_DEFAULT_MAX_COLORS = 256
+# GIF palettes are capped at 256 colors; below 16 most videos look visibly broken
+GIF_MIN_RECOMMENDED_COLORS = 16
+GIF_MAX_COLORS = 256
+
+
+class GIFDitherScore(TypedDict):
+    """Performance profile of a dithering mode, scored from 1 (worst) to 10 (best)."""
+
+    compression: int
+    speed: int
+    note: str
+
+
+# measured with the gif pipeline itself on a 1080x1920 source, 480px wide, 8 fps, 128 colors
+GIF_DITHER_SCORES: dict[str, GIFDitherScore] = {
+    "none": {"compression": 10, "speed": 10, "note": "no dithering, smallest files, harsh bands"},
+    "atkinson": {"compression": 10, "speed": 6, "note": "light diffusion, crisp sparse detail"},
+    "sierra3": {"compression": 10, "speed": 5, "note": "widest diffusion, best gradients, noisiest"},
+    "sierra2": {"compression": 9, "speed": 5, "note": "balanced diffusion, lighter than sierra2_4a"},
+    "burkes": {"compression": 9, "speed": 5, "note": "reduced Floyd-Steinberg, softer grain"},
+    "sierra2_4a": {"compression": 8, "speed": 4, "note": "FFmpeg default, smooth gradients"},
+    "floyd_steinberg": {"compression": 8, "speed": 4, "note": "classic diffusion, fine grain"},
+    "heckbert": {"compression": 8, "speed": 4, "note": "simple diffusion, moderate quality"},
+    "bayer": {"compression": 7, "speed": 9, "note": "ordered pattern, fastest, largest files"},
+}
 
 
 class GPUInfo(TypedDict):

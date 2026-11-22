@@ -57,7 +57,7 @@ def create_layout():
                                                 persistence_type="local",
                                                 persistence=False,
                                             ),
-                                            width=6,
+                                            width=5,
                                         ),
                                         dbc.Tooltip(
                                             [
@@ -80,16 +80,14 @@ def create_layout():
                                                 placeholder="Select a hardware ...",
                                                 id="dropdown_device",
                                                 maxHeight=233,
-                                                optionHeight=20,
+                                                optionHeight=32,
                                                 searchable=True,
                                                 clearable=False,
-                                                style={
-                                                    "height":"5vh",
-                                                    "font-size":"10px",
-                                                    "color":"black",
-                                                },
+                                                className="dcc_dropdown dcc_dropdown_device",
+                                                persistence_type="local",
+                                                persistence=False,
                                             ),
-                                            width=4,
+                                            width=5,
                                         ),
                                         dbc.Tooltip(
                                             [
@@ -107,14 +105,10 @@ def create_layout():
                                                 placeholder="Select an encoder ...",
                                                 id="dropdown_encoder",
                                                 maxHeight=233,
-                                                optionHeight=20,
+                                                optionHeight=28,
                                                 searchable=True,
                                                 clearable=False,
-                                                style={
-                                                    "height":"5vh",
-                                                    "font-size":"10px",
-                                                    "color":"black",
-                                                },
+                                                className="dcc_dropdown",
                                             ),
                                             width=2,
                                         ),

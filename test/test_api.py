@@ -155,9 +155,13 @@ class VideoScripyApiTests(unittest.TestCase):
                 "VideoInfo",
                 "VideoProcess",
                 "VideoScripy",
+                "GIFDitherScore",
                 "GIF_DITHERS",
+                "GIF_DITHER_SCORES",
                 "GIF_DEFAULT_DITHER",
                 "GIF_DEFAULT_MAX_COLORS",
+                "GIF_MIN_RECOMMENDED_COLORS",
+                "GIF_MAX_COLORS",
             ],
         )
 
@@ -376,6 +380,65 @@ class VideoScripyApiTests(unittest.TestCase):
             {option["value"] for option in gpu_options},
             {"h264", "av1"},
         )
+
+    def test_webui_gif_color_options_span_recommended_to_max(self):
+        from webui import state
+
+        self.assertEqual(state.gifColorOptions, [16, 32, 64, 128, 256])
+        self.assertEqual(state.gifColorOptions[0], public_api.GIF_MIN_RECOMMENDED_COLORS)
+        self.assertEqual(state.gifColorOptions[-1], public_api.GIF_MAX_COLORS)
+
+    def test_webui_gif_inputs_expose_free_colors_and_standard_dropdown(self):
+        from dash import dcc
+
+        from webui.callbacks import process_ui
+
+        def walk(component):
+            yield component
+            children = getattr(component, "children", None)
+            if isinstance(children, (list, tuple)):
+                for child in children:
+                    yield from walk(child)
+            elif hasattr(children, "children"):
+                yield from walk(children)
+
+        components = {
+            (component.id["type"], component.id["id"]): component
+            for top in process_ui.gifInputUI()
+            for component in walk(top)
+            if isinstance(getattr(component, "id", None), dict)
+        }
+
+        colorsInput = components[("input", "gifMaxColors")]
+        self.assertIsInstance(colorsInput, dcc.Input)
+        self.assertEqual((colorsInput.min, colorsInput.max), (0, 256))
+
+        colorsDropdown = components[("spec", "dropdown_gifColors")]
+        self.assertIsInstance(colorsDropdown, dcc.Dropdown)
+        self.assertEqual(list(colorsDropdown.options), [16, 32, 64, 128, 256])
+        self.assertEqual(colorsDropdown.placeholder, "STANDAR COLORS")
+
+    def test_webui_gif_colors_dropdown_fills_the_free_input(self):
+        from dash.exceptions import PreventUpdate
+
+        from webui.callbacks import process_ui
+
+        self.assertEqual(process_ui.setGifColors(64), (64, None))
+        with self.assertRaises(PreventUpdate):
+            process_ui.setGifColors(None)
+
+    def test_gif_dither_scores_cover_every_dither_mode(self):
+        scores = public_api.GIF_DITHER_SCORES
+
+        self.assertEqual(set(scores), set(public_api.GIF_DITHERS))
+        for dither, score in scores.items():
+            with self.subTest(dither=dither):
+                self.assertEqual(set(score), {"compression", "speed", "note"})
+                self.assertTrue(1 <= score["compression"] <= 10)
+                self.assertTrue(1 <= score["speed"] <= 10)
+                self.assertTrue(score["note"])
+
+        self.assertEqual(scores["none"], {"compression": 10, "speed": 10, "note": "no dithering, smallest files, harsh bands"})
 
     def test_get_video_scans_supported_files(self):
         (self.root / "clip.MP4").write_bytes(b"")

@@ -55,7 +55,28 @@ Collection of video processing module such as compression, upscale, interpolatio
     **Convert a video to an animated GIF.** By default, the original dimensions and 10 FPS are used. Set either dimension to `-1` to preserve the aspect ratio.
 
     GIF stores every frame without inter-frame compression, so a long, high resolution video produces a huge file.
-    Four parameters control the size: output `width x height`, `FPS`, palette `max colors` (2-256) and `dither`.
+    Four parameters control the size: output `width x height`, `FPS`, palette `max colors` (0-256, free entry) and `dither`.
+    A GIF palette holds at most 256 colors, and fewer than 16 makes most videos look broken,
+    so the `STANDAR COLORS` dropdown next to the input fills it with the standard palette sizes
+    `16`, `32`, `64`, `128` and `256`. `0` or an empty input falls back to the full 256 color palette.
+
+    The `compression` and `speed` scores below are shown next to the `dither` dropdown in the UI.
+    `compression` rewards smaller files and `speed` rewards faster conversion, both out of 10.
+    They were measured with this tool's own GIF pipeline on a 1080x1920 source rendered at 480px wide,
+    8 FPS with 128 colors, and confirmed on a synthetic 480x480 clip.
+
+    | dither | compression | speed | note |
+    | --- | --- | --- | --- |
+    | sierra2_4a | 8 | 4 | FFmpeg default, smooth gradients |
+    | bayer | 7 | 9 | ordered pattern, fastest, largest files |
+    | none | 10 | 10 | no dithering, smallest files, harsh bands |
+    | floyd_steinberg | 8 | 4 | classic diffusion, fine grain |
+    | sierra2 | 9 | 5 | balanced diffusion, lighter than sierra2_4a |
+    | sierra3 | 10 | 5 | widest diffusion, best gradients, noisiest |
+    | burkes | 9 | 5 | reduced Floyd-Steinberg, softer grain |
+    | atkinson | 10 | 6 | light diffusion, crisp sparse detail |
+    | heckbert | 8 | 4 | simple diffusion, moderate quality |
+
     Measured on a 1080x1920, 2 minute source:
 
     | width x height | FPS | max colors | dither | size |

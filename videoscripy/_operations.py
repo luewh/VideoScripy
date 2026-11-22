@@ -16,6 +16,7 @@ from ._types import (
     GIF_DEFAULT_DITHER,
     GIF_DEFAULT_MAX_COLORS,
     GIF_DITHERS,
+    GIF_MAX_COLORS,
     VideoInfo,
     VideoProcess,
     VideoScripyContext,
@@ -249,13 +250,16 @@ class _OperationsMixin(VideoScripyContext):
         if not isfinite(fps) or fps <= 0:
             printC("GIF FPS must be a positive number", "red")
             return "err"
+        maxColorsError = (
+            f"GIF max colors must be an integer between 2 and {GIF_MAX_COLORS}"
+        )
         try:
             maxColors = int(maxColors)
         except (TypeError, ValueError):
-            printC("GIF max colors must be an integer between 2 and 256", "red")
+            printC(maxColorsError, "red")
             return "err"
-        if maxColors < 2 or maxColors > 256:
-            printC("GIF max colors must be an integer between 2 and 256", "red")
+        if not 2 <= maxColors <= GIF_MAX_COLORS:
+            printC(maxColorsError, "red")
             return "err"
         if dither not in GIF_DITHERS:
             printC(f'GIF dither must be one of: {", ".join(GIF_DITHERS)}', "red")

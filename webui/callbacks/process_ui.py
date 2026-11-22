@@ -5,10 +5,18 @@ from dash.exceptions import PreventUpdate
 import dash_bootstrap_components as dbc
 import plotly.graph_objects as go
 
-from VideoScripy import GIF_DEFAULT_DITHER, GIF_DEFAULT_MAX_COLORS, GIF_DITHERS, VideoProcess
+from VideoScripy import (
+    GIF_DEFAULT_DITHER,
+    GIF_DEFAULT_MAX_COLORS,
+    GIF_DITHER_SCORES,
+    GIF_DITHERS,
+    GIF_MAX_COLORS,
+    VideoProcess,
+)
 from .. import state
 from ..state import (
     StreamInfo,
+    gifColorOptions,
     langDict,
     videoQualityDict,
     videoSizesDict,
@@ -198,6 +206,37 @@ def interpolateInputUI():
         ),
     ]
 
+def gifDitherInfoUI(dither:str|None) -> html.Div:
+    # scores are the measured ones, compression = smaller output, speed = faster conversion
+    score = GIF_DITHER_SCORES[dither or GIF_DEFAULT_DITHER]
+    return html.Div(
+        score["note"],
+        className="div_text_ditherNote",
+        disable_n_clicks=True,
+    )
+
+def gifDitherOptions() -> list[dict]:
+    # scores are repeated in the options so the dropdown menu is readable without selecting
+    return [
+        {
+            "label": html.Div([
+                html.Div(
+                    dither,
+                    className="div_text_ditherOptionName",
+                    disable_n_clicks=True,
+                ),
+                html.Div(
+                    f"comp {GIF_DITHER_SCORES[dither]['compression']}/10 · "
+                    f"speed {GIF_DITHER_SCORES[dither]['speed']}/10",
+                    className="div_text_ditherOptionScore",
+                    disable_n_clicks=True,
+                ),
+            ]),
+            "value": dither,
+        }
+        for dither in GIF_DITHERS
+    ]
+
 def gifInputUI():
     return [
         html.Div(
@@ -222,34 +261,63 @@ def gifInputUI():
             className="div_text_simple",
             disable_n_clicks=True,
         ),
-        dcc.Input(
-            id={"type": "input", "id": "gifMaxColors"},
-            type="number",
-            value=GIF_DEFAULT_MAX_COLORS,
-            min=2,
-            max=256,
-            step=1,
-            persistence_type="local",
-            persistence=True,
-            className="dcc_input",
-            style={"width":"65px"},
+        dbc.Stack(
+            [
+                dcc.Input(
+                    id={"type": "input", "id": "gifMaxColors"},
+                    type="number",
+                    value=GIF_DEFAULT_MAX_COLORS,
+                    min=0,
+                    max=GIF_MAX_COLORS,
+                    step=1,
+                    persistence_type="local",
+                    persistence=True,
+                    className="dcc_input",
+                    style={"width":"65px"},
+                ),
+                dcc.Dropdown(
+                    gifColorOptions,
+                    placeholder="STANDAR COLORS",
+                    id={"type": "spec", "id": "dropdown_gifColors"},
+                    searchable=False,
+                    clearable=False,
+                    maxHeight=115,
+                    optionHeight=19,
+                    className="dcc_dropdown dcc_dropdown_dither",
+                    style={"width":"170px"},
+                ),
+            ],
+            direction="horizontal",
         ),
         html.Div(
             "dither",
             className="div_text_simple",
             disable_n_clicks=True,
         ),
-        dcc.Dropdown(
-            list(GIF_DITHERS),
-            GIF_DEFAULT_DITHER,
-            id={"type": "input", "id": "gifDither"},
-            persistence_type="local",
-            persistence=True,
-            searchable=False,
-            clearable=False,
-            optionHeight=19,
-            className="dcc_dropdown",
-            style={"width":"130px"},
+        dbc.Stack(
+            [
+                dcc.Dropdown(
+                    gifDitherOptions(),
+                    GIF_DEFAULT_DITHER,
+                    id={"type": "input", "id": "gifDither"},
+                    persistence_type="local",
+                    persistence=True,
+                    searchable=False,
+                    clearable=False,
+                    maxHeight=180,
+                    optionHeight=32,
+                    className="dcc_dropdown dcc_dropdown_dither",
+                    style={"width":"185px"},
+                ),
+                html.Div(
+                    gifDitherInfoUI(GIF_DEFAULT_DITHER),
+                    id={"type": "spec", "id": "div_gifDitherInfo"},
+                    disable_n_clicks=True,
+                ),
+            ],
+            direction="horizontal",
+            gap=2,
+            style={"alignItems":"center"},
         ),
     ]
 
@@ -764,6 +832,24 @@ def setVideoSize(selectedVideoSize):
         if videoSize["label"] == selectedVideoSize:
             return videoSize["width"], videoSize["height"], None
     raise PreventUpdate
+
+@callback(
+    Output({"type": "input", "id": "gifMaxColors"}, 'value'),
+    Output({"type": "spec", "id": "dropdown_gifColors"}, 'value'),
+    Input({"type": "spec", "id": "dropdown_gifColors"}, 'value'),
+    prevent_initial_call=True,
+)
+def setGifColors(selectedColors):
+    if selectedColors is None:
+        raise PreventUpdate
+    return selectedColors, None
+
+@callback(
+    Output({"type": "spec", "id": "div_gifDitherInfo"}, 'children'),
+    Input({"type": "input", "id": "gifDither"}, 'value'),
+)
+def setGifDitherInfo(selectedDither):
+    return gifDitherInfoUI(selectedDither)
 
 @callback(
     Output({"type": "input", "id": "videoWidth"}, 'value', allow_duplicate=True),

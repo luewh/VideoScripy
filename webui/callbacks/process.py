@@ -3,7 +3,11 @@ from typing import Any
 from dash import ALL, Input, Output, State, callback, ctx
 from dash.exceptions import PreventUpdate
 
-from VideoScripy import VideoProcess
+from VideoScripy import (
+    GIF_DEFAULT_DITHER,
+    GIF_DEFAULT_MAX_COLORS,
+    VideoProcess,
+)
 from .. import state
 from ..state import vs
 
@@ -121,8 +125,8 @@ def _runProcess(selectedProcess, inputValues):
             processInputs["videoWidth"],
             processInputs["videoHeight"],
             processInputs["gifFPS"],
-            processInputs["gifMaxColors"],
-            processInputs["gifDither"],
+            processInputs["gifMaxColors"] or GIF_DEFAULT_MAX_COLORS,
+            processInputs["gifDither"] or GIF_DEFAULT_DITHER,
         )
     elif selectedProcess == VideoProcess.upscale.name:
         if not {"upscaleFactor", "videoQuality"} <= processInputs.keys():

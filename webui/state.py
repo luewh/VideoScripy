@@ -2,6 +2,8 @@ import os
 from threading import Lock
 
 from VideoScripy import (
+    GIF_MAX_COLORS,
+    GIF_MIN_RECOMMENDED_COLORS,
     StreamInfo,
     VideoInfo as VideoInfoBase,
     VideoProcess,
@@ -40,6 +42,18 @@ videoQualityDict = [
     {"label": "ultra : 6", "value": 6},
 ]
 upscaleFactor = [2, 3, 4]
+
+
+def _paletteSteps(minimum: int, maximum: int) -> list[int]:
+    """Return every power of two from ``minimum`` up to ``maximum``."""
+    steps = [minimum]
+    while steps[-1] * 2 <= maximum:
+        steps.append(steps[-1] * 2)
+    return steps
+
+
+# standard GIF palette sizes, from the recommended minimum up to the maximum
+gifColorOptions = _paletteSteps(GIF_MIN_RECOMMENDED_COLORS, GIF_MAX_COLORS)
 videoItemColor = {True: "info", False: "dark"}
 videoSortBy = [
     "quality",
